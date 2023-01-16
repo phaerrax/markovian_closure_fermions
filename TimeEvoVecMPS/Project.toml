@@ -1,0 +1,11 @@
+name = "TimeEvoVecMPS"
+uuid = "386e0f54-b56d-4c26-8648-19598745e6c2"
+authors = ["kindaguy <dario.tamascelli@unimi.it>"]
+version = "0.1.0"
+
+[deps]
+ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"

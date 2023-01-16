@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH -A dtama
+#SBATCH -c 6
+#SBATCH --job-name=appo
+#SBATCH --mail-user=dario.tamascelli@unimi.it
+#SBATCH --mail-type=ALL
+
+#dir="tests/pseudomode_ttedopa_comparison"
+#parametersdir="$dir/chain_length"
+
+export MKL_NUM_THREADS=${SLURM_JOB_CPUS_PER_NODE}
+
+printenv
+
+julia --project=.  WSCP_TDVP1_Tama_MC.jl     
+
