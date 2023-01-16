@@ -1,6 +1,7 @@
 using ITensors
 using DelimitedFiles
 using Pkg
+using PseudomodesTTEDOPA
 Pkg.activate(".")
 #using TimeEvoVecMPS
 #Occhio qui. Va sistemato in modo che tutto

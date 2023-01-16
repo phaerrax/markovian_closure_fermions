@@ -4,6 +4,7 @@ using DelimitedFiles
 using Permutations
 using VectorizedRho
 using TimeEvoVecMPS
+using PseudomodesTTEDOPA
 
 function load_pars(file_name::String)
    input = open(file_name)

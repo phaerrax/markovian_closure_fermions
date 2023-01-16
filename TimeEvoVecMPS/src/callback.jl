@@ -58,10 +58,6 @@ struct LocalMeasurementCallbackTama <: TEvoCallback
     dt_measure::Float64
 end
 
-"""
-    LocalMeasurementCallback(ops, sites, dt_measure)
-
-
 function LocalMeasurementCallback(ops,sites,dt_measure)
     return LocalMeasurementCallback(ops,
                                     sites,
