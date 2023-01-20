@@ -394,7 +394,7 @@ function createMPOVecRho(
 end
 
 function createObs(lookat)
-    vobs = []
+    vobs = opPos[]
     for a in lookat
         push!(vobs, opPos(a[1], a[2]))
     end
