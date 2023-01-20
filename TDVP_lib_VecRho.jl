@@ -2,7 +2,6 @@ using ITensors
 using JSON
 using DelimitedFiles
 using Permutations
-using VectorizedRho
 using TimeEvoVecMPS
 using PseudomodesTTEDOPA
 
