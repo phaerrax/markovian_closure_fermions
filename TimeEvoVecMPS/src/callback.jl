@@ -204,7 +204,7 @@ Measure each operator defined inside the callback object `cb` on the MPS `state`
 function measure_localops!(
     cb::LocalPosMeasurementCallback,
     ops::Vector{opPos},
-    state::MPS,
+    ψ::MPS,
     i::Int,
 )
     # We should use the operators defined inside cb instead of a new Vector ops; also,
@@ -214,14 +214,14 @@ function measure_localops!(
         # The norm (aka the trace) is computed contracting with vecId on every site,
         # so we replace the placeholder "Norm" so that we have the correct operator.
         op = (o.op == "Norm" ? "vecId" : o.op)
-        for j = 1:length(state)
+        for j = 1:length(ψ)
             # Contract with the operator on the site associated to it, with vecId
             # on the other sites.
-            V *= state[j] * (
+            V *= ψ[j] * (
                 if j != o.pos
-                    state("vecId", siteind(state, j))
+                    state("vecId", siteind(ψ, j))
                 else
-                    state(op, siteind(state, j))
+                    state(op, siteind(ψ, j))
                 end
             )
         end
@@ -321,8 +321,8 @@ alg is 2-site TDVP) which have just been touched by the time-evolution.
 """
 function isoncurrentbond(op::opPos, bond::Int, alg)
     return (
-        (alg isa TDVP2 && (el.pos == bond + 1 || (el.pos == 1 && bond == 1))) ||
-        (alg isa TDVP1 && el.pos == bond)
+        (alg isa TDVP2 && (op.pos == bond + 1 || (op.pos == 1 && bond == 1))) ||
+        (alg isa TDVP1 && op.pos == bond)
     )
 end
 
