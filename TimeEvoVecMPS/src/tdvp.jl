@@ -1,4 +1,4 @@
-export tdvp!, tdvpMC!, tdvp1!
+export tdvp!, tdvpMC!, tdvp1!, tdvp1vec!
 
 using ITensors: position!
 
@@ -671,6 +671,273 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
                 # quindi credo che la misura vada spostata piu` su
                 # ovvero prima di rendere il tensore right orthogonal
             end
+        end
+
+        #println("time-step time: ",s*dt," t=", stime)
+        !isnothing(pbar) && ProgressMeter.next!(
+            pbar;
+            showvalues=[
+                ("t", Δt * s),
+                ("Δt step time", round(stime; digits=3)),
+                ("Max bond-dim", maxlinkdim(state)),
+            ],
+        )
+
+        #if there is output file and the time is right...
+        if !isnothing(io_file) && !isempty(measurement_ts(cb))
+            if Δt * s ≈ measurement_ts(cb)[end]
+                results = measurements(cb)
+                @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
+                for o in sort(collect(keys(results)))
+                    @printf(io_handle, "%40.15f", results[o][end][1])
+                end
+
+                if store_state0
+                    over = dot(state0, state)
+                    @printf(io_handle, "%40.15f%40.15f", real(over), imag(over))
+                end
+
+                # print("Norm: ")
+                # println(norm(state))
+                @printf(io_handle, "%40.15f", norm(state))
+                @printf(io_handle, "\n")
+                flush(io_handle)
+            end
+        end
+
+        # Ranks printout
+        if !isnothing(ranks_file) && !isempty(measurement_ts(cb))
+            if Δt * s ≈ measurement_ts(cb)[end]
+                @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
+
+                for o in ITensors.linkdims(state)
+                    @printf(ranks_handle, "%10d", o)
+                end
+
+                @printf(ranks_handle, "\n")
+                flush(ranks_handle)
+            end
+        end
+
+        if !isnothing(times_file) && !isempty(measurement_ts(cb))
+            if Δt * s ≈ measurement_ts(cb)[end]
+                @printf(times_handle, "%20.4f\n", stime)
+                flush(times_handle)
+            end
+        end
+
+        checkdone!(cb) && break
+    end
+
+    !isnothing(io_file) && close(io_handle)
+    !isnothing(ranks_file) && close(ranks_handle)
+    !isnothing(times_file) && close(times_handle)
+
+    return nothing
+end
+
+"""
+    tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
+
+For vectorized state it is still unclear whether the measurements can be made before
+the sweep is complete. Therefore, until this question gets an answer, this function
+postpones the measurements of all observables until all the sites of the state are
+updated.
+"""
+function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
+    nsteps = Int(tf / Δt)
+    cb = get(kwargs, :callback, NoTEvoCallback())
+    hermitian = get(kwargs, :hermitian, true)
+    exp_tol = get(kwargs, :exp_tol, 1e-14)
+    krylovdim = get(kwargs, :krylovdim, 30)
+    maxiter = get(kwargs, :maxiter, 100)
+    normalize = get(kwargs, :normalize, true)
+    io_file = get(kwargs, :io_file, nothing)
+    ranks_file = get(kwargs, :io_ranks, nothing)
+    times_file = get(kwargs, :io_times, nothing)
+    store_state0 = get(kwargs, :store_state0, false)
+
+    if get(kwargs, :progress, true)
+        pbar = Progress(nsteps; desc="Evolving state... ")
+    else
+        pbar = nothing
+    end
+
+    imag(Δt) == 0 && (Δt = real(Δt))
+
+    store_state0 && (state0 = copy(state))
+
+    # If present, open measurements file.
+    # The store_state0 triggers the measurement of the overlap
+    if !isnothing(io_file)
+        io_handle = open(io_file, "w")
+
+        # Write column names to file
+        @printf(io_handle, "#%19s", "time")
+        res = measurements(cb)
+        for o in sort(collect(keys(res)))
+            @printf(io_handle, "%40s", o)
+        end
+        if (store_state0)
+            @printf(io_handle, "%40s%40s", "re_over", "im_over")
+        end
+        @printf(io_handle, "%40s", "Norm")
+        @printf(io_handle, "\n")
+    end
+
+    if !isnothing(ranks_file)
+        ranks_handle = open(ranks_file, "w")
+
+        # Write column names to file
+        @printf(ranks_handle, "#%19s", "time")
+        for o in 1:(length(state) - 1)
+            @printf(ranks_handle, "%10d", o)
+        end
+
+        @printf(ranks_handle, "\n")
+    end
+
+    if !isnothing(times_file)
+        times_handle = open(times_file, "w")
+
+        # Write column names to file
+        @printf(times_handle, "#%19s", "walltime (sec)")
+        @printf(times_handle, "\n")
+    end
+
+    N = length(state)
+
+    # Prepare for first iteration
+    orthogonalize!(state, 1)
+    PH = ProjMPO(H)
+    singlesite!(PH)
+    position!(PH, state, 1)
+
+    for s in 1:nsteps
+        stime = @elapsed begin
+            # In TDVP1 only one site at a time is modified, so we iterate on the sites
+            # of the state's MPS, not the bonds.
+            for (site, ha) in sweepnext(N; ncenter=1)
+                # sweepnext(N) is an iterable object that evaluates to tuples of the form
+                # (bond, ha) where bond is the bond number and ha is the half-sweep number.
+                # The kwarg ncenter determines the end and turning points of the loop: if
+                # it equals 1, then we perform a sweep on each single site.
+                # 
+                # Create a one-site projection of the Hamiltonian on the first site.
+                singlesite!(PH)
+                ITensors.position!(PH, state, site)
+
+                # TODO Here we could merge TDVP1 and TDVP2.
+                # φ = state[site]
+
+                # DEBUG
+                #println("Forward time evolution: site, ha ",site, ha);
+
+                #exptime = @elapsed begin
+                φ, info = exponentiate(
+                    PH,
+                    -0.5Δt,
+                    state[site];
+                    ishermitian=hermitian,
+                    tol=exp_tol,
+                    krylovdim=krylovdim,
+                    maxiter=maxiter,
+                    eager=true,
+                )
+                #end
+                #println("Forward exponentiation elapsed time: ", exptime)
+                info.converged == 0 && throw("exponentiate did not converge")
+
+                # Replace (temporarily) the local tensor with the evolved one.
+                state[site] = φ
+
+                # Copypasted from
+                #https://github.com/ITensor/ITensorTDVP.jl/blob/main/src/tdvp_step.jl
+                if (ha == 1 && (site != N)) || (ha == 2 && site != 1)
+                    # Start from a right-canonical MPS A, where each matrix A(n) = Aᵣ(n) is
+                    # right-orthogonal.
+                    # Start at site n = 1 and repeat the following steps:
+                    # 1. Evolve A(n) for a time step Δt.
+                    # 2. Factorize the updated A(n) as Aₗ(n)C(n) such that the matrix Aₗ,
+                    # which will be left at site n, is left-orthogonal.
+                    # 3. Evolve C(n) backwards in time according for a time step Δt, before
+                    # absorbing it into the next site to create A(n + 1) = C(n)Aᵣ(n + 1).
+                    # 4. Evolve A(n + 1) and so on...
+                    #
+                    b1 = (ha == 1 ? site + 1 : site) # ???
+                    Δb = (ha == 1 ? +1 : -1)
+                    # site + Δb is the physical index of the next site in the sweep.
+                    uinds = uniqueinds(φ, state[site + Δb])
+
+                    #svdtime = @elapsed begin
+                    U, S, V = svd(φ, uinds)
+                    #end
+                    #println("Tempo svd: ", svdtime)
+
+                    state[site] = U # This is left(right)-orthogonal if ha==1(2).
+                    phi0 = S * V
+                    if ha == 1
+                        ITensors.setleftlim!(state, site)
+                    elseif ha == 2
+                        ITensors.setrightlim!(state, site)
+                    end
+
+                    zerosite!(PH)
+                    #postime = @elapsed begin
+                    position!(PH, state, b1)
+                    #end
+                    #println("tempo position site+1", postime)
+
+                    #Debug
+                    #println("Backward-time site, ha", site, ha)
+                    #exptime = @elapsed begin
+                    phi0, info = exponentiate(
+                        PH,
+                        0.5Δt,
+                        phi0;
+                        ishermitian=hermitian,
+                        tol=exp_tol,
+                        krylovdim=krylovdim,
+                        maxiter=maxiter,
+                        eager=true,
+                    )
+                    #end
+                    #println("Tempo esponenziazione indietro: ", exptime)
+                    #println("backward done!")
+
+                    # Reunite the backwards-evolved C(site) with the matrix on the
+                    # next site.
+                    state[site + Δb] = phi0 * state[site + Δb]
+
+                    if ha == 1
+                        ITensors.setrightlim!(state, site + Δb + 1)
+                    elseif ha == 2
+                        ITensors.setleftlim!(state, site + Δb - 1)
+                    end
+
+                    singlesite!(PH)
+                end
+
+                # Adesso il passo di evoluzione e` finito.
+                # Considerando che misuriamo "durante" lo sweep
+                # a sx, adesso l'ortogonality center e` sul sito a sx del bond
+                # quindi credo che la misura vada spostata piu` su
+                # ovvero prima di rendere il tensore right orthogonal
+            end
+        end
+
+        # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
+        # We can then calculate the expectation values of the observables within cb.
+        for site in 1:N
+            apply!(
+                   cb,
+                   state;
+                   t        = s * Δt,
+                   bond     = site,
+                   sweepend = true,
+                   sweepdir = "right", # The value doesn't matter
+                   alg=TDVP1(),
+                  )
         end
 
         #println("time-step time: ",s*dt," t=", stime)

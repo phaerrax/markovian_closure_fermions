@@ -88,7 +88,7 @@ let
 
     if isMC
         # Disable "progress" to run on the cluster
-        tdvp1!(
+        tdvp1vec!(
             psi,
             H,
             timestep,
