@@ -639,10 +639,10 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
                     position!(PH, state, ha == 1 ? site + 1 : site)
                     # Shouldn't we have ha == 1 ? site+1 : site-1 ?
 
-                    φ0, info = exponentiate(
+                    C, info = exponentiate(
                         PH,
                         0.5Δt,
-                        φ0;
+                        C;
                         ishermitian=hermitian,
                         tol=exp_tol,
                         krylovdim=krylovdim,
@@ -652,7 +652,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
                     # Incorporate the backwards-evolved C(site) with the matrix on the
                     # next site.
-                    state[site + Δs] = φ0 * state[site + Δs]
+                    state[site + Δs] = C * state[site + Δs]
 
                     if ha == 1
                         ITensors.setrightlim!(state, site + Δs + 1)
