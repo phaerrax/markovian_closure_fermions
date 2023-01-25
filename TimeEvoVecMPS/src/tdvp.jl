@@ -71,43 +71,9 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
     store_psi0 = get(kwargs, :store_psi0, false)
     store_psi0 && (psi0 = copy(psi))
 
-    # If present, open measurements file.
-    # store_psi0 triggers the measurement of the overlap.
-    if !isnothing(io_file)
-        io_handle = open(io_file, "w")
-
-        # Write column names to file
-        @printf(io_handle, "#%19s", "time")
-        res = measurements(cb)
-        for o in sort(collect(keys(res)))
-            @printf(io_handle, "%40s", o)
-        end
-        if store_psi0
-            @printf(io_handle, "%40s%40s", "re_over", "im_over")
-        end
-        @printf(io_handle, "%40s", "Norm")
-        @printf(io_handle, "\n")
-    end
-
-    if !isnothing(ranks_file)
-        ranks_handle = open(ranks_file, "w")
-
-        # Write column names to file
-        @printf(ranks_handle, "#%19s", "time")
-        for o in 1:(length(psi) - 1)
-            @printf(ranks_handle, "%10d", o)
-        end
-
-        @printf(ranks_handle, "\n")
-    end
-
-    if !isnothing(times_file)
-        times_handle = open(times_file, "w")
-
-        # Write column names to file
-        @printf(times_handle, "#%19s", "walltime (sec)")
-        @printf(times_handle, "\n")
-    end
+    io_handle = writeheaders_data(io_file, cb; kwargs...)
+    ranks_handle = writeheaders_ranks(ranks_file, length(state))
+    times_handle = writeheaders_stime(times_file)
 
     N = length(psi)
     orthogonalize!(psi, 1)
@@ -274,46 +240,9 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
     # Copy the initial state if store_initstate is true
     store_initstate && (initstate = copy(state))
 
-    # If present, open the measurements file.
-    # store_initstate triggers the measurement of the overlap.
-    if !isnothing(io_file)
-        io_handle = open(io_file, "w")
-
-        # Write column names to file
-        @printf(io_handle, "#%19s", "time")
-        res = measurements(cb)
-        for o in sort(collect(keys(res)))
-            @printf(io_handle, "%40s", o)
-        end
-
-        if store_initstate
-            @printf(io_handle, "%40s%40s", "re_over", "im_over")
-        end
-
-        @printf(io_handle, "%40s", "Norm")
-
-        @printf(io_handle, "\n")
-    end
-
-    if !isnothing(ranks_file)
-        ranks_handle = open(ranks_file, "w")
-
-        # Write column names to file
-        @printf(ranks_handle, "#%19s", "time")
-        for o = 1:(length(state)-1)
-            @printf(ranks_handle, "%10d", o)
-        end
-
-        @printf(ranks_handle, "\n")
-    end
-
-    if !isnothing(times_file)
-        times_handle = open(times_file, "w")
-
-        # Write column names to file
-        @printf(times_handle, "#%19s", "walltime (sec)")
-        @printf(times_handle, "\n")
-    end
+    io_handle = writeheaders_data(io_file, cb; kwargs...)
+    ranks_handle = writeheaders_ranks(ranks_file, length(state))
+    times_handle = writeheaders_stime(times_file)
 
     N = length(state)
     orthogonalize!(state, 1)
@@ -498,43 +427,9 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
 
     store_state0 && (state0 = copy(state))
 
-    # If present, open measurements file.
-    # The store_state0 triggers the measurement of the overlap
-    if !isnothing(io_file)
-        io_handle = open(io_file, "w")
-
-        # Write column names to file
-        @printf(io_handle, "#%19s", "time")
-        res = measurements(cb)
-        for o in sort(collect(keys(res)))
-            @printf(io_handle, "%40s", o)
-        end
-        if (store_state0)
-            @printf(io_handle, "%40s%40s", "re_over", "im_over")
-        end
-        @printf(io_handle, "%40s", "Norm")
-        @printf(io_handle, "\n")
-    end
-
-    if !isnothing(ranks_file)
-        ranks_handle = open(ranks_file, "w")
-
-        # Write column names to file
-        @printf(ranks_handle, "#%19s", "time")
-        for o in 1:(length(state) - 1)
-            @printf(ranks_handle, "%10d", o)
-        end
-
-        @printf(ranks_handle, "\n")
-    end
-
-    if !isnothing(times_file)
-        times_handle = open(times_file, "w")
-
-        # Write column names to file
-        @printf(times_handle, "#%19s", "walltime (sec)")
-        @printf(times_handle, "\n")
-    end
+    io_handle = writeheaders_data(io_file, cb; kwargs...)
+    ranks_handle = writeheaders_ranks(ranks_file, length(state))
+    times_handle = writeheaders_stime(times_file)
 
     N = length(state)
 
@@ -767,43 +662,9 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
     store_state0 && (state0 = copy(state))
 
-    # If present, open measurements file.
-    # The store_state0 triggers the measurement of the overlap
-    if !isnothing(io_file)
-        io_handle = open(io_file, "w")
-
-        # Write column names to file
-        @printf(io_handle, "#%19s", "time")
-        res = measurements(cb)
-        for o in sort(collect(keys(res)))
-            @printf(io_handle, "%40s", o)
-        end
-        if (store_state0)
-            @printf(io_handle, "%40s%40s", "re_over", "im_over")
-        end
-        @printf(io_handle, "%40s", "Norm")
-        @printf(io_handle, "\n")
-    end
-
-    if !isnothing(ranks_file)
-        ranks_handle = open(ranks_file, "w")
-
-        # Write column names to file
-        @printf(ranks_handle, "#%19s", "time")
-        for o in 1:(length(state) - 1)
-            @printf(ranks_handle, "%10d", o)
-        end
-
-        @printf(ranks_handle, "\n")
-    end
-
-    if !isnothing(times_file)
-        times_handle = open(times_file, "w")
-
-        # Write column names to file
-        @printf(times_handle, "#%19s", "walltime (sec)")
-        @printf(times_handle, "\n")
-    end
+    io_handle = writeheaders_data(io_file, cb; kwargs...)
+    ranks_handle = writeheaders_ranks(ranks_file, length(state))
+    times_handle = writeheaders_stime(times_file)
 
     N = length(state)
 
@@ -1001,4 +862,64 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
     !isnothing(times_file) && close(times_handle)
 
     return nothing
+end
+
+"""
+    writeheaders_data(io_file, cb; kwargs...)
+
+Prepare the output file `io_file`, writing the column headers for storing the data of
+the observables defined in `cb`, the time steps, and other basic quantities.
+"""
+function writeheaders_data(io_file, cb; kwargs...)
+    if !isnothing(io_file)
+        io_handle = open(io_file, "w")
+        @printf(io_handle, "#%19s", "time")
+        res = measurements(cb)
+        for o in sort(collect(keys(res)))
+            @printf(io_handle, "%40s", o)
+        end
+        if get(kwargs, :store_state0, false)
+            @printf(io_handle, "%40s%40s", "re_over", "im_over")
+        end
+        @printf(io_handle, "%40s", "Norm")
+        @printf(io_handle, "\n")
+    end
+
+    return io_handle
+end
+
+"""
+    writeheaders_ranks(ranks_file, N)
+
+Prepare the output file `ranks_file`, writing the column headers for storing the data
+relative to the ranks of a MPS of the given length `N`.
+"""
+function writeheaders_ranks(ranks_file, N)
+    if !isnothing(ranks_file)
+        ranks_handle = open(ranks_file, "w")
+        @printf(ranks_handle, "#%19s", "time")
+        for r in 1:(N - 1)
+            @printf(ranks_handle, "%10d", r)
+        end
+
+        @printf(ranks_handle, "\n")
+    end
+
+    return ranks_handle
+end
+
+"""
+    writeheaders_stime(times_file)
+
+Prepare the output file `times_file`, writing the column headers for the simulation
+time data.
+"""
+function writeheaders_stime(times_file)
+    if !isnothing(times_file)
+        times_handle = open(times_file, "w")
+        @printf(times_handle, "#%19s", "walltime (sec)")
+        @printf(times_handle, "\n")
+    end
+
+    return times_handle
 end
