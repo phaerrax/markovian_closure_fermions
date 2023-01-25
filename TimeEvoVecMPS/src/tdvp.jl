@@ -871,6 +871,7 @@ Prepare the output file `io_file`, writing the column headers for storing the da
 the observables defined in `cb`, the time steps, and other basic quantities.
 """
 function writeheaders_data(io_file, cb; kwargs...)
+    io_handle = nothing
     if !isnothing(io_file)
         io_handle = open(io_file, "w")
         @printf(io_handle, "#%19s", "time")
@@ -895,13 +896,13 @@ Prepare the output file `ranks_file`, writing the column headers for storing the
 relative to the ranks of a MPS of the given length `N`.
 """
 function writeheaders_ranks(ranks_file, N)
+    ranks_handle = nothing
     if !isnothing(ranks_file)
         ranks_handle = open(ranks_file, "w")
         @printf(ranks_handle, "#%19s", "time")
         for r in 1:(N - 1)
             @printf(ranks_handle, "%10d", r)
         end
-
         @printf(ranks_handle, "\n")
     end
 
@@ -915,6 +916,7 @@ Prepare the output file `times_file`, writing the column headers for the simulat
 time data.
 """
 function writeheaders_stime(times_file)
+    times_handle = nothing
     if !isnothing(times_file)
         times_handle = open(times_file, "w")
         @printf(times_handle, "#%19s", "walltime (sec)")
