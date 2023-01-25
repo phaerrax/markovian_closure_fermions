@@ -90,7 +90,7 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
                 wf, info = exponentiate(
                     PH, -0.5τ, wf; ishermitian=hermitian, tol=exp_tol, krylovdim=krylovdim
                 )
-                
+
                 info.converged == 0 && throw("exponentiate did not converge")
                 spec = replacebond!(
                     psi,
@@ -98,7 +98,7 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
                     wf;
                     normalize=normalize,
                     ortho=(ha == 1 ? "left" : "right"),
-                    kwargs...
+                    kwargs...,
                 )
                 # spec should be the spectrum (aka the singular values?) of the SVD.
 
@@ -107,15 +107,15 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
                 apply!(
                     cb,
                     psi;
-                    t        = s * dt,
-                    bond     = b,
-                    sweepend = ha == 2,
-                    sweepdir = ha == 1 ? "right" : "left",
-                    spec     = spec,
+                    t=s * dt,
+                    bond=b,
+                    sweepend=ha == 2,
+                    sweepdir=ha == 1 ? "right" : "left",
+                    spec=spec,
                     # This is needed in case cb is a SpecCallback, which needs the
                     # spectrum to compute some quantities, like the entropy.
                     # It is ignored by other types of callback objects.
-                    alg      = TDVP2(),
+                    alg=TDVP2(),
                 )
 
                 # Evolve with single-site Hamiltonian backward in time.
@@ -173,19 +173,19 @@ end
 Evolve the MPS `state` using the MPO `H` from 0 to `tf` using an integration step `dt`.
 """
 function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
-    nsteps     = Int(tf / dt)
-    cb         = get(kwargs, :callback, NoTEvoCallback())
-    hermitian  = get(kwargs, :hermitian, false) # Lindblad superoperator is not Hermitian
-    exp_tol    = get(kwargs, :exp_tol, 1e-14)
-    krylovdim  = get(kwargs, :krylovdim, 30)
-    maxiter    = get(kwargs, :maxiter, 100)
-    normalize  = get(kwargs, :normalize, false) # Vectorized states don't need normalization
-    io_file    = get(kwargs, :io_file, nothing)
+    nsteps = Int(tf / dt)
+    cb = get(kwargs, :callback, NoTEvoCallback())
+    hermitian = get(kwargs, :hermitian, false) # Lindblad superoperator is not Hermitian
+    exp_tol = get(kwargs, :exp_tol, 1e-14)
+    krylovdim = get(kwargs, :krylovdim, 30)
+    maxiter = get(kwargs, :maxiter, 100)
+    normalize = get(kwargs, :normalize, false) # Vectorized states don't need normalization
+    io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
 
     if get(kwargs, :progress, true)
-        pbar = Progress(nsteps; desc = "Evolving state... ")
+        pbar = Progress(nsteps; desc="Evolving state... ")
     else
         pbar = nothing
     end
@@ -213,7 +213,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
     PH = ProjMPO(H)
     position!(PH, state, 1)
 
-    for s = 1:nsteps
+    for s in 1:nsteps
         stime = @elapsed begin
             for (bond, ha) in sweepnext(N)
                 # sweepnext(N) is an iterable object that evaluates to tuples of the form
@@ -241,14 +241,14 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                 # [`Unifying time evolution and optimization with matrix product states'.
                 # Jutho Haegeman, Christian Lubich, Ivan Oseledets, Bart Vandereycken and
                 # Frank Verstraete, Physical Review B 94, 165116, p. 10 October 2016]
-                twositeblock = state[bond] * state[bond+1]
+                twositeblock = state[bond] * state[bond + 1]
                 twositeblock, info = exponentiate(
                     PH,
                     -0.5τ,
                     twositeblock;
-                    ishermitian = hermitian,
-                    tol = exp_tol,
-                    krylovdim = krylovdim,
+                    ishermitian=hermitian,
+                    tol=exp_tol,
+                    krylovdim=krylovdim,
                 )
                 info.converged == 0 && throw("exponentiate did not converge")
 
@@ -258,8 +258,8 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                     state,
                     bond,
                     twositeblock;
-                    normalize = normalize,
-                    ortho = (ha == 1 ? "left" : "right"),
+                    normalize=normalize,
+                    ortho=(ha == 1 ? "left" : "right"),
                     kwargs...,
                 )
                 # normalize && ( state[dir=="left" ? bond+1 : bond] /= sqrt(sum(eigs(spec))) )
@@ -267,14 +267,14 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                 apply!(
                     cb,
                     state;
-                    t = s * dt,
-                    bond = bond,
-                    sweepend = (ha == 2),
+                    t=s * dt,
+                    bond=bond,
+                    sweepend=(ha == 2),
                     # apply! does nothing if sweepend is false, so this way we are doing
                     # the measurement only on the second sweep, from right to left.
-                    sweepdir = (ha == 1 ? "right" : "left"),
-                    spec = spec,
-                    alg = TDVP2(),
+                    sweepdir=(ha == 1 ? "right" : "left"),
+                    spec=spec,
+                    alg=TDVP2(),
                 )
 
                 # 2nd step
@@ -292,10 +292,10 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                         PH,
                         0.5τ,
                         state[i];
-                        ishermitian = hermitian,
-                        tol = exp_tol,
-                        krylovdim = krylovdim,
-                        maxiter = maxiter,
+                        ishermitian=hermitian,
+                        tol=exp_tol,
+                        krylovdim=krylovdim,
+                        maxiter=maxiter,
                     )
                     info.converged == 0 && throw("exponentiate did not converge")
                 elseif i == 1 && dt isa Complex
@@ -308,9 +308,9 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
-            showvalues = [
+            showvalues=[
                 ("t", dt * s),
-                ("dt step time", round(stime; digits = 3)),
+                ("dt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
         )
@@ -324,7 +324,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
         checkdone!(cb) && break
     end
 
-    !isnothing(io_file)    && close(io_handle)
+    !isnothing(io_file) && close(io_handle)
     !isnothing(ranks_file) && close(ranks_handle)
     !isnothing(times_file) && close(times_handle)
 
@@ -410,10 +410,10 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
                 apply!(
                     cb,
                     state;
-                    t        = s * Δt,
-                    bond     = site,
-                    sweepend = ha == 2,
-                    sweepdir = ha == 1 ? "right" : "left",
+                    t=s * Δt,
+                    bond=site,
+                    sweepend=ha == 2,
+                    sweepdir=ha == 1 ? "right" : "left",
                     #spec=spec,
                     alg=TDVP1(),
                 )
@@ -536,7 +536,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
     exp_tol = get(kwargs, :exp_tol, 1e-14)
     krylovdim = get(kwargs, :krylovdim, 30)
     maxiter = get(kwargs, :maxiter, 100)
-    normalize = get(kwargs, :normalize, true)
+    normalize = get(kwargs, :normalize, false)
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
@@ -558,7 +558,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
     N = length(state)
 
-    # Prepare for first iteration
+    # Prepare for first iteration.
     orthogonalize!(state, 1)
     PH = ProjMPO(H)
     singlesite!(PH)
@@ -573,18 +573,23 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
                 # (bond, ha) where bond is the bond number and ha is the half-sweep number.
                 # The kwarg ncenter determines the end and turning points of the loop: if
                 # it equals 1, then we perform a sweep on each single site.
-                # 
-                # Create a one-site projection of the Hamiltonian on the first site.
+
+                # The algorithm starts from a right-canonical MPS A, where each matrix
+                # A(n) = Aᵣ(n) is right-orthogonal.
+
+                # 1. Project the Hamiltonian on the current site.
+                #    --------------------------------------------
+
                 singlesite!(PH)
                 ITensors.position!(PH, state, site)
 
-                # TODO Here we could merge TDVP1 and TDVP2.
-                # φ = state[site]
+                # 3. Evolve C(n) backwards in time according for a time step Δt, before
+                # absorbing it into the next site to create A(n + 1) = C(n)Aᵣ(n + 1).
+                # 4. Evolve A(n + 1) and so on...
 
-                # DEBUG
-                #println("Forward time evolution: site, ha ",site, ha);
+                # 2. Evolve A(site) for half the time-step Δt.
+                #    -----------------------------------------
 
-                #exptime = @elapsed begin
                 φ, info = exponentiate(
                     PH,
                     -0.5Δt,
@@ -595,85 +600,73 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
                     maxiter=maxiter,
                     eager=true,
                 )
-                #end
-                #println("Forward exponentiation elapsed time: ", exptime)
                 info.converged == 0 && throw("exponentiate did not converge")
 
-                # Replace (temporarily) the local tensor with the evolved one.
-                state[site] = φ
+                # Now we take different steps depending on whether we are at
+                # the end of the half-sweep or not.
+                if (ha == 1 && site != N) || (ha == 2 && site != 1)
+                    # 3. Factorize the updated A(site) as Aₗ(site)C(site) such that the
+                    #    matrix Aₗ is left-orthogonal.
+                    #    --------------------------------------------------------------
 
-                # Copypasted from
-                #https://github.com/ITensor/ITensorTDVP.jl/blob/main/src/tdvp_step.jl
-                if (ha == 1 && (site != N)) || (ha == 2 && site != 1)
-                    # Start from a right-canonical MPS A, where each matrix A(n) = Aᵣ(n) is
-                    # right-orthogonal.
-                    # Start at site n = 1 and repeat the following steps:
-                    # 1. Evolve A(n) for a time step Δt.
-                    # 2. Factorize the updated A(n) as Aₗ(n)C(n) such that the matrix Aₗ,
-                    # which will be left at site n, is left-orthogonal.
-                    # 3. Evolve C(n) backwards in time according for a time step Δt, before
-                    # absorbing it into the next site to create A(n + 1) = C(n)Aᵣ(n + 1).
-                    # 4. Evolve A(n + 1) and so on...
-                    #
-                    b1 = (ha == 1 ? site + 1 : site) # ???
-                    Δb = (ha == 1 ? +1 : -1)
-                    # site + Δb is the physical index of the next site in the sweep.
-                    uinds = uniqueinds(φ, state[site + Δb])
+                    Δs = (ha == 1 ? 1 : -1)
+                    # site + Δs is the physical index of the next site in the sweep.
 
-                    #svdtime = @elapsed begin
-                    U, S, V = svd(φ, uinds)
-                    #end
-                    #println("Tempo svd: ", svdtime)
+                    # Perform the SVD decomposition. Note that the group of indices
+                    # provided by the second argument is interpreted as the "left index"
+                    # of φ, therefore there is no need to "reverse" the indices when we
+                    # are performing the right-to-left sweep: everything is taken care of
+                    # by ITensors accordingly.
+                    U, S, V = svd(φ, uniqueinds(φ, state[site + Δs]))
 
                     state[site] = U # This is left(right)-orthogonal if ha==1(2).
-                    phi0 = S * V
+                    C = S * V
                     if ha == 1
                         ITensors.setleftlim!(state, site)
+                        # This has something to do with the range within the MPS where the
+                        # orthogonality properties hold...
                     elseif ha == 2
                         ITensors.setrightlim!(state, site)
                     end
 
-                    zerosite!(PH)
-                    #postime = @elapsed begin
-                    position!(PH, state, b1)
-                    #end
-                    #println("tempo position site+1", postime)
+                    # 4. Evolve C(site) backwards in time of a half-step Δt/2 and
+                    #    incorporate in the matrix Aᵣ(site+1) of the next site along
+                    #    the sweep.
+                    #    -----------------------------------------------------------
 
-                    #Debug
-                    #println("Backward-time site, ha", site, ha)
-                    #exptime = @elapsed begin
-                    phi0, info = exponentiate(
+                    # Calculate the new zero-site projection of the evolution operator.
+                    zerosite!(PH)
+                    position!(PH, state, ha == 1 ? site + 1 : site)
+                    # Shouldn't we have ha == 1 ? site+1 : site-1 ?
+
+                    φ0, info = exponentiate(
                         PH,
                         0.5Δt,
-                        phi0;
+                        φ0;
                         ishermitian=hermitian,
                         tol=exp_tol,
                         krylovdim=krylovdim,
                         maxiter=maxiter,
                         eager=true,
                     )
-                    #end
-                    #println("Tempo esponenziazione indietro: ", exptime)
-                    #println("backward done!")
 
-                    # Reunite the backwards-evolved C(site) with the matrix on the
+                    # Incorporate the backwards-evolved C(site) with the matrix on the
                     # next site.
-                    state[site + Δb] = phi0 * state[site + Δb]
+                    state[site + Δs] = φ0 * state[site + Δs]
 
                     if ha == 1
-                        ITensors.setrightlim!(state, site + Δb + 1)
+                        ITensors.setrightlim!(state, site + Δs + 1)
                     elseif ha == 2
-                        ITensors.setleftlim!(state, site + Δb - 1)
+                        ITensors.setleftlim!(state, site + Δs - 1)
                     end
 
+                    # Reset the single-site projection of the evolution operator,
+                    # ready for the next sweep.
                     singlesite!(PH)
+                else
+                    # There's nothing to do if the half-sweep is at the last site.
+                    state[site] = φ
                 end
-
-                # Adesso il passo di evoluzione e` finito.
-                # Considerando che misuriamo "durante" lo sweep
-                # a sx, adesso l'ortogonality center e` sul sito a sx del bond
-                # quindi credo che la misura vada spostata piu` su
-                # ovvero prima di rendere il tensore right orthogonal
             end
         end
 
@@ -681,17 +674,16 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
         # We can then calculate the expectation values of the observables within cb.
         for site in 1:N
             apply!(
-                   cb,
-                   state;
-                   t        = s * Δt,
-                   bond     = site,
-                   sweepend = true,
-                   sweepdir = "right", # The value doesn't matter
-                   alg=TDVP1(),
-                  )
+                cb,
+                state;
+                t=Δt * s,
+                bond=site,
+                sweepend=true,
+                sweepdir="right", # The value doesn't matter.
+                alg=TDVP1(),
+            )
         end
 
-        #println("time-step time: ",s*dt," t=", stime)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
@@ -702,7 +694,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
         )
 
         if Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, state; state0, kwargs...)
+            printoutput_data(io_handle, cb, state; kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
