@@ -151,46 +151,10 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
             ],
         )
 
-        # If there is output file and the time is right...
-        if !isnothing(io_file) && !isempty(measurement_ts(cb))
-            if dt * s ≈ measurement_ts(cb)[end]
-                results = measurements(cb)
-                @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
-                for o in sort(collect(keys(results)))
-                    @printf(io_handle, "%40.15f", results[o][end][1])
-                end
-
-                if store_psi0
-                    overlap = dot(psi0, psi)
-                    @printf(io_handle, "%40s.15f%40.15f", real(overlap), imag(overlap))
-                end
-
-                # Print the norm
-                @printf(io_handle, "40.15f", norm(psi))
-                @printf(io_handle, "\n")
-                flush(io_handle)
-            end
-        end
-
-        # Ranks printout
-        if !isnothing(ranks_file) && !isempty(measurement_ts(cb))
-            if dt * s ≈ measurement_ts(cb)[end]
-                @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
-
-                for o in ITensors.linkdims(psi)
-                    @printf(ranks_handle, "%10d", o)
-                end
-
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
-            end
-        end
-
-        if !isnothing(times_file) && !isempty(measurement_ts(cb))
-            if dt * s ≈ measurement_ts(cb)[end]
-                @printf(times_handle, "%20.4f\n", stime)
-                flush(times_handle)
-            end
+        if dt * s ≈ measurement_ts(cb)[end]
+            printoutput_data(io_handle, cb, psi; psi0, kwargs...)
+            printoutput_ranks(ranks_handle, cb, psi)
+            printoutput_stime(times_handle, stime)
         end
 
         checkdone!(cb) && break
@@ -351,47 +315,10 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
             ],
         )
 
-        # If an output file was given and the time is "right":
-        if (!isnothing(io_file) && length(measurement_ts(cb)) > 0)
-            if (dt * s ≈ measurement_ts(cb)[end])
-                results = measurements(cb)
-                @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
-                for o in sort(collect(keys(results)))
-                    @printf(io_handle, "%40.15f", results[o][end][1])
-                end
-
-                #if (store_initstate)
-                #    over = dot(initstate, state)
-                #    # NOTE This is tr(ρρ₀)... does it mean something?
-                #    @printf(io_handle, "%40.15f%40.15f", real(over), imag(over))
-                #end
-
-                # Print the norm
-                @printf(io_handle, "%40.15f", norm(state))
-                @printf(io_handle, "\n")
-                flush(io_handle)
-            end
-        end
-
-        # Ranks printout
-        if (!isnothing(ranks_file) && !isempty(measurement_ts(cb)))
-            if (dt * s ≈ measurement_ts(cb)[end])
-                @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
-
-                for bonddim in ITensors.linkdims(state)
-                    @printf(ranks_handle, "%10d", bonddim)
-                end
-
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
-            end
-        end
-
-        if (!isnothing(times_file) && !isempty(measurement_ts(cb)))
-            if (dt * s ≈ measurement_ts(cb)[end])
-                @printf(times_handle, "%20.4f\n", stime)
-                flush(times_handle)
-            end
+        if dt * s ≈ measurement_ts(cb)[end]
+            printoutput_data(io_handle, cb, state; initstate, kwargs...)
+            printoutput_ranks(ranks_handle, cb, state)
+            printoutput_stime(times_handle, stime)
         end
 
         checkdone!(cb) && break
@@ -578,47 +505,10 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
             ],
         )
 
-        #if there is output file and the time is right...
-        if !isnothing(io_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                results = measurements(cb)
-                @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
-                for o in sort(collect(keys(results)))
-                    @printf(io_handle, "%40.15f", results[o][end][1])
-                end
-
-                if store_state0
-                    over = dot(state0, state)
-                    @printf(io_handle, "%40.15f%40.15f", real(over), imag(over))
-                end
-
-                # print("Norm: ")
-                # println(norm(state))
-                @printf(io_handle, "%40.15f", norm(state))
-                @printf(io_handle, "\n")
-                flush(io_handle)
-            end
-        end
-
-        # Ranks printout
-        if !isnothing(ranks_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
-
-                for o in ITensors.linkdims(state)
-                    @printf(ranks_handle, "%10d", o)
-                end
-
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
-            end
-        end
-
-        if !isnothing(times_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                @printf(times_handle, "%20.4f\n", stime)
-                flush(times_handle)
-            end
+        if Δt * s ≈ measurement_ts(cb)[end]
+            printoutput_data(io_handle, cb, state; state0, kwargs...)
+            printoutput_ranks(ranks_handle, cb, state)
+            printoutput_stime(times_handle, stime)
         end
 
         checkdone!(cb) && break
@@ -811,47 +701,10 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
             ],
         )
 
-        #if there is output file and the time is right...
-        if !isnothing(io_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                results = measurements(cb)
-                @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
-                for o in sort(collect(keys(results)))
-                    @printf(io_handle, "%40.15f", results[o][end][1])
-                end
-
-                if store_state0
-                    over = dot(state0, state)
-                    @printf(io_handle, "%40.15f%40.15f", real(over), imag(over))
-                end
-
-                # print("Norm: ")
-                # println(norm(state))
-                @printf(io_handle, "%40.15f", norm(state))
-                @printf(io_handle, "\n")
-                flush(io_handle)
-            end
-        end
-
-        # Ranks printout
-        if !isnothing(ranks_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
-
-                for o in ITensors.linkdims(state)
-                    @printf(ranks_handle, "%10d", o)
-                end
-
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
-            end
-        end
-
-        if !isnothing(times_file) && !isempty(measurement_ts(cb))
-            if Δt * s ≈ measurement_ts(cb)[end]
-                @printf(times_handle, "%20.4f\n", stime)
-                flush(times_handle)
-            end
+        if Δt * s ≈ measurement_ts(cb)[end]
+            printoutput_data(io_handle, cb, state; state0, kwargs...)
+            printoutput_ranks(ranks_handle, cb, state)
+            printoutput_stime(times_handle, stime)
         end
 
         checkdone!(cb) && break
@@ -924,4 +777,50 @@ function writeheaders_stime(times_file)
     end
 
     return times_handle
+end
+
+function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
+    if !isnothing(io_handle) && !isempty(measurement_ts(cb))
+        results = measurements(cb)
+        @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
+        for o in sort(collect(keys(results)))
+            @printf(io_handle, "%40.15f", results[o][end][1])
+        end
+
+        if store_psi0
+            overlap = dot(psi0, psi)
+            @printf(io_handle, "%40s.15f%40.15f", real(overlap), imag(overlap))
+        end
+
+        # Print the norm
+        @printf(io_handle, "40.15f", norm(psi))
+        @printf(io_handle, "\n")
+        flush(io_handle)
+    end
+
+    return nothing
+end
+
+function printoutput_ranks(ranks_handle, cb, state)
+    if !isnothing(ranks_handle) && !isempty(measurement_ts(cb))
+        @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
+
+        for bonddim in ITensors.linkdims(state)
+            @printf(ranks_handle, "%10d", bonddim)
+        end
+
+        @printf(ranks_handle, "\n")
+        flush(ranks_handle)
+    end
+
+    return nothing
+end
+
+function printoutput_stime(times_handle, stime::Real)
+    if !isnothing(times_handle) && !isempty(measurement_ts(cb))
+        @printf(times_handle, "%20.4f\n", stime)
+        flush(times_handle)
+    end
+
+    return nothing
 end
