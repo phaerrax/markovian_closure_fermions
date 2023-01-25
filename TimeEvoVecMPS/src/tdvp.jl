@@ -151,7 +151,7 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
             ],
         )
 
-        if dt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
             printoutput_data(io_handle, cb, psi; psi0, kwargs...)
             printoutput_ranks(ranks_handle, cb, psi)
             printoutput_stime(times_handle, stime)
@@ -315,7 +315,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
             ],
         )
 
-        if dt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
             printoutput_data(io_handle, cb, state; initstate, kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
@@ -505,7 +505,7 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
             ],
         )
 
-        if Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
             printoutput_data(io_handle, cb, state; state0, kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
@@ -693,7 +693,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
             ],
         )
 
-        if Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
             printoutput_data(io_handle, cb, state; kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
@@ -772,7 +772,7 @@ function writeheaders_stime(times_file)
 end
 
 function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
-    if !isnothing(io_handle) && !isempty(measurement_ts(cb))
+    if !isnothing(io_handle)
         results = measurements(cb)
         @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
         for o in sort(collect(keys(results)))
@@ -794,7 +794,7 @@ function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
 end
 
 function printoutput_ranks(ranks_handle, cb, state)
-    if !isnothing(ranks_handle) && !isempty(measurement_ts(cb))
+    if !isnothing(ranks_handle)
         @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
 
         for bonddim in ITensors.linkdims(state)
@@ -809,7 +809,7 @@ function printoutput_ranks(ranks_handle, cb, state)
 end
 
 function printoutput_stime(times_handle, stime::Real)
-    if !isnothing(times_handle) && !isempty(measurement_ts(cb))
+    if !isnothing(times_handle)
         @printf(times_handle, "%20.4f\n", stime)
         flush(times_handle)
     end
