@@ -198,7 +198,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
     #flush(stdout)
 
     τ = im * dt
-    store_initstate = get(kwargs, :store_initstate, false)
+    store_initstate = get(kwargs, :store_psi0, false)
     imag(τ) == 0 && (τ = real(τ))
 
     # Copy the initial state if store_initstate is true
@@ -342,7 +342,7 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
-    store_state0 = get(kwargs, :store_state0, false)
+    store_state0 = get(kwargs, :store_psi0, false)
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -540,7 +540,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
-    store_state0 = get(kwargs, :store_state0, false)
+    store_state0 = get(kwargs, :store_psi0, false)
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -694,7 +694,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
         )
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, state; kwargs...)
+            printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
@@ -724,7 +724,7 @@ function writeheaders_data(io_file, cb; kwargs...)
         for o in sort(collect(keys(res)))
             @printf(io_handle, "%40s", o)
         end
-        if get(kwargs, :store_state0, false)
+        if get(kwargs, :store_psi0, false)
             @printf(io_handle, "%40s%40s", "re_over", "im_over")
         end
         @printf(io_handle, "%40s", "Norm")
@@ -779,13 +779,13 @@ function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
             @printf(io_handle, "%40.15f", results[o][end][1])
         end
 
-        if store_psi0
+        if get(kwargs, :store_psi0, false)
             overlap = dot(psi0, psi)
             @printf(io_handle, "%40s.15f%40.15f", real(overlap), imag(overlap))
         end
 
         # Print the norm
-        @printf(io_handle, "40.15f", norm(psi))
+        @printf(io_handle, "%40.15f", norm(psi))
         @printf(io_handle, "\n")
         flush(io_handle)
     end
