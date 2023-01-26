@@ -152,7 +152,11 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
         )
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, psi; psi0, kwargs...)
+            if store_psi0
+                printoutput_data(io_handle, cb, psi; psi0=psi0, kwargs...)
+            else
+                printoutput_data(io_handle, cb, psi; kwargs...)
+            end
             printoutput_ranks(ranks_handle, cb, psi)
             printoutput_stime(times_handle, stime)
         end
@@ -316,7 +320,11 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
         )
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, state; initstate, kwargs...)
+            if store_initstate
+                printoutput_data(io_handle, cb, state; psi0=initstate, kwargs...)
+            else
+                printoutput_data(io_handle, cb, state; kwargs...)
+            end
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
@@ -506,7 +514,11 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
         )
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, state; state0, kwargs...)
+            if store_state0
+                printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+            else
+                printoutput_data(io_handle, cb, state; kwargs...)
+            end
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
@@ -694,7 +706,11 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
         )
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
-            printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+            if store_state0
+                printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+            else
+                printoutput_data(io_handle, cb, state; kwargs...)
+            end
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
@@ -771,7 +787,7 @@ function writeheaders_stime(times_file)
     return times_handle
 end
 
-function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
+function printoutput_data(io_handle, cb, psi; kwargs...)
     if !isnothing(io_handle)
         results = measurements(cb)
         @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
@@ -780,6 +796,7 @@ function printoutput_data(io_handle, cb, psi; psi0, kwargs...)
         end
 
         if get(kwargs, :store_psi0, false)
+            psi0 = get(kwargs, :psi0, nothing)
             overlap = dot(psi0, psi)
             @printf(io_handle, "%40s.15f%40.15f", real(overlap), imag(overlap))
         end
