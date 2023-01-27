@@ -291,23 +291,30 @@ function apply!(
             # line which containes the new measurement must already be there when
             # measure_localops! is called (this is what we're doing here).
         end
-        # We take the tensor formed by the sites linked by the current bond.
-        # NOTE Why do we pass a two-site ITensor? Couldn't we perform the measurement
-        # using psi[bond] alone?
-        # NOTE Let the state have an odd number of sites. When we are sweeping back
-        # left during the last update sequence, we start from the 3rd-to-last and the
-        # 2nd-to-last sites. Would we then skip the last site for the measurements?
-        wf = psi[bond] * psi[bond+1]
-        measure_localops!(cb, wf, bond + 1)
-        # NOTE If one of the two following conditions are true, does that mean that we
-        # are measuring the operator twice?
-        if alg isa TEBDalg
-            # If we are doing the final sweep, then the update procedure will traverse
-            # two sites each update. In other words, in the last right-to-left sweep over
-            # the odd bonds, bond is (in reverse) 1, 3, 5, and so on. But we need to
-            # measure on even sites too!
+        # We pass the relevant part of the state MPS to measure_localops!, so that we
+        # can retrieve the measurements relative to the currently updated blocks.
+        if alg isa TDVP1
+            # TDVP1 updates blocks one by one, so each site of the MPS is traversed
+            # during the right-to-left sweep.
+            wf = psi[bond]
             measure_localops!(cb, wf, bond)
-        elseif bond == 1
+        elseif (alg isa TDVP2 && bond == length(sites(cb))-1)
+            # The first step in the right-to-left sweep involves the (N-1, N) bond,
+            # then (N-2, N-1), until (1, 2).
+            # If bond is the first index of the pair, then we need to treat the first
+            # step of the right-to-left sweep explicitly, so that we actually measure
+            # the observables on the last site too.
+            wf = psi[bond] * psi[bond+1]
+            measure_localops!(cb, wf, bond + 1)
+            measure_localops!(cb, wf, bond)
+        elseif alg isa TDVP2
+            # Now we surely have bond != length(sites(cb))-1)
+            wf = psi[bond] * psi[bond+1]
+            measure_localops!(cb, wf, bond)
+        elseif alg isa TEBDalg
+            wf = psi[bond] * psi[bond+1]
+            measure_localops!(cb, wf, bond)
+        elseif bond == 1 # ???
             measure_localops!(cb, wf, bond)
         end
     end
