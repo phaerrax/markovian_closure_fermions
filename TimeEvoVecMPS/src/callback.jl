@@ -80,9 +80,9 @@ function LocalMeasurementCallback(
 end
 
 measurement_ts(cb::LocalMeasurementCallback) = cb.ts
-ITensors.measurements(cb::LocalMeasurementCallback) = cb.measurements
+measurements(cb::LocalMeasurementCallback) = cb.measurements
 callback_dt(cb::LocalMeasurementCallback) = cb.dt_measure
-ITensors.ops(cb::LocalMeasurementCallback) = cb.ops
+ops(cb::LocalMeasurementCallback) = cb.ops
 sites(cb::LocalMeasurementCallback) = cb.sites
 
 """
@@ -131,7 +131,7 @@ end
 
 # These functions replicate the behaviour of LocalMeasurementCallback above.
 measurement_ts(cb::LocalPosMeasurementCallback) = cb.ts
-ITensors.measurements(cb::LocalPosMeasurementCallback) = cb.measurements
+measurements(cb::LocalPosMeasurementCallback) = cb.measurements
 callback_dt(cb::LocalPosMeasurementCallback) = cb.dt_measure
 ops(cb::LocalPosMeasurementCallback) = cb.ops
 sites(cb::LocalPosMeasurementCallback) = cb.sites
