@@ -203,13 +203,9 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-    # Create a LocalPosMeasurementCallback where we append to the names of each operator a
-    # subscript with the site to which it refers.
-    cb = LocalPosMeasurementCallback(
+    cb = LocalPosVecMeasurementCallback(
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
-    # `vobs` isa Vector{opPos}: each element is a couple of elements, the first is an operator
-    # and the second a position (aka a site along the chain).
 
     tdvp1vec!(
         psi,
