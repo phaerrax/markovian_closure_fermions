@@ -4,6 +4,7 @@ export TEvoCallback,
     SpecCallback,
     opPos,
     LocalPosMeasurementCallback,
+    LocalPosVecMeasurementCallback,
     measurement_ts
 
 """
@@ -300,7 +301,7 @@ selected bond or site `i` (depending on the algorithm `alg`).
 Use this version with vectorized operators.
 """
 function measure_localops!(
-    cb::LocalPosMeasurementCallback,
+    cb::LocalPosVecMeasurementCallback,
     ψ::MPS,
     bond::Int,
     alg,
