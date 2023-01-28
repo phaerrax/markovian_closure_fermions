@@ -136,6 +136,40 @@ callback_dt(cb::LocalPosMeasurementCallback) = cb.dt_measure
 ops(cb::LocalPosMeasurementCallback) = cb.ops
 sites(cb::LocalPosMeasurementCallback) = cb.sites
 
+struct LocalPosVecMeasurementCallback <: TEvoCallback
+    ops::Vector{opPos}
+    sites::Vector{<:Index}
+    measurements::Dict{String,Measurement}
+    ts::Vector{Float64}
+    dt_measure::Float64
+end
+
+"""
+    LocalPosVecMeasurementCallback(
+        ops::Vector{opPos}, sites::Vector{<:Index}, dt_measure::Float64
+    )
+
+Like LocalPosMeasurementCallback, but with vectorized operators.
+"""
+function LocalPosVecMeasurementCallback(
+    ops::Vector{opPos}, sites::Vector{<:Index}, dt_measure::Float64
+)
+    return LocalPosVecMeasurementCallback(
+        ops,
+        sites,
+        Dict(o.op * "_" * string(o.pos) => Measurement[] for o in ops),
+        Vector{Float64}(),
+        dt_measure,
+    )
+end
+
+# These functions replicate the behaviour of LocalMeasurementCallback above.
+measurement_ts(cb::LocalPosVecMeasurementCallback) = cb.ts
+measurements(cb::LocalPosVecMeasurementCallback) = cb.measurements
+callback_dt(cb::LocalPosVecMeasurementCallback) = cb.dt_measure
+ops(cb::LocalPosVecMeasurementCallback) = cb.ops
+sites(cb::LocalPosVecMeasurementCallback) = cb.sites
+
 function Base.show(io::IO, cb::Union{LocalMeasurementCallback,LocalPosMeasurementCallback})
     println(io, "LocalMeasurementCallback")
     # Print the list of operators
@@ -212,8 +246,58 @@ end
         alg
     )
 
+Measure each operator defined inside the callback object `cb` on the given tensor `wf`
+at the selected bond or site `i` (depending on the algorithm `alg`).
+"""
+function measure_localops!(
+    cb::LocalPosMeasurementCallback,
+    wf::ITensor,
+    bond::Int,
+    alg,
+)
+    operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
+
+    if !isempty(operators_thisbond)
+        for o in operators_thisbond
+            # We replace the placeholder "Norm" so that we compute the correct operator.
+            if o.op == "Norm"
+                opname = "Id"
+            else
+                opname = o.op
+            end
+
+            m = dot(wf, noprime(op(sites(cb), opname, bond) * wf))
+
+            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+
+            # NOTE Since we don't have an operator for each site, we have a single value
+            # for each operator in cb, and operators associated to different sites have
+            # different entries in the dictionary.
+            # Brought to an extreme, when using the other measure_localops! method a single
+            # operator A on every site of the chain would have a single dicionary entry,
+            # a list whose elements are the expectation values of A on each site.
+            # With this method, instead, if we have different operators Aᵢ for each
+            # site, they are not bunched up in a single line, but there will be a
+            # different dictionary entry for each one of them.
+            measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(m)
+        end
+    end
+
+    return nothing
+end
+
+"""
+    measure_localops!(
+        cb::LocalPosVecMeasurementCallback,
+        ψ::MPS,
+        i::Int,
+        alg
+    )
+
 Measure each operator defined inside the callback object `cb` on the MPS `ψ` at the
 selected bond or site `i` (depending on the algorithm `alg`).
+
+Use this version with vectorized operators.
 """
 function measure_localops!(
     cb::LocalPosMeasurementCallback,
@@ -357,8 +441,6 @@ function apply!(
     alg,
     kwargs...,
 )
-    #if file handle is passed use it
-
     prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
 
     # Perform measurements only at the end of a sweep (TEBD: for finishing
@@ -380,7 +462,7 @@ function apply!(
             wf = state[bond] * state[bond+1]
             measure_localops!(cb, wf, bond + 1, alg)
         elseif alg isa TDVP1
-            wf = state
+            wf = state[bond]
             measure_localops!(cb, wf, bond, alg)
         elseif alg isa TEBDalg
             measure_localops!(cb, wf, bond, alg)
@@ -405,10 +487,79 @@ function apply!(
         #     end
         # end
     end
+
+    return nothing
+end
+
+"""
+    apply!(
+        cb::LocalPosVecMeasurementCallback, state;
+        t, sweepend, sweepdir, bond, alg, kwargs...
+    )
+
+Calculates the expectation values of the operators stored in `cb` on `state`, if the
+conditions appropriate to the evolution algorithm are met.
+"""
+function apply!(
+    cb::LocalPosVecMeasurementCallback,
+    state;
+    t,
+    sweepend,
+    sweepdir,
+    bond,
+    alg,
+    kwargs...,
+)
+    prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
+
+    # Perform measurements only at the end of a sweep (TEBD: for finishing
+    # evolution over the measurement time interval; TDVP: when sweeping left)
+    # and at measurement steps.
+    # For TEBD algorithms we want to perform measurements only in the final
+    # sweep over odd bonds. For TDVP we can perform measurements to the right of
+    # each bond when sweeping back left.
+
+    if (t - prev_t ≈ callback_dt(cb) || t == prev_t) &&
+       sweepend &&
+       (bond % 2 == 1 || !(alg isa TEBDalg))
+        if (t != prev_t || t == 0)
+            push!(measurement_ts(cb), t)
+            foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
+        end
+
+        if alg isa TDVP2
+            measure_localops!(cb, state, bond + 1, alg)
+        elseif alg isa TDVP1
+            measure_localops!(cb, state, bond, alg)
+        elseif alg isa TEBDalg
+            measure_localops!(cb, state, bond, alg)
+        end
+
+        #I modified the condition above, so that if
+        #the measurement is on the first site and bond ==1
+        #what follows is unnecessary.
+
+        # elseif bond==1
+        #     #Specialize for first site
+        #     pippo=opPos[]
+        #     for el in ops(cb)
+        #         if (el.pos == 1)
+        #             push!(pippo,el)
+        #         end
+        #     end
+        #     if(length(pippo)>0)
+        #         wf = state[bond]*state[bond+1]
+        #         measure_localops!(cb,pippo,wf,bond)
+        #     end
+        # end
+    end
+
+    return nothing
 end
 
 checkdone!(cb::LocalMeasurementCallback, args...) = false
 checkdone!(cb::LocalPosMeasurementCallback, args...) = false
+checkdone!(cb::LocalPosVecMeasurementCallback, args...) = false
 
 struct SpecCallback <: TEvoCallback
     truncerrs::Vector{Float64}
