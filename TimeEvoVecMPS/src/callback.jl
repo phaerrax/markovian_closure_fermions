@@ -192,52 +192,71 @@ end
 # the identity as in the pure-state scenario, but they must be contracted with vecId.
 
 """
+    isoncurrentbond(op::opPos, i::Int, alg)
+
+Return whether the local operator `op` is associated to bond `i` (or bonds `i` and `i+1`,
+if the algorithm `alg` is 2-site TDVP).
+"""
+function isoncurrentbond(op::opPos, bond::Int, alg)
+    return (
+        (alg isa TDVP2 && (op.pos == bond + 1 || (op.pos == 1 && bond == 1))) ||
+        (alg isa TDVP1 && op.pos == bond)
+    )
+end
+
+"""
     measure_localops!(
         cb::LocalPosMeasurementCallback,
-        ops::Vector{opPos},
-        state::MPS,
-        i::Int
+        ψ::MPS,
+        i::Int,
+        alg
     )
 
-Measure each operator defined inside the callback object `cb` on the MPS `state`.
+Measure each operator defined inside the callback object `cb` on the MPS `ψ` at the
+selected bond or site `i` (depending on the algorithm `alg`).
 """
 function measure_localops!(
     cb::LocalPosMeasurementCallback,
-    ops::Vector{opPos},
     ψ::MPS,
-    i::Int,
+    bond::Int,
+    alg,
 )
-    # We should use the operators defined inside cb instead of a new Vector ops; also,
-    # the last variable is unused.
-    for o in ops
-        V = ITensor(1.0)
-        # The norm (aka the trace) is computed contracting with vecId on every site,
-        # so we replace the placeholder "Norm" so that we have the correct operator.
-        op = (o.op == "Norm" ? "vecId" : o.op)
-        for j = 1:length(ψ)
-            # Contract with the operator on the site associated to it, with vecId
-            # on the other sites.
-            V *= ψ[j] * (
-                if j != o.pos
-                    state("vecId", siteind(ψ, j))
-                else
-                    state(op, siteind(ψ, j))
-                end
-            )
+    operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
+
+    if !isempty(operators_thisbond)
+        for o in operators_thisbond
+            V = ITensor(1.0)
+            # The norm (aka the trace) is computed contracting with vecId on every site,
+            # so we replace the placeholder "Norm" so that we have the correct operator.
+            if o.op == "Norm"
+                opnames = repeat(["vecId"], length(ψ))
+            else
+                opnames = [j == o.pos ? o.op : "vecId" for j in 1:length(ψ)]
+            end
+
+            for j in 1:length(ψ)
+                # Contract with the operator on the site associated to it, with vecId
+                # on the other sites.
+                V *= ψ[j] * state(opnames[j], siteind(ψ, j))
+            end
+            m = scalar(V)
+
+            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+
+            # NOTE Since we don't have an operator for each site, we have a single value
+            # for each operator in cb, and operators associated to different sites have
+            # different entries in the dictionary.
+            # Brought to an extreme, when using the other measure_localops! method a single
+            # operator A on every site of the chain would have a single dicionary entry,
+            # a list whose elements are the expectation values of A on each site.
+            # With this method, instead, if we have different operators Aᵢ for each
+            # site, they are not bunched up in a single line, but there will be a
+            # different dictionary entry for each one of them.
+            measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(m)
         end
-        m = scalar(V)
-        imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
-        # NOTE Since we don't have an operator for each site, we have a single value for
-        # each operator in cb, and operators associated to different sites have different
-        # entries in the dictionary.
-        # Brought to an extreme, when using the other measure_localops! method a single
-        # operator A on every site of the chain would have a single dicionary entry,
-        # a list whose elements are the expectation values of A on each site.
-        # With this method, instead, if we have different operators Aᵢ for each site, they
-        # are not bunched up in a single line, but there will be a different dictionary
-        # entry for each one of them.
-        measurements(cb)[o.op*"_"*string(o.pos)][end][1] = real(m)
     end
+
+    return nothing
 end
 
 """
@@ -321,19 +340,6 @@ function apply!(
 end
 
 """
-    isoncurrentbond(op::opPos, bond::Int, alg)
-
-Return whether the local operator op is associated to the bond (or bonds, if the algorithm
-alg is 2-site TDVP) which have just been touched by the time-evolution.
-"""
-function isoncurrentbond(op::opPos, bond::Int, alg)
-    return (
-        (alg isa TDVP2 && (op.pos == bond + 1 || (op.pos == 1 && bond == 1))) ||
-        (alg isa TDVP1 && op.pos == bond)
-    )
-end
-
-"""
     apply!(
         cb::LocalPosMeasurementCallback, state; t, sweepend, sweepdir, bond, alg, kwargs...
     )
@@ -370,30 +376,14 @@ function apply!(
             foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
         end
 
-        # Prepare for measurements at site b+1 (if TDVP2) or b (if TDVP1).
-        operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
-        #for el in ops(cb)
-        #    if (alg isa TDVP2 && (el.pos == bond + 1 || (el.pos == 1 && bond == 1)))
-        #        push!(operators_thisbond, el)
-        #    elseif (alg isa TDVP1 && el.pos == bond)
-        #        push!(operators_thisbond, el)
-        #    end
-        #end
-
-        # We proceed with measurements at site b+1 if the corresponding measurement list
-        # is not empty.
-        if !isempty(operators_thisbond)
-            if alg isa TDVP2
-                wf = state[bond] * state[bond+1]
-                measure_localops!(cb, operators_thisbond, wf, bond + 1)
-            elseif alg isa TDVP1
-                wf = state
-                measure_localops!(cb, operators_thisbond, wf, bond)
-            end
-        end
-
-        if alg isa TEBDalg
-            measure_localops!(cb, wf, bond)
+        if alg isa TDVP2
+            wf = state[bond] * state[bond+1]
+            measure_localops!(cb, wf, bond + 1, alg)
+        elseif alg isa TDVP1
+            wf = state
+            measure_localops!(cb, wf, bond, alg)
+        elseif alg isa TEBDalg
+            measure_localops!(cb, wf, bond, alg)
             # NOTE What should wf be here?
         end
 
