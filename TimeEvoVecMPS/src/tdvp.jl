@@ -798,7 +798,7 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
         if get(kwargs, :store_psi0, false)
             psi0 = get(kwargs, :psi0, nothing)
             overlap = dot(psi0, psi)
-            @printf(io_handle, "%40s.15f%40.15f", real(overlap), imag(overlap))
+            @printf(io_handle, "%40.15f%40.15f", real(overlap), imag(overlap))
         end
 
         # Print the norm
