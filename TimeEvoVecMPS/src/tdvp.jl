@@ -1,4 +1,4 @@
-export tdvp!, tdvpMC!, tdvp1!, tdvp1vec!
+export tdvp2!, tdvpMC!, tdvp1!, tdvp1vec!
 
 using ITensors: position!
 
@@ -10,12 +10,12 @@ struct TDVP1 end
 struct TDVP2 end
 
 """
-    tdvp!(psi,H::MPO,dt,tf; kwargs...)
-Evolve the MPS `psi` up to time `tf` using the two-site time-dependent variational
-principle as described in Ref. [1].
+    tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)
+Evolve the MPS `ψ` up to time `endtime` using the two-site time-dependent variational
+principle as described in [1].
 
 # Keyword arguments:
-All keyword arguments controlling truncation which are accepted by ITensors.replaceBond!,
+All keyword arguments controlling truncation which are accepted by ITensors.replacebond!,
 namely:
 - `maxdim::Int`: If specified, keep only `maxdim` largest singular values after
 applying the gate.
@@ -37,13 +37,12 @@ default value was not optimized yet, so you might want to play around with it).
 
 # References:
 [1] Haegeman, J., Lubich, C., Oseledets, I., Vandereycken, B., & Verstraete, F. (2016).
-Unifying time evolution and optimization with matrix product states.
+“Unifying time evolution and optimization with matrix product states”
 Physical Review B, 94(16).
 https://doi.org/10.1103/PhysRevB.94.165116
 """
-function tdvp!(psi, H::MPO, dt, tf; kwargs...)
-    # This is 2-site TDVP! Shouldn't we name the function accordingly?
-    nsteps = Int(tf / dt)
+function tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)
+    nsteps = Int(endtime / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
     exp_tol = get(kwargs, :exp_tol, 1e-14)
@@ -61,74 +60,109 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
         pbar = nothing
     end
 
-    τ = im * dt
-    # If dt is imaginary and imag(dt) > 0, this gives us an evolution operator of the
-    # form U(dt) = exp(-dt*H) which denotes an "imaginary-time" evolution.
-    imag(τ) == 0 && (τ = real(τ))
-    # This doesn't just chop off the imaginary part, it also converts the type from
-    # Complex{T} to T.
+    Δt = im * timestep
+    # If `timestep` is imaginary and imag(timestep) > 0, this gives us an evolution operator
+    # of the form U(Δt) = exp(-Δt H) which denotes an "imaginary-time" evolution.
+    imag(Δt) == 0 && (Δt = real(Δt))
+    # A unitary evolution is associated to a real `timestep`. In this case, Δt is purely
+    # imaginary, as it should.
+    # Otherwise, with an imaginary-time evolution, Δt is real, but the Type of the variable
+    # is Complex, so we truncate any imaginary part away.
+    # (`real` doesn't just chop off the imaginary part, it also converts the type from
+    # Complex{T} to T.)
 
     store_psi0 = get(kwargs, :store_psi0, false)
-    store_psi0 && (psi0 = copy(psi))
+    store_psi0 && (psi0 = copy(ψ))
 
     io_handle = writeheaders_data(io_file, cb; kwargs...)
     ranks_handle = writeheaders_ranks(ranks_file, length(state))
     times_handle = writeheaders_stime(times_file)
 
-    N = length(psi)
-    orthogonalize!(psi, 1)
+    N = length(ψ)
+    orthogonalize!(ψ, 1)
+    # Move the orthogonality centre to site 1, i.e. make ψ right-canonical.
     PH = ProjMPO(H)
-    position!(PH, psi, 1)
+    position!(PH, ψ, 1)
 
     for s in 1:nsteps
         stime = @elapsed begin
             for (b, ha) in sweepnext(N)
-                # Evolve with two-site Hamiltonian.
+                # 1. Evolve with two-site Hamiltonian.
+                #    ---------------------------------
+                #    We project the Hamiltonian on the current bond b and the next one,
+                #    then we evolve the (b, b+1) block for half a time step.
+                #    The sweepnext iterator takes care of the correct indices: the pair
+                #    (b, ha) here takes the values
+                #       (1, 1), …, (N-1, 1), (N-1, 2), …, (1, 2)
+                #    so that the correct pair of bonds is always (b, b+1).
                 twosite!(PH)
-                ITensors.position!(PH, psi, b)
-                wf = psi[b] * psi[b + 1]
+                ITensors.position!(PH, ψ, b)
+                wf = ψ[b] * ψ[b + 1]
                 wf, info = exponentiate(
-                    PH, -0.5τ, wf; ishermitian=hermitian, tol=exp_tol, krylovdim=krylovdim
+                    PH, -0.5Δt, wf; ishermitian=hermitian, tol=exp_tol, krylovdim=krylovdim
                 )
 
                 info.converged == 0 && throw("exponentiate did not converge")
+                # Replace the ITensors of the MPS `ψ` at sites b and b+1 with `wf`,
+                # which is factorized according to the orthogonalization specification
+                # given by `ortho` (left for a left-to-right sweep, right otherwise).
+                # (replacebond! normalizes the result, since we pass :normalize="true"
+                # within the kwargs).
                 spec = replacebond!(
-                    psi,
+                    ψ,
                     b,
                     wf;
                     normalize=normalize,
                     ortho=(ha == 1 ? "left" : "right"),
                     kwargs...,
                 )
-                # spec should be the spectrum (aka the singular values?) of the SVD.
+                # spec is the spectrum (aka the singular values?) of the SVD.
+                # Some types of callback objects might need it later, in order to compute
+                # the entropy or other related quantities.
 
-                # normalize && ( psi[dir=="left" ? b+1 : b] /= sqrt(sum(eigs(spec))) )
-
+                # 2. Measure the observables.
+                #    ------------------------
+                #    When we are sweeping right-to-left, once the block at sites (b, b+1)
+                #    has been evolved, the tensor at ψ[b + 1] has completed its evolution
+                #    within the time step dt.
+                #    The MPS is
+                #    • left-orthogonal from ψ[1] to ψ[b - 1]
+                #    • right-orthogonal from ψ[b] to ψ[end]
+                #    so this is a good time to measure observables that are local to
+                #    site b+1: when contracting in inner(ψ', A(n), ψ), all the sites
+                #    left of ψ[b] (excluded) give the identity, and so do all those
+                #    right of ψ[b + 1].
+                #    The measurement can then be performed using the tensor composed by
+                #    only ψ[b] and ψ[b + 1].
                 apply!(
                     cb,
-                    psi;
-                    t=s * dt,
+                    ψ;
+                    t=s * timestep,
+                    # This is only for storage purposes; we need the original `timestep`.
                     bond=b,
-                    sweepend=ha == 2,
-                    sweepdir=ha == 1 ? "right" : "left",
+                    sweepend=(ha == 2), # apply! is skipped if ha == 1
+                    sweepdir=(ha == 1 ? "right" : "left"),
                     spec=spec,
-                    # This is needed in case cb is a SpecCallback, which needs the
-                    # spectrum to compute some quantities, like the entropy.
-                    # It is ignored by other types of callback objects.
                     alg=TDVP2(),
                 )
 
-                # Evolve with single-site Hamiltonian backward in time.
-                # In the case of imaginary time-evolution this step
-                # is not necessary (see Ref. [1])
+                # 3. Evolve with single-site Hamiltonian backward in time.
+                #    -----------------------------------------------------
+                #    Evolve the "next" block backwards for half a time step.
+                #    Which block is the "next" block depends on the direction of the sweep:
+                #    • when sweeping left-to-right, the pivot is on site `b`, and the next
+                #      tensor is the one to the right, so `b+1`;
+                #    • when sweeping right-to-left, the pivot is on site `b+1`, and the
+                #      next tensor is the one to the left, so `b`.
+                #    This step is not necessary in the case of imaginary time-evolution [1].
                 i = ha == 1 ? b + 1 : b
                 if 1 < i < N && !(dt isa Complex)
                     singlesite!(PH)
-                    ITensors.position!(PH, psi, i)
-                    psi[i], info = exponentiate(
+                    ITensors.position!(PH, ψ, i)
+                    ψ[i], info = exponentiate(
                         PH,
-                        0.5τ,
-                        psi[i];
+                        0.5Δt,
+                        ψ[i];
                         ishermitian=hermitian,
                         tol=exp_tol,
                         krylovdim=krylovdim,
@@ -136,8 +170,9 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
                     )
                     info.converged == 0 && throw("exponentiate did not converge")
                 elseif i == 1 && dt isa Complex
+                    # dt isa Complex <==> imaginary-time evolution.
                     # TODO not sure if this is necessary anymore
-                    psi[i] /= sqrt(real(scalar(dag(psi[i]) * psi[i])))
+                    ψ[i] /= sqrt(real(scalar(dag(ψ[i]) * ψ[i])))
                 end
             end
         end
@@ -145,19 +180,19 @@ function tdvp!(psi, H::MPO, dt, tf; kwargs...)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", dt * s),
+                ("t", timestep * s),
                 ("dt step time", round(stime; digits=3)),
-                ("Max bond-dim", maxlinkdim(psi)),
+                ("Max bond-dim", maxlinkdim(ψ)),
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && timestep * s ≈ measurement_ts(cb)[end]
             if store_psi0
-                printoutput_data(io_handle, cb, psi; psi0=psi0, kwargs...)
+                printoutput_data(io_handle, cb, ψ; psi0=psi0, kwargs...)
             else
-                printoutput_data(io_handle, cb, psi; kwargs...)
+                printoutput_data(io_handle, cb, ψ; kwargs...)
             end
-            printoutput_ranks(ranks_handle, cb, psi)
+            printoutput_ranks(ranks_handle, cb, ψ)
             printoutput_stime(times_handle, stime)
         end
 
