@@ -374,8 +374,8 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
     return nothing
 end
 
-function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
-    nsteps = Int(tf / Δt)
+function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
+    nsteps = Int(tf / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
     exp_tol = get(kwargs, :exp_tol, 1e-14)
@@ -393,6 +393,7 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
         pbar = nothing
     end
 
+    Δt = im * timestep
     imag(Δt) == 0 && (Δt = real(Δt))
 
     store_state0 && (state0 = copy(state))
@@ -453,7 +454,7 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
                 apply!(
                     cb,
                     state;
-                    t=s * Δt,
+                    t=s * timestep,
                     bond=site,
                     sweepend=ha == 2,
                     sweepdir=ha == 1 ? "right" : "left",
@@ -542,7 +543,7 @@ function tdvp1!(state, H::MPO, Δt, tf; kwargs...)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", Δt * s),
+                ("t", timestep * s),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
@@ -595,7 +596,10 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
         pbar = nothing
     end
 
-    imag(Δt) == 0 && (Δt = real(Δt))
+    # Vectorized equations of motion usually are not defined by an anti-Hermitian operator
+    # such as -im H in Schrödinger's equation, so we do not bother here with "unitary" or
+    # "imaginary-time" evolution types. We just have a generic equation of the form
+    # v'(t) = L v(t).
 
     store_state0 && (state0 = copy(state))
 
