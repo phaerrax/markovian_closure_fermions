@@ -1,7 +1,7 @@
 #!/usr/bin/julia
 
 using DelimitedFiles, JSON
-using PolyChaos, SpecialFunctions
+using SpecialFunctions
 using PseudomodesTTEDOPA
 
 disablegrifqtech()
@@ -45,7 +45,6 @@ let
             domain,
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
-            discretization=lanczos,
         )
     elseif μ == 0
         first(domain) ≤ 0 ≤ last(domain) || error(
@@ -59,7 +58,6 @@ let
             (-ωmax, 0, ωmax),
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
-            discretization=lanczos,
         )
     elseif T == 0 # μ != 0
         first(domain) ≤ 0 ≤ last(domain) || error(
@@ -72,7 +70,6 @@ let
             (-ωmax, 0, ωmax),
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
-            discretization=lanczos,
         )
     else # T != 0, μ != 0
         first(domain) ≤ 0 ≤ last(domain) || error(
@@ -93,7 +90,6 @@ let
             domainTμ,
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
-            discretization=lanczos,
         )
     end
 
