@@ -30,7 +30,8 @@ let
     tmp_ft = eval(Meta.parse("(a, x) -> " * fn_ft))
     sdf_ft = x -> tmp_ft(sd_info["parameters"], x)
 
-    ωmax = last(sd_info["domain"])
+    domain = sd_info["domain"]
+    ωmax = last(domain)
     chain_length = sd_info["number_of_oscillators"]
 
     # Compute the ftTEDOPA coefficients from the spectral density.
@@ -40,12 +41,16 @@ let
         # Straight TEDOPA.
         (Ω, κ, η) = chainmapcoefficients(
             sdf,
-            sd_info["domain"],
+            domain,
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
             discretization=lanczos,
         )
     elseif μ == 0
+        first(domain) ≤ 0 ≤ last(domain) || error(
+            "Thermalization of a spectral density does not work if its domain " *
+            "does not contain 0.",
+        )
         # T > 0, so we use the thermalized spectral density function.
         fT = ω -> thermalisedJ(sdf, ω, T)
         (Ω, κ, η) = chainmapcoefficients(
@@ -56,6 +61,10 @@ let
             discretization=lanczos,
         )
     elseif T == 0 # μ != 0
+        first(domain) ≤ 0 ≤ last(domain) || error(
+            "Thermalization of a spectral density does not work if its domain " *
+            "does not contain 0.",
+        )
         fμ = ω -> indf(-ωmax + μ, μ, ω) * sdf(μ - ω) + indf(-μ, ωmax - μ, ω) * sdf(μ + ω)
         (Ω, κ, η) = chainmapcoefficients(
             fμ,
@@ -65,6 +74,10 @@ let
             discretization=lanczos,
         )
     else # T != 0, μ != 0
+        first(domain) ≤ 0 ≤ last(domain) || error(
+            "Thermalization of a spectral density does not work if its domain " *
+            "does not contain 0.",
+        )
         fTμ =
             ω ->
                 0.5(1 + tanh(0.5ω / T)) *
