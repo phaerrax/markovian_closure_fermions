@@ -1,6 +1,7 @@
 #!/usr/bin/julia
 
-using DataFrames, CSV, JSON, PolyChaos, SpecialFunctions
+using DelimitedFiles, JSON
+using PolyChaos, SpecialFunctions
 using PseudomodesTTEDOPA
 
 disablegrifqtech()
@@ -96,10 +97,10 @@ let
         )
     end
 
-    dict = Dict(:loc => Ω, :int => [η; κ])
-    table = DataFrame(dict)
-    filename = replace(sd_info["filename"], ".json" => ".ttedopa.dat")
-    CSV.write(filename, table)
+    open(replace(sd_info["filename"], ".json" => ".tedopa"), "w") do output
+        writedlm(output, ["couplings" "frequencies"], ',')
+        writedlm(output, [[η; κ] Ω], ',')
+    end
 
     return nothing
 end
