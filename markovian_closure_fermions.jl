@@ -184,24 +184,18 @@ let
         L += gammas[j] * M
     end
 
-    # Define some quantities that must be observed.
-    # Firstly, the norm, σˣ and σᶻ on the system site.
-    obs = [["Norm", 1], ["vecσx", 1], ["vecσz", 1]]
-    # Then, the occupation number in some sites of the chain...
-    for i in 10:10:(system_length + chain_length)
-        push!(obs, ["vecN", i + 1])
-    end
-    # ...and in each pseudomode.
-    for i in (system_length + chain_length) .+ (1:closure_length)
-        push!(obs, ["vecN", i + 1])
-    end
-
     # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
     # the number of singular values between the bonds.
     psi, overlap = stretchBondDim(psi0, 20)
 
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
+
+    obs = []
+    oblist = parameters["observables"]
+    for key in keys(oblist)
+        foreach(i -> push!(obs, [key, i]), oblist[key])
+    end
 
     cb = LocalPosVecMeasurementCallback(
         createObs(obs), sites, parameters["ms_stride"] * timestep

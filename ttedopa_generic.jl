@@ -50,14 +50,13 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-    obs = createObs([
-        ["Norm", 1],
-        ["N", 1],
-        ["N", 10],
-        ["N", 20],
-    ])
-    # Every site is a S=1/2, so we can use a LocalMeasurementCallback without worries.
-    cb = LocalPosMeasurementCallback(obs, sites, parameters["ms_stride"] * timestep)
+    obs = []
+    oblist = parameters["observables"]
+    for key in keys(oblist)
+        foreach(i -> push!(obs, [key, i]), oblist[key])
+    end
+
+    cb = LocalPosMeasurementCallback(createObs(obs), sites, parameters["ms_stride"] * timestep)
 
     tdvp1!(
         psi,
