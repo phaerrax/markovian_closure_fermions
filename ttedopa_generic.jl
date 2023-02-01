@@ -14,8 +14,9 @@ let
     delta = parameters["sys_coup"]
 
     # Input: TTEDOPA chain parameters
-    coups = readdlm(parameters["chain_freqs"]) # Coupling constants
-    freqs = readdlm(parameters["chain_coups"]) # Frequencies
+    tedopa_coefficients = readdlm(parameters["tedopa_coefficients"], ',', Float64; skipstart=1)
+    coups = tedopa_coefficients[:,1]
+    freqs = tedopa_coefficients[:,2]
     chain_length = parameters["chain_length"]
 
     sites = siteinds("S=1/2", system_length + chain_length)
