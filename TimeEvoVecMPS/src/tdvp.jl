@@ -354,7 +354,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && dt * s ≈ measurement_ts(cb)[end]
             if store_initstate
                 printoutput_data(io_handle, cb, state; psi0=initstate, kwargs...)
             else
@@ -549,7 +549,7 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && timestep * s ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
             else
