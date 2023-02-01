@@ -4,6 +4,7 @@
 *.json
 *.csv
 *.pdf
+*.tedopa
 
 # File di slurm
 *.out
