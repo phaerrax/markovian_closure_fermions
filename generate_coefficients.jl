@@ -6,7 +6,30 @@ using PseudomodesTTEDOPA
 
 disablegrifqtech()
 
-indf(a::Real, b::Real, x::Real) = Int(a < x < b)
+function tedopaTμtransform(J::Function, ω::Real, ωmax::Real, T::Real, μ::Real)::Real
+    thermalfactor = 0.5(1 + tanh(0.5ω / T))
+    if ωmax > 2μ
+        if -ωmax + μ < ω < -μ
+            return thermalfactor * J(μ - ω)
+        elseif -μ ≤ ω ≤ μ
+            return thermalfactor * (J(μ + ω) + J(μ - ω))
+        elseif μ < ω < ωmax - μ
+            return thermalfactor * J(μ + ω)
+        else
+            return zero(ω)
+        end
+    else
+        if -μ < ω < -ωmax + μ
+            return thermalfactor * J(μ + ω)
+        elseif -ωmax + μ ≤ ω ≤ ωmax - μ
+            return thermalfactor * (J(μ + ω) + J(μ - ω))
+        elseif ωmax - μ < ω < μ
+            return thermalfactor * J(μ + ω)
+        else
+            return zero(ω)
+        end
+    end
+end
 
 let
     # Load information on the spectral density from file.
@@ -41,10 +64,7 @@ let
     if T == 0 && μ == 0
         # Straight TEDOPA.
         (Ω, κ, η) = chainmapcoefficients(
-            sdf,
-            domain,
-            chain_length - 1;
-            Nquad=sd_info["PolyChaos_nquad"],
+            sdf, domain, chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
         )
     elseif μ == 0
         first(domain) ≤ 0 ≤ last(domain) || error(
@@ -54,19 +74,15 @@ let
         # T > 0, so we use the thermalized spectral density function.
         fT = ω -> thermalisedJ(sdf, ω, T)
         (Ω, κ, η) = chainmapcoefficients(
-            fT,
-            (-ωmax, 0, ωmax),
-            chain_length - 1;
-            Nquad=sd_info["PolyChaos_nquad"],
+            fT, (-ωmax, 0, ωmax), chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
         )
     elseif T == 0 # μ != 0
         first(domain) ≤ 0 ≤ last(domain) || error(
             "Thermalization of a spectral density does not work if its domain " *
             "does not contain 0.",
         )
-        fμ = ω -> indf(-ωmax + μ, μ, ω) * sdf(μ - ω) + indf(-μ, ωmax - μ, ω) * sdf(μ + ω)
         (Ω, κ, η) = chainmapcoefficients(
-            fμ,
+            ω -> tedopaTμtransform(sdf, ω, ωmax, 0, μ),
             (-ωmax, 0, ωmax),
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
@@ -76,17 +92,13 @@ let
             "Thermalization of a spectral density does not work if its domain " *
             "does not contain 0.",
         )
-        fTμ =
-            ω ->
-                0.5(1 + tanh(0.5ω / T)) *
-                (indf(-ωmax + μ, μ, ω) * sdf(μ - ω) + indf(-μ, ωmax - μ, ω) * sdf(μ + ω))
-        if ωmax > 2μ
+        if -ωmax + μ < -μ
             domainTμ = (-ωmax + μ, -μ, 0, μ, ωmax - μ)
         else
             domainTμ = (-μ, -ωmax + μ, 0, ωmax - μ, μ)
         end
         (Ω, κ, η) = chainmapcoefficients(
-            fTμ,
+            ω -> tedopaTμtransform(sdf, ω, ωmax, T, μ),
             domainTμ,
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
