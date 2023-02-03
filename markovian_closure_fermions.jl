@@ -58,7 +58,7 @@ let
     β = readdlm(parameters["MC_betas"])
     w = readdlm(parameters["MC_coups"])
     gammas = Ω * α[:, 1]
-    eff_freqs = [Ω + 0.0 for g in gammas] # ???
+    eff_freqs = [Ω + im * g for g in gammas]
     eff_gs = Ω * β[:, 2]
     eff_coups = Ω / 2 * (w[:, 1] + im * w[:, 2])
     closure_length = length(gammas)
