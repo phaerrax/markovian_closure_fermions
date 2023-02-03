@@ -643,7 +643,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
                 φ, info = exponentiate(
                     PH,
-                    -0.5Δt,
+                    0.5Δt,
                     state[site];
                     ishermitian=hermitian,
                     tol=exp_tol,
@@ -692,7 +692,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
                     C, info = exponentiate(
                         PH,
-                        0.5Δt,
+                        -0.5Δt,
                         C;
                         ishermitian=hermitian,
                         tol=exp_tol,
