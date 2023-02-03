@@ -52,16 +52,20 @@ let
     #   gⱼ = -2K Im(βⱼ)
     #   ζⱼ = K wⱼ
     # describe the pseudomode surrogate environment from the spectral density J.
+    #
     Ω = parameters["omegaInf"]
+    K = Ω / 2
     # We assume that ωmin = 0, therefore Ω = ωmax/2 and K = ωmax/4.
+
     α = readdlm(parameters["MC_alphas"]) # α[l,1] = Re(αₗ) and α[l,2] = Im(αₗ)...
     β = readdlm(parameters["MC_betas"])
     w = readdlm(parameters["MC_coups"])
-    gammas = Ω * α[:, 1]
-    eff_freqs = [Ω + im * g for g in gammas]
-    eff_gs = Ω * β[:, 2]
-    eff_coups = Ω / 2 * (w[:, 1] + im * w[:, 2])
-    closure_length = length(gammas)
+
+    mcω = @. Ω - 2K * α[:, 2]
+    mcγ = @. -4K * α[:, 1]
+    mcg = @. -2K * β[:, 2]
+    mcζ = @. K * (w[:, 1] + im * w[:, 2])
+    closure_length = length(mcω)
 
     perm = get(parameters, "perm", nothing)
     if !isnothing(perm)
@@ -116,17 +120,17 @@ let
     # - local frequency terms
     for k in 1:closure_length
         j = system_length + chain_length + pmtx(k)
-        ℓ += -im * eff_freqs[k], "N⋅", j
-        ℓ += +im * eff_freqs[k], "⋅N", j
+        ℓ += -im * mcω[k], "N⋅", j
+        ℓ += +im * mcω[k], "⋅N", j
     end
     # - coupling between pseudomodes
     for k in 1:(closure_length - 1)
         j1 = system_length + chain_length + pmtx(k)
         j2 = system_length + chain_length + pmtx(k + 1)
-        ℓ += -im * eff_gs[k], "σ-⋅", j1, "σ+⋅", j2
-        ℓ += -im * eff_gs[k], "σ+⋅", j1, "σ-⋅", j2
-        ℓ += +im * eff_gs[k], "⋅σ-", j1, "⋅σ+", j2
-        ℓ += +im * eff_gs[k], "⋅σ+", j1, "⋅σ-", j2
+        ℓ += -im * mcg[k], "σ-⋅", j1, "σ+⋅", j2
+        ℓ += -im * mcg[k], "σ+⋅", j1, "σ-⋅", j2
+        ℓ += +im * mcg[k], "⋅σ-", j1, "⋅σ+", j2
+        ℓ += +im * mcg[k], "⋅σ+", j1, "⋅σ-", j2
     end
     # - coupling between the end of the chain stub and each pseudomode
     #
@@ -212,7 +216,7 @@ let
             )
 
         # Multiply by the site's damping coefficient and add it to L.
-        L += gammas[j] * M
+        L += mcγ[j] * M
     end
 
     # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
