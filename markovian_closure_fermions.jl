@@ -147,6 +147,7 @@ let
         L +=
             -im *
             (-1)^(j - 1) *
+            mcζ[j] *
             (
                 MPO(
                     sites,
@@ -168,6 +169,7 @@ let
         L +=
             -im *
             (-1)^(j - 1) *
+            mcζ[j] *
             (
                 MPO(
                     sites,
