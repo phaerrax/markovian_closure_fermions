@@ -9,25 +9,58 @@ let
     parameters = load_pars(ARGS[1])
 
     # Input: system parameters
+    # ------------------------
     system_initstate = parameters["sys_ini"]
     system_length = 1
     eps = parameters["sys_en"]
     delta = parameters["sys_coup"]
 
     # Input: chain stub parameters
+    # ----------------------------
     coups = readdlm(parameters["chain_freqs"]) # Coupling constants
     freqs = readdlm(parameters["chain_coups"]) # Frequencies
     chain_length = parameters["chain_length"]
 
     # Input: closure parameters
-    omega = parameters["omegaInf"]
-    alphas_MC = readdlm(parameters["MC_alphas"]) # Dissipation constants
-    betas_MC = readdlm(parameters["MC_betas"]) # Coupling between pseudomodes 
-    coups_MC = readdlm(parameters["MC_coups"]) # Coupling between pseudomodes and chain edge
-    gammas = omega * alphas_MC[:, 1]
-    eff_freqs = [omega + 0.0 for g in gammas] # ???
-    eff_gs = omega * betas_MC[:, 2]
-    eff_coups = omega / 2 * (coups_MC[:, 1] + im * coups_MC[:, 2])
+    # -------------------------
+    # The parameters given in the files refer to the correlation function c(t) = J₀(t)+J₂(t)
+    # which corresponds to the standard semicircle spectral density
+    #   j(x) = 2/pi * sqrt(1-x²).
+    # A general semicircle is given by
+    #   J(x) = 1/2pi * sqrt( (2K - Ω + x) * (2K + Ω - x) ) =
+    #        = 1/2pi * sqrt( (x - ωmin) * (ωmax - x) ) =
+    #        = K/2 * j( (x - Ω) / 2K ),
+    # so j is J with K = 1/2 and Ω = 0; their correlation functions c(t) and C(t) are
+    # related by
+    #   C(t) = K^2 * exp(-iΩt) * c(2Kt).
+    # In a generic TEDOPA environment with domain (ωmin, ωmax), the coefficients K and Ω
+    # come from the asymptotic limits of the chain coefficients, and
+    #   Ω = (ωmax + ωmin) / 2,
+    #   K = (ωmax - ωmin) / 4.
+    #
+    # If the matrix
+    #       ⎛ α₁ β₁ 0  ⋯  0  ⎞
+    #       ⎜ β₁ α₂ β₂ ⋯  0  ⎟
+    #   M = ⎜ 0  β₂ α₃ ⋯  0  ⎟
+    #       ⎜ ⋮  ⋮  ⋮  ⋱  ⋮  ⎟
+    #       ⎝ 0  0  0  ⋯  αₙ ⎠
+    # and the vector w fit the relation
+    #   w† exp(-itM) w ≈ c(t)
+    # i.e. they solve the "standard semicircle" j, then the rescaled coefficients
+    #   ωⱼ = Ω - 2K Im(αⱼ)
+    #   γⱼ = -4K Re(αⱼ)
+    #   gⱼ = -2K Im(βⱼ)
+    #   ζⱼ = K wⱼ
+    # describe the pseudomode surrogate environment from the spectral density J.
+    Ω = parameters["omegaInf"]
+    # We assume that ωmin = 0, therefore Ω = ωmax/2 and K = ωmax/4.
+    α = readdlm(parameters["MC_alphas"]) # α[l,1] = Re(αₗ) and α[l,2] = Im(αₗ)...
+    β = readdlm(parameters["MC_betas"])
+    w = readdlm(parameters["MC_coups"])
+    gammas = Ω * α[:, 1]
+    eff_freqs = [Ω + 0.0 for g in gammas] # ???
+    eff_gs = Ω * β[:, 2]
+    eff_coups = Ω / 2 * (w[:, 1] + im * w[:, 2])
     closure_length = length(gammas)
 
     perm = get(parameters, "perm", nothing)
@@ -62,10 +95,8 @@ let
     #ℓ +=  im * delta, "⋅σx", 1
 
     # System-chain interaction:
-    ℓ += -im * coups[1], "σ+⋅", 1, "σ-⋅", 2
-    ℓ += -im * coups[1], "σ-⋅", 1, "σ+⋅", 2
-    ℓ += +im * coups[1], "⋅σ+", 1, "⋅σ-", 2
-    ℓ += +im * coups[1], "⋅σ-", 1, "⋅σ+", 2
+    ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
+    ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
 
     # Hamiltonian of the chain stub:
     # - local frequency terms
