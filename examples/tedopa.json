@@ -3,33 +3,26 @@
     "sys_coup": 0,
     "sys_ini": "Up",
 
-    "chain_length" : 50,
-    "tedopa_coefficients": "example.tedopa",
+    "chain_length": 30,
+    "tedopa_coefficients": "examples/sd_semicircle.tedopa",
 
-    "out_file":   "test_tedopa_measurements.dat",
-    "ranks_file": "test_tedopa_ranks.dat",
-    "times_file": "test_tedopa_stime.dat",
+    "out_file":   "examples/test_tedopa_measurements.dat",
+    "ranks_file": "examples/test_tedopa_ranks.dat",
+    "times_file": "examples/test_tedopa_stime.dat",
 
-    "withMC" : true, 
-    "MC_alphas": "MC_Pars/alphas_6.dat",
-    "MC_betas":  "MC_Pars/betas_6.dat",
-    "MC_coups":  "MC_Pars/coupls_6.dat",
-    "omegaInf": 500.0,
-
-    "tmax" : 1,
-    "tstep" : 0.001,
-    "ms_stride" : 10,
-    "max_bond" : 20,
-    "discarded_w" : 10e-12,
-
-    "exp_tol": 10e-10,
-    "krylov_dim": 10,
+    "tmax":        1,
+    "tstep":       0.001,
+    "ms_stride":   10,
+    "max_bond":    20,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
 
     "observables":   
     {
         "Norm": [1],
         "Sx": [1],
         "Sz": [1],
-        "N": [1, 11, 21, 31, 41, 51]
+        "N": [1, 11, 21, 31]
     }
 }
