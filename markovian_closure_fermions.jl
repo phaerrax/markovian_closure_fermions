@@ -194,16 +194,17 @@ let
     # ---------------------------------------
     for j in 1:closure_length
         N = length(sites)
+        pmode_site = system_length + chain_length + j
         # a ρ a†
         pstring1 = [
-            repeat(["σz⋅"], system_length + chain_length + j - 1)
+            repeat(["σz⋅"], pmode_site - 1)
             "σ-⋅"
-            repeat(["Id"], N - system_length - chain_length - j)
+            repeat(["Id"], N - pmode_site)
         ]
         pstring2 = [
-            repeat(["⋅σz"], system_length + chain_length + j - 1)
+            repeat(["⋅σz"], pmode_site - 1)
             "⋅σ+"
-            repeat(["Id"], N - system_length - chain_length - j)
+            repeat(["Id"], N - pmode_site)
         ]
         # The minus signs collected from the -σz factors all cancel out.
         M = replaceprime(contract(MPO(sites, pstring1)', MPO(sites, pstring2)), 2 => 1)
@@ -213,10 +214,9 @@ let
         # (The two MPOs commute.)
 
         # -0.5 (a† a ρ + ρ a† a)
-        M +=
-            -0.5 * (
-                MPO(sites, [k == j ? "N⋅" : "Id" for k in 1:N]) + MPO(sites, [k == j ? "⋅N" : "Id" for k in 1:N])
-            )
+        preN = [k == pmode_site ? "N⋅" : "Id" for k in 1:N]
+        postN = [k == pmode_site ? "⋅N" : "Id" for k in 1:N]
+        M += -0.5 * (MPO(sites, preN) + MPO(sites, postN))
 
         # Multiply by the site's damping coefficient and add it to L.
         L += mcγ[j] * M
