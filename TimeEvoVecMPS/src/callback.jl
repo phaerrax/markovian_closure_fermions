@@ -262,12 +262,10 @@ function measure_localops!(
         for o in operators_thisbond
             # We replace the placeholder "Norm" so that we compute the correct operator.
             if o.op == "Norm"
-                opname = "Id"
+                m = norm(wf)
             else
-                opname = o.op
+                m = dot(wf, noprime(op(sites(cb), o.op, bond) * wf))
             end
-
-            m = dot(wf, noprime(op(sites(cb), opname, bond) * wf))
 
             imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
 
