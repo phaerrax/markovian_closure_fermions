@@ -29,11 +29,10 @@ let
     h = OpSum()
 
     # - system Hamiltonian
-    h += 2eps, "N", 1
+    h += eps, "N", 1
 
     # - system-chain interaction
-    h += 4coups[1], "S+", 1, "S-", 2
-    h += 4coups[1], "S-", 1, "S+", 2
+    h += 4*coups[1], "Sx", 1, "Sx", 2
 
     # - TTEDOPA chain
     for j in system_length .+ (1:chain_length)
@@ -41,8 +40,8 @@ let
     end
 
     for j in system_length .+ (1:(chain_length - 1))
-        h += 4coups[j], "S-", j, "S+", j + 1
-        h += 4coups[j], "S+", j, "S-", j + 1
+        h += coups[j], "S-", j, "S+", j + 1
+        h += coups[j], "S+", j, "S-", j + 1
     end
 
     H = MPO(h, sites)
