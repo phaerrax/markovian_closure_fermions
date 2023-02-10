@@ -208,7 +208,7 @@ let
 
     # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
     # the number of singular values between the bonds.
-    psi, overlap = stretchBondDim(psi0, 20)
+    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
 
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]

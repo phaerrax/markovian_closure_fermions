@@ -23,7 +23,7 @@ let
     psi0 = productMPS(sites, [system_initstate; repeat(["Dn"], chain_length)])
 
     # Copy initial state into evolving state.
-    psi, overlap = stretchBondDim(psi0, 20)
+    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
 
     # Hamiltonian of the system:
     h = OpSum()
