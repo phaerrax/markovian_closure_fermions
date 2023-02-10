@@ -166,7 +166,7 @@ let
         L +=
             -im *
             (-1)^(j - 1) *
-            mcζ[j] *
+            conj(mcζ[j]) *
             (MPO(sites, pstring2 .* "⋅") - MPO(sites, "⋅" .* pstring2))
     end
 
