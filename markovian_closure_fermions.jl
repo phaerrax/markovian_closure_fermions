@@ -174,37 +174,16 @@ let
 
     # Dissipative part of the master equation
     # ---------------------------------------
-    # -0.5 (a† a ρ + ρ a† a)
     for j in 1:closure_length
         pmode_site = system_length + chain_length + j
+        # a ρ a†
+        opstring = [repeat(["σz⋅ * ⋅σz"], pmode_site - 1); "σ-⋅ * ⋅σ+"]
+        ℓ += (mcγ[j], collect(Iterators.flatten(zip(opstring, 1:pmode_site)))...)
+        # -0.5 (a† a ρ + ρ a† a)
         ℓ += -0.5mcγ[j], "N⋅", pmode_site
         ℓ += -0.5mcγ[j], "⋅N", pmode_site
     end
-    # a ρ a†
-    # I don't know how to build this with AutoMPO, so I'll resort to manually creating
-    # an MPO and adding it to the previous result.
     L = MPO(ℓ, sites)
-    for j in 1:closure_length
-        N = length(sites)
-        pmode_site = system_length + chain_length + j
-        pstring1 = [
-            repeat(["σz⋅"], pmode_site - 1)
-            "σ-⋅"
-            repeat(["Id"], N - pmode_site)
-        ]
-        pstring2 = [
-            repeat(["⋅σz"], pmode_site - 1)
-            "⋅σ+"
-            repeat(["Id"], N - pmode_site)
-        ]
-        # The minus signs collected from the -σz factors all cancel out.
-        M = replaceprime(contract(MPO(sites, pstring1)', MPO(sites, pstring2)), 2 => 1)
-        # In `contract(A::MPO, B::MPO)`, MPOs A and B have the same site indices. The
-        # indices of the MPOs in the contraction are taken literally, and therefore they
-        # should only share one site index per site so the contraction results in an MPO.
-        # (The two MPOs commute.)
-        L += mcγ[j] * M
-    end
 
     # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
     # the number of singular values between the bonds.
