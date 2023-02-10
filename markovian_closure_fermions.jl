@@ -134,48 +134,59 @@ let
         ℓ += +im * mcg[k], "⋅σ+", j1, "⋅σ-", j2
     end
     # - coupling between the end of the chain stub and each pseudomode
-    #
-    # Before we can proceed, we need to convert the AutoMPO we built until now into a
-    # concrete MPO. The following MPOs, in fact, are tensor products of more than
-    # two non-trivial operators, so they cannot be built using the AutoMPO syntax.
-    # Instead, we define them with a standard MPO constructor and add them one by one.
-    L = MPO(ℓ, sites)
     for j in 1:closure_length
         # Here come the Pauli strings...
-        N = length(sites)
-        pstring1 = [
-            repeat(["Id"], system_length + chain_length - 1)
-            "σ+"
-            repeat(["σz"], j - 1)
-            "σ-"
-            repeat(["Id"], N - chain_length - system_length - j)
-        ]
-        pstring2 = [
-            repeat(["Id"], system_length + chain_length - 1)
-            "σ-"
-            repeat(["σz"], j - 1)
-            "σ+"
-            repeat(["Id"], N - chain_length - system_length - j)
-        ]
-        L +=
-            -im *
-            (-1)^(j - 1) *
-            mcζ[j] *
-            (MPO(sites, pstring1 .* "⋅") - MPO(sites, "⋅" .* pstring1))
+        chainedge_site = system_length + chain_length
+        pmode_site = system_length + chain_length + j
+        ps_length = pmode_site - chainedge_site - 1 # == j-1
 
-        L +=
-            -im *
-            (-1)^(j - 1) *
-            conj(mcζ[j]) *
-            (MPO(sites, pstring2 .* "⋅") - MPO(sites, "⋅" .* pstring2))
+        opstring = ["σ+"; repeat(["σz"], ps_length); "σ-"]
+        ℓ += (
+            -im * (-1)^ps_length * mcζ[j],
+            collect(Iterators.flatten(zip(opstring .* "⋅", chainedge_site:pmode_site)))...,
+        )
+        # This becomes the tuple
+        #   -i(-1)ʲ⁻¹ζⱼ, "σ+", Nₑ, "σz", Nₑ+1, ..., "σz", m-1, "σ-", m
+        # where m = Nₛ+Nₑ+j is the site of the pseudomode.
+        #
+        # As a check:
+        #   chainedge_site:pmode_site ==
+        #   (system_length + chain_length:system_length + chain_length + j) ==
+        #   (system_length + chain_length) .+ (0:j)
+        # so it contains j+1 elements, which is also the number of elements in the vector
+        #   ["σ+"; repeat(["σz"], ps_length); "σ-"].
+        # Now we do the same for the remaining terms.
+        ℓ += (
+            im * (-1)^ps_length * mcζ[j],
+            collect(Iterators.flatten(zip("⋅" .* opstring, chainedge_site:pmode_site)))...,
+        )
+
+        paulistring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
+        ℓ += (
+            -im * (-1)^ps_length * conj(mcζ[j]),
+            collect(Iterators.flatten(zip(opstring .* "⋅", chainedge_site:pmode_site)))...,
+        )
+        ℓ += (
+            im * (-1)^ps_length * conj(mcζ[j]),
+            collect(Iterators.flatten(zip("⋅" .* opstring, chainedge_site:pmode_site)))...,
+        )
     end
 
     # Dissipative part of the master equation
     # ---------------------------------------
+    # -0.5 (a† a ρ + ρ a† a)
+    for j in 1:closure_length
+        pmode_site = system_length + chain_length + j
+        ℓ += -0.5mcγ[j], "N⋅", pmode_site
+        ℓ += -0.5mcγ[j], "⋅N", pmode_site
+    end
+    # a ρ a†
+    # I don't know how to build this with AutoMPO, so I'll resort to manually creating
+    # an MPO and adding it to the previous result.
+    L = MPO(ℓ, sites)
     for j in 1:closure_length
         N = length(sites)
         pmode_site = system_length + chain_length + j
-        # a ρ a†
         pstring1 = [
             repeat(["σz⋅"], pmode_site - 1)
             "σ-⋅"
@@ -192,13 +203,6 @@ let
         # indices of the MPOs in the contraction are taken literally, and therefore they
         # should only share one site index per site so the contraction results in an MPO.
         # (The two MPOs commute.)
-
-        # -0.5 (a† a ρ + ρ a† a)
-        preN = [k == pmode_site ? "N⋅" : "Id" for k in 1:N]
-        postN = [k == pmode_site ? "⋅N" : "Id" for k in 1:N]
-        M += -0.5 * (MPO(sites, preN) + MPO(sites, postN))
-
-        # Multiply by the site's damping coefficient and add it to L.
         L += mcγ[j] * M
     end
 
