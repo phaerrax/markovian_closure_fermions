@@ -2,6 +2,7 @@
     "sys_en": 5,
     "sys_coup": 0,
     "sys_ini": "Up",
+    "interaction_type": "xx",
 
     "chain_length": 30,
     "tedopa_coefficients": "examples/sd_semicircle.tedopa",

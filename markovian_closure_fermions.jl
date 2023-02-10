@@ -100,8 +100,17 @@ let
     #ℓ +=  im * delta, "⋅σx", 1
 
     # System-chain interaction:
-    ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
-    ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
+    if lowercase(parameters["interaction_type"]) == "xx"
+        ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
+        ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
+    elseif lowercase(parameters["interaction_type"]) == "exchange"
+        ℓ += -im * coups[1], "σ+⋅", 1, "σ-⋅", 2
+        ℓ += -im * coups[1], "σ-⋅", 1, "σ+⋅", 2
+        ℓ += +im * coups[1], "⋅σ+", 1, "⋅σ-", 2
+        ℓ += +im * coups[1], "⋅σ-", 1, "⋅σ+", 2
+    else
+        throw(error("Unrecognized interaction type. Please use \"xx\" or \"exchange\"."))
+    end
 
     # Hamiltonian of the chain stub:
     # - local frequency terms

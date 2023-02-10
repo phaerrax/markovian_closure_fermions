@@ -32,7 +32,14 @@ let
     h += eps, "N", 1
 
     # - system-chain interaction
-    h += 4*coups[1], "Sx", 1, "Sx", 2
+    if lowercase(parameters["interaction_type"]) == "xx"
+        h += 4*coups[1], "Sx", 1, "Sx", 2
+    elseif lowercase(parameters["interaction_type"]) == "exchange"
+        h += coups[1], "S+", 1, "S-", 2
+        h += coups[1], "S-", 1, "S+", 2
+    else
+        throw(error("Unrecognized interaction type. Please use \"xx\" or \"exchange\"."))
+    end
 
     # - TTEDOPA chain
     for j in system_length .+ (1:chain_length)
