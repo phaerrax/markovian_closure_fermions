@@ -161,7 +161,7 @@ let
             collect(Iterators.flatten(zip("⋅" .* opstring, chainedge_site:pmode_site)))...,
         )
 
-        paulistring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
+        opstring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
         ℓ += (
             -im * (-1)^ps_length * conj(mcζ[j]),
             collect(Iterators.flatten(zip(opstring .* "⋅", chainedge_site:pmode_site)))...,
