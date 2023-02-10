@@ -143,51 +143,31 @@ let
     for j in 1:closure_length
         # Here come the Pauli strings...
         N = length(sites)
-        pstring1 = ["σ+"; repeat(["σz"], j - 1); "σ-"]
-        pstring2 = ["σ-"; repeat(["σz"], j - 1); "σ+"]
+        pstring1 = [
+            repeat(["Id"], system_length + chain_length - 1)
+            "σ+"
+            repeat(["σz"], j - 1)
+            "σ-"
+            repeat(["Id"], N - chain_length - system_length - j)
+        ]
+        pstring2 = [
+            repeat(["Id"], system_length + chain_length - 1)
+            "σ-"
+            repeat(["σz"], j - 1)
+            "σ+"
+            repeat(["Id"], N - chain_length - system_length - j)
+        ]
         L +=
             -im *
             (-1)^(j - 1) *
             mcζ[j] *
-            (
-                MPO(
-                    sites,
-                    [
-                        repeat(["Id"], system_length + chain_length - 1)
-                        pstring1 .* "⋅"
-                        repeat(["Id"], N - chain_length - system_length - j)
-                    ],
-                ) - MPO(
-                    sites,
-                    [
-                        repeat(["Id"], system_length + chain_length - 1)
-                        "⋅" .* pstring1
-                        repeat(["Id"], N - chain_length - system_length - j)
-                    ],
-                )
-            )
+            (MPO(sites, pstring1 .* "⋅") - MPO(sites, "⋅" .* pstring1))
 
         L +=
             -im *
             (-1)^(j - 1) *
             mcζ[j] *
-            (
-                MPO(
-                    sites,
-                    [
-                        repeat(["Id"], system_length + chain_length - 1)
-                        pstring2 .* "⋅"
-                        repeat(["Id"], N - chain_length - system_length - j)
-                    ],
-                ) - MPO(
-                    sites,
-                    [
-                        repeat(["Id"], system_length + chain_length - 1)
-                        "⋅" .* pstring2
-                        repeat(["Id"], N - chain_length - system_length - j)
-                    ],
-                )
-            )
+            (MPO(sites, pstring2 .* "⋅") - MPO(sites, "⋅" .* pstring2))
     end
 
     # Dissipative part of the master equation
