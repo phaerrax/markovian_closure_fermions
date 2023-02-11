@@ -17,9 +17,11 @@ let
 
     # Input: chain stub parameters
     # ----------------------------
-    tedopa_coefficients = readdlm(parameters["tedopa_coefficients"], ',', Float64; skipstart=1)
-    coups = tedopa_coefficients[:,1]
-    freqs = tedopa_coefficients[:,2]
+    tedopa_coefficients = readdlm(
+        parameters["tedopa_coefficients"], ',', Float64; skipstart=1
+    )
+    coups = tedopa_coefficients[:, 1]
+    freqs = tedopa_coefficients[:, 2]
     chain_length = parameters["chain_length"]
 
     # Input: closure parameters
@@ -99,31 +101,37 @@ let
     #ℓ += -im * delta, "σx⋅", 1
     #ℓ +=  im * delta, "⋅σx", 1
 
-    # System-chain interaction:
-    if lowercase(parameters["interaction_type"]) == "xx"
-        ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
-        ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
-    elseif lowercase(parameters["interaction_type"]) == "exchange"
-        ℓ += -im * coups[1], "σ+⋅", 1, "σ-⋅", 2
-        ℓ += -im * coups[1], "σ-⋅", 1, "σ+⋅", 2
-        ℓ += +im * coups[1], "⋅σ+", 1, "⋅σ-", 2
-        ℓ += +im * coups[1], "⋅σ-", 1, "⋅σ+", 2
-    else
-        throw(error("Unrecognized interaction type. Please use \"xx\" or \"exchange\"."))
-    end
+    if chain_length > 0
+        # System-chain interaction:
+        if lowercase(parameters["interaction_type"]) == "xx"
+            ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
+            ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
+        elseif lowercase(parameters["interaction_type"]) == "exchange"
+            ℓ += -im * coups[1], "σ+⋅", 1, "σ-⋅", 2
+            ℓ += -im * coups[1], "σ-⋅", 1, "σ+⋅", 2
+            ℓ += +im * coups[1], "⋅σ+", 1, "⋅σ-", 2
+            ℓ += +im * coups[1], "⋅σ-", 1, "⋅σ+", 2
+        else
+            throw(
+                error("Unrecognized interaction type. Please use \"xx\" or \"exchange\".")
+            )
+        end
 
-    # Hamiltonian of the chain stub:
-    # - local frequency terms
-    for j in system_length .+ (1:chain_length)
-        ℓ += -im * freqs[j - 1], "N⋅", j
-        ℓ += +im * freqs[j - 1], "⋅N", j
-    end
-    # - coupling between sites
-    for j in system_length .+ (1:(chain_length - 1))
-        ℓ += -1im * coups[j], "σ+⋅", j, "σ-⋅", j + 1
-        ℓ += -1im * coups[j], "σ-⋅", j, "σ+⋅", j + 1
-        ℓ += +1im * coups[j], "⋅σ+", j, "⋅σ-", j + 1
-        ℓ += +1im * coups[j], "⋅σ-", j, "⋅σ+", j + 1
+        # Hamiltonian of the chain stub:
+        # - local frequency terms
+        for j in 1:chain_length
+            ℓ += -im * freqs[j], "N⋅", system_length + j
+            ℓ += +im * freqs[j], "⋅N", system_length + j
+        end
+        # - coupling between sites
+        for j in 1:(chain_length - 1)
+            # coups[1] is the coupling coefficient between the open system and the first
+            # site of the chain; we don't need it here.
+            ℓ += -im * coups[j + 1], "σ+⋅", system_length + j, "σ-⋅", system_length + j + 1
+            ℓ += -im * coups[j + 1], "σ-⋅", system_length + j, "σ+⋅", system_length + j + 1
+            ℓ += +im * coups[j + 1], "⋅σ+", system_length + j, "⋅σ-", system_length + j + 1
+            ℓ += +im * coups[j + 1], "⋅σ-", system_length + j, "⋅σ+", system_length + j + 1
+        end
     end
 
     # Hamiltonian of the closure:
