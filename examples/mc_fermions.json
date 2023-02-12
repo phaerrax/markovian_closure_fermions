@@ -23,9 +23,9 @@
    "exp_tol":     10e-10,
    "krylov_dim":  10,
 
-   "out_file":   "examples/test_closure_measurements.dat",
-   "ranks_file": "examples/test_closure_ranks.dat",
-   "times_file": "examples/test_closure_times.dat",
+   "out_file":   "examples/mc_fermions_measurements.dat",
+   "ranks_file": "examples/mc_fermions_ranks.dat",
+   "times_file": "examples/mc_fermions_times.dat",
    
    "observables":
    {
