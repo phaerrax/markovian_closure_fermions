@@ -1,0 +1,38 @@
+{
+   "sys_en": 5,
+   "sys_coup": 0,
+   "sys_ini": "Up",
+   "interaction_type": "xx",
+   "local_osc_dim": 3,
+   
+   "tedopa_coefficients": "examples/sd_semicircle.tedopa",
+   "chain_length": 20,
+
+   "withMC": true, 
+
+   "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+   "MC_betas":  "mc_standard_parameters/betas_6.dat",
+   "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+
+   "omegaInf": 5,
+
+   "tmax":        0.5,
+   "tstep":       0.001,
+   "ms_stride":   10,
+   "max_bond":    40,
+   "discarded_w": 10e-12,
+   "exp_tol":     10e-10,
+   "krylov_dim":  10,
+
+   "out_file":   "examples/mc_bosons_measurements.dat",
+   "ranks_file": "examples/mc_bosons_ranks.dat",
+   "times_file": "examples/mc_bosons_times.dat",
+   
+   "observables":
+   {
+        "Norm":  [1],
+        "vecσx": [1],
+        "vecσz": [1],
+        "vecN":  [1, 6, 11, 16, 22, 23, 24, 25, 26, 27]
+   }
+}
