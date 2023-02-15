@@ -1,3 +1,6 @@
 [deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Permutations = "2ae35dd2-176d-5d53-8349-f30d82d94d4f"
 PseudomodesTTEDOPA = "79a75d10-d622-4972-b86a-039507c8d45b"
 TimeEvoVecMPS = "386e0f54-b56d-4c26-8648-19598745e6c2"
