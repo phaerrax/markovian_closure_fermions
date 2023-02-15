@@ -181,7 +181,8 @@ let
         psi,
         L,
         timestep,
-        tmax;
+        tmax,
+        sites;
         hermitian=false,
         normalize=false,
         callback=cb,

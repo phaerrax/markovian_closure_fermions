@@ -570,14 +570,14 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
 end
 
 """
-    tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
+    tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
 For vectorized state it is still unclear whether the measurements can be made before
 the sweep is complete. Therefore, until this question gets an answer, this function
 postpones the measurements of all observables until all the sites of the state are
 updated.
 """
-function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
+function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
     nsteps = Int(tf / Δt)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
@@ -746,9 +746,19 @@ function tdvp1vec!(state, H::MPO, Δt, tf; kwargs...)
 
         if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
             if store_state0
-                printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+                printoutput_data(
+                    io_handle,
+                    cb,
+                    state;
+                    psi0=state0,
+                    vectorized=true,
+                    sites=sites,
+                    kwargs...,
+                )
             else
-                printoutput_data(io_handle, cb, state; kwargs...)
+                printoutput_data(
+                    io_handle, cb, state; vectorized=true, sites=sites, kwargs...
+                )
             end
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
@@ -840,8 +850,14 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
             @printf(io_handle, "%40.15f%40.15f", real(overlap), imag(overlap))
         end
 
-        # Print the norm
-        @printf(io_handle, "%40.15f", norm(psi))
+        # Print the norm of the trace of the state, depending on whether the MPS represents
+        # a pure state or a vectorized density matrix.
+        isvectorized = get(kwargs, :vectorized, false)
+        if isvectorized
+            @printf(io_handle, "%40.15f", real(inner(MPS(kwargs[:sites], "vecId"), psi)))
+        else
+            @printf(io_handle, "%40.15f", norm(psi))
+        end
         @printf(io_handle, "\n")
         flush(io_handle)
     end
