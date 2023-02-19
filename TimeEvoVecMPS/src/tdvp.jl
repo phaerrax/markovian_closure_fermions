@@ -784,7 +784,7 @@ function writeheaders_data(io_file, cb; kwargs...)
     io_handle = nothing
     if !isnothing(io_file)
         io_handle = open(io_file, "w")
-        @printf(io_handle, "#%19s", "time")
+        @printf(io_handle, "%20s", "time")
         res = measurements(cb)
         for o in sort(collect(keys(res)))
             @printf(io_handle, "%40s", o)
@@ -809,7 +809,7 @@ function writeheaders_ranks(ranks_file, N)
     ranks_handle = nothing
     if !isnothing(ranks_file)
         ranks_handle = open(ranks_file, "w")
-        @printf(ranks_handle, "#%19s", "time")
+        @printf(ranks_handle, "%20s", "time")
         for r in 1:(N - 1)
             @printf(ranks_handle, "%10d", r)
         end
@@ -829,7 +829,7 @@ function writeheaders_stime(times_file)
     times_handle = nothing
     if !isnothing(times_file)
         times_handle = open(times_file, "w")
-        @printf(times_handle, "#%19s", "walltime (sec)")
+        @printf(times_handle, "%20s", "walltime (sec)")
         @printf(times_handle, "\n")
     end
 
