@@ -85,8 +85,8 @@ let
     ℓ += -im * eps, "N⋅", 1
     ℓ += +im * eps, "⋅N", 1
 
-    #ℓ += -im * delta, "σx⋅", 1
-    #ℓ +=  im * delta, "⋅σx", 1
+    ℓ += -im * delta, "σx⋅", 1
+    ℓ += +im * delta, "⋅σx", 1
 
     if chain_length > 0
         # System-chain interaction:

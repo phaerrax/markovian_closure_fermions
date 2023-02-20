@@ -30,6 +30,7 @@ let
 
     # - system Hamiltonian
     h += eps, "N", 1
+    h += delta, "σx", 1
 
     # - system-chain interaction
     if lowercase(parameters["interaction_type"]) == "xx"
