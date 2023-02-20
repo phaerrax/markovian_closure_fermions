@@ -8,13 +8,11 @@
    "tedopa_coefficients": "examples/sd_semicircle.tedopa",
    "chain_length": 20,
 
-   "withMC": true, 
-
    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
    "MC_betas":  "mc_standard_parameters/betas_6.dat",
    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
-
-   "omegaInf": 5,
+   "asympt_frequency": 5,
+   "asympt_coupling": 5,
 
    "tmax":        0.5,
    "tstep":       0.001,

@@ -56,8 +56,8 @@ let
     #   ζⱼ = K wⱼ
     # describe the pseudomode surrogate environment from the spectral density J.
     #
-    Ω = parameters["omegaInf"]
-    K = Ω / 2
+    Ω = parameters["asympt_frequency"]
+    K = parameters["asympt_coupling"]
     # We assume that ωmin = 0, therefore Ω = ωmax/2 and K = ωmax/4.
 
     α = readdlm(parameters["MC_alphas"]) # α[l,1] = Re(αₗ) and α[l,2] = Im(αₗ)...
