@@ -95,22 +95,16 @@ let
 
     # System Hamiltonian
     # (We assume system_length == 1 for now...)
-    ℓ += -im * eps, "N⋅", 1
-    ℓ += +im * eps, "⋅N", 1
-
-    ℓ += -im * delta, "σx⋅", 1
-    ℓ += +im * delta, "⋅σx", 1
+    ℓ += eps * gkslcommutator("N", 1)
+    ℓ += delta * gkslcommutator("σx", 1)
 
     if chain_length > 0
         # System-chain interaction:
         if lowercase(parameters["interaction_type"]) == "xx"
-            ℓ += -im * coups[1], "σx⋅", 1, "σx⋅", 2
-            ℓ += +im * coups[1], "⋅σx", 1, "⋅σx", 2
+            ℓ += coups[1] * gkslcommutator("σx", 1, "σx", 2)
         elseif lowercase(parameters["interaction_type"]) == "exchange"
-            ℓ += -im * coups[1], "σ+⋅", 1, "σ-⋅", 2
-            ℓ += -im * coups[1], "σ-⋅", 1, "σ+⋅", 2
-            ℓ += +im * coups[1], "⋅σ+", 1, "⋅σ-", 2
-            ℓ += +im * coups[1], "⋅σ-", 1, "⋅σ+", 2
+            ℓ += coups[1] * gkslcommutator("σ+", 1, "σ-", 2)
+            ℓ += coups[1] * gkslcommutator("σ-", 1, "σ+", 2)
         else
             throw(
                 error("Unrecognized interaction type. Please use \"xx\" or \"exchange\".")
@@ -120,35 +114,31 @@ let
         # Hamiltonian of the chain stub:
         # - local frequency terms
         for j in 1:chain_length
-            ℓ += -im * freqs[j], "N⋅", system_length + j
-            ℓ += +im * freqs[j], "⋅N", system_length + j
+            ℓ += freqs[j] * gkslcommutator("N", system_length + j)
         end
         # - coupling between sites
         for j in 1:(chain_length - 1)
             # coups[1] is the coupling coefficient between the open system and the first
             # site of the chain; we don't need it here.
-            ℓ += -im * coups[j + 1], "σ+⋅", system_length + j, "σ-⋅", system_length + j + 1
-            ℓ += -im * coups[j + 1], "σ-⋅", system_length + j, "σ+⋅", system_length + j + 1
-            ℓ += +im * coups[j + 1], "⋅σ+", system_length + j, "⋅σ-", system_length + j + 1
-            ℓ += +im * coups[j + 1], "⋅σ-", system_length + j, "⋅σ+", system_length + j + 1
+            site1 = system_length + j
+            site2 = system_length + j + 1
+            ℓ += coups[j + 1] * gkslcommutator("σ+", site1, "σ-", site2)
+            ℓ += coups[j + 1] * gkslcommutator("σ-", site1, "σ+", site2)
         end
     end
 
     # Hamiltonian of the closure:
     # - local frequency terms
     for k in 1:closure_length
-        j = system_length + chain_length + pmtx(k)
-        ℓ += -im * mcω[k], "N⋅", j
-        ℓ += +im * mcω[k], "⋅N", j
+        pmsite = system_length + chain_length + pmtx(k)
+        ℓ += mcω[k] * gkslcommutator("N", pmsite)
     end
     # - coupling between pseudomodes
     for k in 1:(closure_length - 1)
-        j1 = system_length + chain_length + pmtx(k)
-        j2 = system_length + chain_length + pmtx(k + 1)
-        ℓ += -im * mcg[k], "σ-⋅", j1, "σ+⋅", j2
-        ℓ += -im * mcg[k], "σ+⋅", j1, "σ-⋅", j2
-        ℓ += +im * mcg[k], "⋅σ-", j1, "⋅σ+", j2
-        ℓ += +im * mcg[k], "⋅σ+", j1, "⋅σ-", j2
+        pmode_site1 = system_length + chain_length + pmode_tx(k)
+        pmode_site2 = system_length + chain_length + pmode_tx(k + 1)
+        ℓ += mcg[k] * gkslcommutator("σ-", pmode_site1, "σ+", pmode_site2)
+        ℓ += mcg[k] * gkslcommutator("σ+", pmode_site1, "σ-", pmode_site2)
     end
     # - coupling between the end of the chain stub and each pseudomode
     for j in 1:closure_length
@@ -157,11 +147,11 @@ let
         pmode_site = system_length + chain_length + j
         ps_length = pmode_site - chainedge_site - 1 # == j-1
 
-        opstring = ["σ+"; repeat(["σz"], ps_length); "σ-"]
-        ℓ += (
-            -im * (-1)^ps_length * mcζ[j],
-            collect(Iterators.flatten(zip(opstring .* "⋅", chainedge_site:pmode_site)))...,
-        )
+        paulistring = ["σ+"; repeat(["σz"], ps_length); "σ-"]
+        ℓ +=
+            (-1)^ps_length *
+            mcζ[j] *
+            gkslcommutator(zip(paulistring, chainedge_site:pmode_site)...)
         # This becomes the tuple
         #   -i(-1)ʲ⁻¹ζⱼ, "σ+", Nₑ, "σz", Nₑ+1, ..., "σz", m-1, "σ-", m
         # where m = Nₛ+Nₑ+j is the site of the pseudomode.
@@ -173,20 +163,12 @@ let
         # so it contains j+1 elements, which is also the number of elements in the vector
         #   ["σ+"; repeat(["σz"], ps_length); "σ-"].
         # Now we do the same for the remaining terms.
-        ℓ += (
-            im * (-1)^ps_length * mcζ[j],
-            collect(Iterators.flatten(zip("⋅" .* opstring, chainedge_site:pmode_site)))...,
-        )
 
-        opstring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
-        ℓ += (
-            -im * (-1)^ps_length * conj(mcζ[j]),
-            collect(Iterators.flatten(zip(opstring .* "⋅", chainedge_site:pmode_site)))...,
-        )
-        ℓ += (
-            im * (-1)^ps_length * conj(mcζ[j]),
-            collect(Iterators.flatten(zip("⋅" .* opstring, chainedge_site:pmode_site)))...,
-        )
+        paulistring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
+        ℓ +=
+            (-1)^ps_length *
+            conj(mcζ[j]) *
+            gkslcommutator(zip(paulistring, chainedge_site:pmode_site)...)
     end
 
     # Dissipative part of the master equation

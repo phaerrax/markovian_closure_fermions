@@ -70,7 +70,10 @@ let
     mcζ = @. K * (w[:, 1] + im * w[:, 2])
     closure_length = length(mcω)
 
-    sites = [siteinds("HvS=1/2", system_length); siteinds("HvOsc", chain_length + closure_length; dim=parameters["local_osc_dim"])]
+    sites = [
+        siteinds("HvS=1/2", system_length)
+        siteinds("HvOsc", chain_length + closure_length; dim=parameters["local_osc_dim"])
+    ]
     psi0 = productMPS(
         sites, [system_initstate; repeat(["0"], chain_length + closure_length)]
     )
@@ -82,22 +85,16 @@ let
 
     # System Hamiltonian
     # (We assume system_length == 1 for now...)
-    ℓ += -im * eps, "N⋅", 1
-    ℓ += +im * eps, "⋅N", 1
-
-    ℓ += -im * delta, "σx⋅", 1
-    ℓ += +im * delta, "⋅σx", 1
+    ℓ += eps * gkslcommutator("N", 1)
+    ℓ += delta * gkslcommutator("σx", 1)
 
     if chain_length > 0
         # System-chain interaction:
         if lowercase(parameters["interaction_type"]) == "xx"
-            ℓ += -im * coups[1], "σx⋅", 1, "asum⋅", 2
-            ℓ += +im * coups[1], "⋅σx", 1, "⋅asum", 2
+            ℓ += coups[1] * gkslcommutator("σx", 1, "Asum", 2)
         elseif lowercase(parameters["interaction_type"]) == "exchange"
-            ℓ += -im * coups[1], "σ+⋅", 1, "a-⋅", 2
-            ℓ += -im * coups[1], "σ-⋅", 1, "a+⋅", 2
-            ℓ += +im * coups[1], "⋅σ+", 1, "⋅a-", 2
-            ℓ += +im * coups[1], "⋅σ-", 1, "⋅a+", 2
+            ℓ += coups[1] * gkslcommutator("σ+", 1, "A", 2)
+            ℓ += coups[1] * gkslcommutator("σ-", 1, "Adag", 2)
         else
             throw(
                 error("Unrecognized interaction type. Please use \"xx\" or \"exchange\".")
@@ -107,45 +104,39 @@ let
         # Hamiltonian of the chain stub:
         # - local frequency terms
         for j in 1:chain_length
-            ℓ += -im * freqs[j], "N⋅", system_length + j
-            ℓ += +im * freqs[j], "⋅N", system_length + j
+            ℓ += freqs[j] * gkslcommutator("N⋅", system_length + j)
         end
         # - coupling between sites
         for j in 1:(chain_length - 1)
             # coups[1] is the coupling coefficient between the open system and the first
             # site of the chain; we don't need it here.
-            ℓ += -im * coups[j + 1], "a+⋅", system_length + j, "a-⋅", system_length + j + 1
-            ℓ += -im * coups[j + 1], "a-⋅", system_length + j, "a+⋅", system_length + j + 1
-            ℓ += +im * coups[j + 1], "⋅a+", system_length + j, "⋅a-", system_length + j + 1
-            ℓ += +im * coups[j + 1], "⋅a-", system_length + j, "⋅a+", system_length + j + 1
+            site1 = system_length + j
+            site2 = system_length + j + 1
+            ℓ += coups[j + 1] * gkslcommutator("Adag", site1, "A", site2)
+            ℓ += coups[j + 1] * gkslcommutator("A", site1, "Adag", site2)
         end
     end
 
     # Hamiltonian of the closure:
     # - local frequency terms
     for k in 1:closure_length
-        ℓ += -im * mcω[k], "N⋅", system_length + chain_length + k
-        ℓ += +im * mcω[k], "⋅N", system_length + chain_length + k
+        pmsite = system_length + chain_length + k
+        ℓ += mcω[k] * gkslcommutator("N⋅", pmsite)
     end
     # - coupling between pseudomodes
     for k in 1:(closure_length - 1)
-        j1 = system_length + chain_length + k
-        j2 = system_length + chain_length + k + 1
-        ℓ += -im * mcg[k], "a-⋅", j1, "a+⋅", j2
-        ℓ += -im * mcg[k], "a+⋅", j1, "a-⋅", j2
-        ℓ += +im * mcg[k], "⋅a-", j1, "⋅a+", j2
-        ℓ += +im * mcg[k], "⋅a+", j1, "⋅a-", j2
+        pmode_site1 = system_length + chain_length + k
+        pmode_site2 = system_length + chain_length + k + 1
+        ℓ += mcg[k] * gkslcommutator("A", pmode_site1, "Adag", pmode_site2)
+        ℓ += mcg[k] * gkslcommutator("Adag", pmode_site1, "A", pmode_site2)
     end
     # - coupling between the end of the chain stub and each pseudomode
     for j in 1:closure_length
         chainedge_site = system_length + chain_length
         pmode_site = system_length + chain_length + j
 
-        ℓ += -im * mcζ[j], "a+⋅", chainedge_site, "a-⋅", pmode_site
-        ℓ += -im * conj(mcζ[j]), "a-⋅", chainedge_site, "a+⋅", pmode_site
-
-        ℓ += +im * mcζ[j], "⋅a+", chainedge_site, "⋅a-", pmode_site
-        ℓ += +im * conj(mcζ[j]), "⋅a-", chainedge_site, "⋅a+", pmode_site
+        ℓ += mcζ[j] * gkslcommutator("Adag", chainedge_site, "A", pmode_site)
+        ℓ += conj(mcζ[j]) * gkslcommutator("A", chainedge_site, "Adag", pmode_site)
     end
 
     # Dissipative part of the master equation
