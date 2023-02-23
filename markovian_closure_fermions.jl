@@ -70,19 +70,6 @@ let
     mcζ = @. K * (w[:, 1] + im * w[:, 2])
     closure_length = length(mcω)
 
-    perm = get(parameters, "perm", nothing)
-    if !isnothing(perm)
-        if length(perm) != closure_length
-            println("The provided permutation is not correct")
-        end
-        pmtx = Permutation(perm)
-        @show pmtx
-    else
-        # Identity permutation
-        pmtx = Permutation(collect(1:closure_length))
-        @show pmtx
-    end
-
     sites = siteinds("HvS=1/2", system_length + chain_length + closure_length)
     psi0 = productMPS(
         sites, [system_initstate; repeat(["Dn"], chain_length + closure_length)]
@@ -130,13 +117,13 @@ let
     # Hamiltonian of the closure:
     # - local frequency terms
     for k in 1:closure_length
-        pmsite = system_length + chain_length + pmtx(k)
+        pmsite = system_length + chain_length + k
         ℓ += mcω[k] * gkslcommutator("N", pmsite)
     end
     # - coupling between pseudomodes
     for k in 1:(closure_length - 1)
-        pmode_site1 = system_length + chain_length + pmode_tx(k)
-        pmode_site2 = system_length + chain_length + pmode_tx(k + 1)
+        pmode_site1 = system_length + chain_length + k
+        pmode_site2 = system_length + chain_length + k + 1
         ℓ += mcg[k] * gkslcommutator("σ-", pmode_site1, "σ+", pmode_site2)
         ℓ += mcg[k] * gkslcommutator("σ+", pmode_site1, "σ-", pmode_site2)
     end
