@@ -66,32 +66,28 @@ let
         (Ω, κ, η) = chainmapcoefficients(
             sdf, domain, chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
         )
-    elseif μ == 0
-        first(domain) ≤ 0 ≤ last(domain) || error(
-            "Thermalization of a spectral density does not work if its domain " *
-            "does not contain 0.",
-        )
-        # T > 0, so we use the thermalized spectral density function.
+    elseif μ == 0 # but T > 0
+        # We use the usual thermalized spectral density function.
         fT = ω -> thermalisedJ(sdf, ω, T)
         (Ω, κ, η) = chainmapcoefficients(
             fT, (-ωmax, 0, ωmax), chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
         )
-    elseif T == 0 # μ != 0
-        first(domain) ≤ 0 ≤ last(domain) || error(
-            "Thermalization of a spectral density does not work if its domain " *
-            "does not contain 0.",
-        )
+    elseif T == 0 # but μ ≥ 0
+        # If T == 0 the transformed sdf is identically zero for ω < 0, so we need to
+        # cut that part of the domain off; otherwise, it is not Szegő class and the
+        # coefficients don't converge.
+        if -ωmax + μ < -μ
+            domainTμ = (0, μ, ωmax - μ)
+        else
+            domainTμ = (0, ωmax - μ, μ)
+        end
         (Ω, κ, η) = chainmapcoefficients(
             ω -> tedopaTμtransform(sdf, ω, ωmax, 0, μ),
-            (-ωmax, 0, ωmax),
+            domainTμ,
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
         )
-    else # T != 0, μ != 0
-        first(domain) ≤ 0 ≤ last(domain) || error(
-            "Thermalization of a spectral density does not work if its domain " *
-            "does not contain 0.",
-        )
+    else # T ≥ 0 and μ ≥ 0
         if -ωmax + μ < -μ
             domainTμ = (-ωmax + μ, -μ, 0, μ, ωmax - μ)
         else
