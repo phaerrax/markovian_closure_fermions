@@ -1,5 +1,4 @@
 #!/usr/bin/wolframscript
-
 argv = Rest @ $ScriptCommandLine;
 argc = Length @ argv;
 cfsfile = argv[[1]];
@@ -59,10 +58,23 @@ H = DiagonalMatrix[freqs, 0] + DiagonalMatrix[coups, 1] + DiagonalMatrix[coups, 
 start = Join[{1}, Table[0, nsites-1]]
 sol = NDSolve[{y'[t] + I H.y[t] == 0, y[0] == sysint^2 * start}, y, {t, 0, maxtime}]
 g[t_] := y[t] /. First[sol]
-corrfgfx = Plot[{Re[g[t][[1]]], Im[g[t][[1]]]}, {t, 0, maxtime}, PlotLegends -> {"Re", "Im"}, PlotRange -> Full];
+corrf[t_?NumericQ] := g[t][[1]]
+(*
+    Watch out: writing
+        corrf[t] := g[t][[1]]
+    only, for some mysterious, reason doesn't give the correct results.
+    The function MUST be defined appending the _NumericQ? thing to the variable.
+*)
+corrfgfx = Plot[{Re[corrf[t]], Im[corrf[t]]}, {t, 0, maxtime}, PlotLegends -> {"Re", "Im"}, PlotRange -> Full];
 
 (* Spectral density corresponding to the correlation function *)
-sdf[x_?NumericQ, upperbound_:maxtime] := (1 / Pi) NIntegrate[Re[ E^(I x t) * g[t][[1]] ], {t, 0, upperbound}]
+sdf[x_?NumericQ, upperbound_:maxtime] := (1 / Pi) NIntegrate[
+    Cos[x t] Re[corrf[t]] - Sin[x t] Im[corrf[t]],
+    {t, 0, upperbound},
+    AccuracyGoal -> 5,
+    Method -> {"GlobalAdaptive", Method -> "GaussKronrodRule"}
+]
+(* We can use a more "economical" integration method, the integrand is regular enough *)
 sdfgfx = Plot[sdf[w], {w, asympfrequency - 2.1 asympcoupling, asympfrequency + 2.1 asympcoupling}, PlotRange -> Full];
 
 (* Expected solution: spectral density function of the semicircle *)
@@ -76,7 +88,12 @@ expsdf[x_] := Piecewise[
 expsdfgfx = Plot[expsdf[w], {w, asympfrequency - 2.1 asympcoupling, asympfrequency + 2.1 asympcoupling}, PlotRange -> Full];
 
 (* Expected solution: correlation function of the semicircle *)
-expcorrf[t_?NumericQ] := NIntegrate[E^(-I x t) expsdf[x], {x, asympfrequency - 2 asympcoupling, asympfrequency + 2 asympcoupling}]
+expcorrf[t_?NumericQ] := NIntegrate[
+    E^(-I x t) expsdf[x],
+    {x, asympfrequency - 2 asympcoupling, asympfrequency + 2 asympcoupling},
+    AccuracyGoal -> 5,
+    Method -> {"GlobalAdaptive", Method -> "GaussKronrodRule"}
+]
 expcorrfgfx = Plot[{Re[expcorrf[t]], Im[expcorrf[t]]}, {t, 0, maxtime}, PlotLegends -> {"Re", "Im"}, PlotRange -> Full];
 
 exportfilename = cfsfile <> ".pdf"
