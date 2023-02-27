@@ -208,6 +208,16 @@ expcorrfgfx = Plot[
     PlotLegends -> {"Re", "Im"},
     PlotRange -> Full
 ];
+diffmixedcorrfgfx = Plot[
+    Abs[expcorrf[t]-mixedcorrf[t]],
+    {t, 0, maxtime},
+    PlotRange -> Full
+];
+diffseparatecorrfgfx = Plot[
+    Abs[expcorrf[t]-separatecorrf[t]],
+    {t, 0, maxtime},
+    PlotRange -> Full
+];
 
 exportfilename = configfile <> ".pdf"
 Print["Exporting plots in " <> exportfilename]
@@ -215,8 +225,9 @@ Export[
     exportfilename,
     GraphicsGrid[
         {
+            {expcorrfgfx, expsdfgfx},
             {mixedcorrfgfx, separatecorrfgfx},
-            {expcorrfgfx, expsdfgfx}
+            {diffmixedcorrfgfx, diffseparatecorrfgfx}
         }
     ]
 ]
