@@ -61,10 +61,10 @@ let
     end
 
     for j in 1:(chain_length - 1)
-        h += lcoups[j], "S-", leftchain_sites[j], "S+", leftchain_sites[j + 1]
-        h += lcoups[j], "S+", leftchain_sites[j], "S-", leftchain_sites[j + 1]
-        h += rcoups[j], "S+", rightchain_sites[j], "S-", rightchain_sites[j + 1]
-        h += rcoups[j], "S-", rightchain_sites[j], "S+", rightchain_sites[j + 1]
+        h += lcoups[j + 1], "S-", leftchain_sites[j], "S+", leftchain_sites[j + 1]
+        h += lcoups[j + 1], "S+", leftchain_sites[j], "S-", leftchain_sites[j + 1]
+        h += rcoups[j + 1], "S+", rightchain_sites[j], "S-", rightchain_sites[j + 1]
+        h += rcoups[j + 1], "S-", rightchain_sites[j], "S+", rightchain_sites[j + 1]
     end
 
     H = MPO(h, sites)
