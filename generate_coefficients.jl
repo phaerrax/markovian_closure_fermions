@@ -20,7 +20,7 @@ function tedopaTμtransform(J::Function, ω::Real, ωmax::Real, T::Real, μ::Rea
         end
     else
         if -μ < ω < -ωmax + μ
-            return thermalfactor * J(μ + ω)
+            return thermalfactor * J(μ - ω)
         elseif -ωmax + μ ≤ ω ≤ ωmax - μ
             return thermalfactor * (J(μ + ω) + J(μ - ω))
         elseif ωmax - μ < ω < μ
@@ -68,9 +68,11 @@ let
         )
     elseif μ == 0 # but T > 0
         # We use the usual thermalized spectral density function.
-        fT = ω -> thermalisedJ(sdf, ω, T)
         (Ω, κ, η) = chainmapcoefficients(
-            fT, (-ωmax, 0, ωmax), chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
+            ω -> tedopaTμtransform(sdf, ω, ωmax, T, 0),
+            (-ωmax, 0, ωmax),
+            chain_length - 1;
+            Nquad=sd_info["PolyChaos_nquad"],
         )
     elseif T == 0 # but μ ≥ 0
         # If T == 0 the transformed sdf is identically zero for ω < 0, so we need to
