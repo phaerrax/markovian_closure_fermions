@@ -1,9 +1,39 @@
 #!/usr/bin/wolframscript
+
 argv = Rest @ $ScriptCommandLine;
 argc = Length @ argv;
-cfsfile = argv[[1]];
+configfile = argv[[1]];
 
-Print["Reading coefficients from " <> cfsfile]
+Print["Reading configuration parameters from " <> configfile]
+Print[
+    "Please note that this script works only when the original " <>
+    "spectral density is a semicircle, transformed with TF-TEDOPA."
+]
+
+(*
+    Read configuration coefficients from files.
+    Importing a JSON file returns a "list of rules" from which we can
+    obtain the values by using the substitution
+        "key" /. Import[file]
+*)
+config = Import[configfile]
+originaldomain = "domain" /. config
+minfreq = originaldomain[[1]]
+maxfreq = originaldomain[[2]]
+pars = "parameters" /. config
+originalfrequency = pars[[1]]
+originalcoupling = pars[[2]]
+chempot = "chemical_potential" /. config
+temperature = "temperature" /. config
+nsites = "number_of_oscillators" /. config
+
+semicirclecorrf[x_, omega_, kappa_] := Piecewise[
+    {
+        {0, x < omega - 2 kappa},
+        {0, x > omega + 2 kappa}
+    },
+    1 / (2 Pi) Sqrt[(2 kappa - omega + x)(2 kappa + omega - x)]
+]
 
 (*
     Read chain coefficients from files.
@@ -13,14 +43,42 @@ Print["Reading coefficients from " <> cfsfile]
     chain. It doesn't play any role here in the computation of the
     correlation function, so we discard it.
 *)
-coups = Delete[Table[item[[1]], {item, Import[cfsfile]}], 1]
-freqs = Delete[Table[item[[2]], {item, Import[cfsfile]}], 1]
-sysint = coups[[1]]
-coups = Delete[coups, 1]
-nsites = Length[freqs]
+upperchainfile = "upper_chain_file" /. config
+lowerchainfile = "lower_chain_file" /. config
+mixedchainfile = "mixed_chain_file" /. config
 
-asympfrequency = Last[freqs]
-asympcoupling = Last[coups]
+uppercoups = Take[
+    Delete[Table[item[[1]], {item, Import[upperchainfile]}], 1],
+    nsites
+]
+upperfreqs = Take[
+    Delete[Table[item[[2]], {item, Import[upperchainfile]}], 1],
+    nsites
+]
+uppersysint = uppercoups[[1]]
+uppercoups = Delete[uppercoups, 1]
+
+lowercoups = Take[
+    Delete[Table[item[[1]], {item, Import[lowerchainfile]}], 1],
+    nsites
+]
+lowerfreqs = Take[
+    Delete[Table[item[[2]], {item, Import[lowerchainfile]}], 1],
+    nsites
+]
+lowersysint = lowercoups[[1]]
+lowercoups = Delete[lowercoups, 1]
+
+mixedcoups = Take[
+    Delete[Table[item[[1]], {item, Import[mixedchainfile]}], 1],
+    nsites
+]
+mixedfreqs = Take[
+    Delete[Table[item[[2]], {item, Import[mixedchainfile]}], 1],
+    nsites
+]
+mixedsysint = mixedcoups[[1]]
+mixedcoups = Delete[mixedcoups, 1]
 
 (*
     Knowing the length of the chain and the approximate propagation speed
@@ -29,73 +87,136 @@ asympcoupling = Last[coups]
     to the finite size of the system:
         max_time = length / speed
 *)
-maxtime = 0.9 * nsites / (2 Last[coups])
+maxtime = 0.9 * nsites / (2 originalcoupling)
 
 (* Matrix of the TEDOPA chain in the single-excitation subspace *)
-H = DiagonalMatrix[freqs, 0] + DiagonalMatrix[coups, 1] + DiagonalMatrix[coups, -1]
+upperH = DiagonalMatrix[upperfreqs, 0] +
+    DiagonalMatrix[uppercoups, 1] +
+    DiagonalMatrix[uppercoups, -1];
+lowerH = DiagonalMatrix[lowerfreqs, 0] +
+    DiagonalMatrix[lowercoups, 1] +
+    DiagonalMatrix[lowercoups, -1];
+mixedH = DiagonalMatrix[mixedfreqs, 0] +
+    DiagonalMatrix[mixedcoups, 1] +
+    DiagonalMatrix[mixedcoups, -1];
 
 (*
     The correlation function of this TEDOPA chain is given by
-        f(t) = (psi0, X_1(t) X_1(0) psi0)
+        f(t) = sysint^2 (psi0, X_1(t) X_1(0) psi0)
     where X_1 = A_1 + Adag_1 and psi0 is the vacuum state. It simplifies to
-        f(t) = (psi0, A_1(t) Adag_1 psi0).
+        f(t) = sysint^2 (psi0, A_1(t) Adag_1 psi0).
     The vacuum psi0 is an eigenstate of the Hamiltonian, with
     eigenvalue 0, so
-        f(t) = (psi0, A_1 exp(-itH) Adag psi0) =
-             = (s1, exp(-itH) s1)
+        f(t) = sysint^2 (psi0, A_1 exp(-itH) Adag psi0) =
+             = sysint^2 (s1, exp(-itH) s1)
     where the s1 state, representing an excitation on the first site
     of the chain, is written as [1 0 … 0] in the single-excitation
     subspace. This also means that f(t) can be obtained as the first
     coefficient of
-        exp(-itH) s1
-    which we can compute faster by NDSolve:
+        sysint^2 exp(-itH) s1
+    which we can compute faster by NDSolve with the expression
         g'(t) + i H g(t) = 0,
-        g(0) = s1
-    and then f(t) = g(t)[[1]], instead of using MatrixExp directly.
+        g(0) = sysint^2 s1
+    and then f(t) = g(t)[[1]], instead of using MatrixExp.
 *)
-
-(* corrf[t_] := 1 / 2 * ConjugateTranspose[start].MatrixExp[-I * t * H, start] *)
 start = Join[{1}, Table[0, nsites-1]]
-sol = NDSolve[{y'[t] + I H.y[t] == 0, y[0] == sysint^2 * start}, y, {t, 0, maxtime}]
-g[t_] := y[t] /. First[sol]
-corrf[t_?NumericQ] := g[t][[1]]
+
+uppersol = NDSolve[
+    {y'[t] + I upperH.y[t] == 0, y[0] == uppersysint^2 * start},
+    y,
+    {t, 0, maxtime}
+]
+uppercf[t_] := y[t] /. First[uppersol]
+
+lowersol = NDSolve[
+    {y'[t] + I lowerH.y[t] == 0, y[0] == lowersysint^2 * start},
+    y,
+    {t, 0, maxtime}
+]
+lowercf[t_] := y[t] /. First[lowersol]
+
+separatecorrf[t_?NumericQ] := uppercf[t][[1]] + lowercf[t][[1]]
+
+mixedsol = NDSolve[
+    {y'[t] + I mixedH.y[t] == 0, y[0] == mixedsysint^2 * start},
+    y,
+    {t, 0, maxtime}
+]
+mixedcf[t_] := y[t] /. First[mixedsol]
+
+mixedcorrf[t_?NumericQ] := mixedcf[t][[1]]
 (*
     Watch out: writing
         corrf[t] := g[t][[1]]
     only, for some mysterious, reason doesn't give the correct results.
-    The function MUST be defined appending the _NumericQ? thing to the variable.
+    The function MUST be defined appending the _NumericQ? thing to
+    the variable.
 *)
-corrfgfx = Plot[{Re[corrf[t]], Im[corrf[t]]}, {t, 0, maxtime}, PlotLegends -> {"Re", "Im"}, PlotRange -> Full];
+separatecorrfgfx = Plot[
+    {Re[separatecorrf[t]], Im[separatecorrf[t]]},
+    {t, 0, maxtime},
+    PlotLegends -> {"Re", "Im"},
+    PlotRange -> Full
+];
+mixedcorrfgfx = Plot[
+    {Re[mixedcorrf[t]], Im[mixedcorrf[t]]},
+    {t, 0, maxtime},
+    PlotLegends -> {"Re", "Im"},
+    PlotRange -> Full
+];
 
-(* Spectral density corresponding to the correlation function *)
+(*
+    Spectral density corresponding to the correlation function:
+    The inverse Fourier transform gives us a certain function j.
+    We know this function is (should be) related to the original spectral
+    density function J0 by
+                / J0(mu-x) if 0 < x < mu,
+        j(x) = <
+                \ J0(mu+x) if mu < x < maxfreq.
+    so we could try j(mu-x) or j(x-mu) and see if one of them sticks.
+*)
 sdf[x_?NumericQ, upperbound_:maxtime] := (1 / Pi) NIntegrate[
     Cos[x t] Re[corrf[t]] - Sin[x t] Im[corrf[t]],
     {t, 0, upperbound},
     AccuracyGoal -> 5,
+    (*
+        We can use a more "economical" integration method; the integrand
+        is regular enough.
+    *)
     Method -> {"GlobalAdaptive", Method -> "GaussKronrodRule"}
 ]
-(* We can use a more "economical" integration method, the integrand is regular enough *)
-sdfgfx = Plot[sdf[w], {w, asympfrequency - 2.1 asympcoupling, asympfrequency + 2.1 asympcoupling}, PlotRange -> Full];
-
 (* Expected solution: spectral density function of the semicircle *)
-expsdf[x_] := Piecewise[
-    {
-        {0, x < asympfrequency - 2 asympcoupling},
-        {0, x > asympfrequency + 2 asympcoupling}
-    },
-    1 / (2 Pi) Sqrt[(2 asympcoupling - asympfrequency + x)(2 asympcoupling + asympfrequency - x)]
-]
-expsdfgfx = Plot[expsdf[w], {w, asympfrequency - 2.1 asympcoupling, asympfrequency + 2.1 asympcoupling}, PlotRange -> Full];
+expsdf[x_] := semicirclecorrf[x, originalfrequency, originalcoupling]
+expsdfgfx = Plot[expsdf[w], {w, minfreq, maxfreq}, PlotRange -> Full];
 
 (* Expected solution: correlation function of the semicircle *)
 expcorrf[t_?NumericQ] := NIntegrate[
-    E^(-I x t) expsdf[x],
-    {x, asympfrequency - 2 asympcoupling, asympfrequency + 2 asympcoupling},
+    E^(-I x t) Piecewise[
+        {
+            {expsdf[chempot - x] + expsdf[chempot + x], 0 < x < chempot},
+            {expsdf[chempot + x], chempot < x < maxfreq - chempot}
+        },
+        0
+    ],
+    {x, 0, maxfreq},
     AccuracyGoal -> 5,
     Method -> {"GlobalAdaptive", Method -> "GaussKronrodRule"}
 ]
-expcorrfgfx = Plot[{Re[expcorrf[t]], Im[expcorrf[t]]}, {t, 0, maxtime}, PlotLegends -> {"Re", "Im"}, PlotRange -> Full];
+expcorrfgfx = Plot[
+    {Re[expcorrf[t]], Im[expcorrf[t]]},
+    {t, 0, maxtime},
+    PlotLegends -> {"Re", "Im"},
+    PlotRange -> Full
+];
 
-exportfilename = cfsfile <> ".pdf"
+exportfilename = configfile <> ".pdf"
 Print["Exporting plots in " <> exportfilename]
-Export[exportfilename, GraphicsGrid[{{corrfgfx, sdfgfx}, {expcorrfgfx, expsdfgfx}}]]
+Export[
+    exportfilename,
+    GraphicsGrid[
+        {
+            {mixedcorrfgfx, separatecorrfgfx},
+            {expcorrfgfx, expsdfgfx}
+        }
+    ]
+]
