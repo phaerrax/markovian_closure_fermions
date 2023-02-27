@@ -29,7 +29,7 @@ let
     rightchain_sites = (systempos+1):1:total_size
 
     sites = siteinds("S=1/2", total_size)
-    psi0 = productMPS(sites, [repeat(["Up"], chain_length); system_initstate; repeat(["Dn"], chain_length)])
+    psi0 = productMPS(sites, [repeat(["Dn"], chain_length); system_initstate; repeat(["Dn"], chain_length)])
 
     # Copy initial state into evolving state.
     psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
