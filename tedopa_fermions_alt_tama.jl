@@ -29,7 +29,9 @@ let
     rightchain_sites = (systempos+1):1:total_size
 
     sites = siteinds("S=1/2", total_size)
-    psi0 = productMPS(sites, [repeat(["Up"], chain_length); system_initstate; repeat(["Dn"], chain_length)])
+    # Tama Occhio
+    psi0 = productMPS(sites, [repeat(["Up"], chain_length-1);["Dn"]; system_initstate;["Up"]; repeat(["Dn"], chain_length-1)])
+    #psi0 = productMPS(sites, [repeat(["Up"], chain_length); system_initstate; repeat(["Dn"], chain_length)])
 
     # Copy initial state into evolving state.
     psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
@@ -43,8 +45,11 @@ let
 
     # - system-chain interaction
     if lowercase(parameters["interaction_type"]) == "xx"
-        h += 4*lcoups[1], "Sx", systempos, "Sx", leftchain_sites[1]
-        h += 4*rcoups[1], "Sx", systempos, "Sx", rightchain_sites[1]
+        #Tama occhio: disaccoppio
+        h += 0. *lcoups[1], "Sx", systempos, "Sx", leftchain_sites[1]
+        h += 0. *rcoups[1], "Sx", systempos, "Sx", rightchain_sites[1]
+        #h += 4*lcoups[1], "Sx", systempos, "Sx", leftchain_sites[1]
+        #h += 4*rcoups[1], "Sx", systempos, "Sx", rightchain_sites[1]
     elseif lowercase(parameters["interaction_type"]) == "exchange"
         h += lcoups[1], "S+", systempos, "S-", leftchain_sites[1]
         h += lcoups[1], "S-", systempos, "S+", leftchain_sites[1]
@@ -61,10 +66,10 @@ let
     end
 
     for j in 1:(chain_length - 1)
-        h += lcoups[j], "S-", leftchain_sites[j], "S+", leftchain_sites[j + 1]
-        h += lcoups[j], "S+", leftchain_sites[j], "S-", leftchain_sites[j + 1]
-        h += rcoups[j], "S+", rightchain_sites[j], "S-", rightchain_sites[j + 1]
-        h += rcoups[j], "S-", rightchain_sites[j], "S+", rightchain_sites[j + 1]
+        h += lcoups[j+1], "S-", leftchain_sites[j], "S+", leftchain_sites[j + 1]
+        h += lcoups[j+1], "S+", leftchain_sites[j], "S-", leftchain_sites[j + 1]
+        h += rcoups[j+1], "S+", rightchain_sites[j], "S-", rightchain_sites[j + 1]
+        h += rcoups[j+1], "S-", rightchain_sites[j], "S+", rightchain_sites[j + 1]
     end
 
     H = MPO(h, sites)
