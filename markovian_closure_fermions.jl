@@ -88,7 +88,7 @@ let
     if chain_length > 0
         # System-chain interaction:
         if lowercase(parameters["interaction_type"]) == "xx"
-            ℓ += coups[1] * gkslcommutator("σx", 1, "σx", 2)
+            ℓ += -coups[1] * gkslcommutator("σy", 1, "σx", 2)
         elseif lowercase(parameters["interaction_type"]) == "exchange"
             ℓ += coups[1] * gkslcommutator("σ+", 1, "σ-", 2)
             ℓ += coups[1] * gkslcommutator("σ-", 1, "σ+", 2)
