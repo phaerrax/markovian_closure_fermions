@@ -1,0 +1,10 @@
+{
+    "parameters": [0, 0.5],
+    "spectral_density": "1/(2pi) * sqrt((2a[2]-a[1]+x)*(2a[2]+a[1]-x))",
+    "spectral_density_ft": "a[2]^2*exp(-im*a[1]*x)*(besselj(0,2a[2]*x)+besselj(2,2a[2]*x))",
+    "domain": [0, 1],
+    "temperature": 0,
+    "chemical_potential": 0,
+    "number_of_oscillators": 200,
+    "PolyChaos_nquad": 2000
+}
