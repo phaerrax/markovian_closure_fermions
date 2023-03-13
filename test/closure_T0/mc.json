@@ -1,0 +1,38 @@
+{
+    "sys_en": 2,
+    "sys_coup": 0,
+    "sys_ini": "Up",
+    "interaction_type": "xx",
+
+    "chain_length": 15,
+    "tedopa_coefficients": "test/closure_T0/sd_semicircle.tedopa",
+
+    "out_file":   "test/closure_T0/mc_measurements.dat",
+    "ranks_file": "test/closure_T0/mc_ranks.dat",
+    "times_file": "test/closure_T0/mc_times.dat",
+
+    "tmax":        20,
+    "tstep":       0.01,
+    "ms_stride":   10,
+    "max_bond":    40,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+    "MC_betas":  "mc_standard_parameters/betas_6.dat",
+    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+    "asympt_frequency": 1,
+    "asympt_coupling": 0.5,
+
+    "observables":
+    {
+        "vecσx": [1],
+        "vecσz": [1],
+        "vecN":  [
+            1,
+            2,3,4,16,
+            17,18,19,20,21,22
+        ]
+    }
+}
