@@ -22,7 +22,7 @@
     "MC_alphas": "mc_standard_parameters/alphas_6.dat",
     "MC_betas":  "mc_standard_parameters/betas_6.dat",
     "MC_coups":  "mc_standard_parameters/coupls_6.dat",
-    "asympt_frequency": 1,
+    "asympt_frequency": 0,
     "asympt_coupling": 0.5,
 
     "observables":
