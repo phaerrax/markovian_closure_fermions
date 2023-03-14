@@ -14,6 +14,7 @@ include("bondop.jl")
 include("callback.jl")
 include("tebd.jl")
 include("tdvp.jl")
+include("adjtdvp.jl")
 include("testutils.jl")
 
 end # module
