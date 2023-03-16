@@ -88,6 +88,7 @@ mixedcoups = Delete[mixedcoups, 1]
         max_time = length / speed
 *)
 maxtime = 0.9 * nsites / (2 originalcoupling)
+Print[maxtime]
 
 (* Matrix of the TEDOPA chain in the single-excitation subspace *)
 upperH = DiagonalMatrix[upperfreqs, 0] +
@@ -152,16 +153,18 @@ mixedcorrf[t_?NumericQ] := mixedcf[t][[1]]
     The function MUST be defined appending the _NumericQ? thing to
     the variable.
 *)
-separatecorrfgfx = Plot[
+separatecorrfgfx[cutoff_:maxtime] := Plot[
     {Re[separatecorrf[t]], Im[separatecorrf[t]]},
-    {t, 0, maxtime},
+    {t, 0, cutoff},
     PlotLegends -> {"Re", "Im"},
+    PlotLabel -> "Separate chains correlation fn",
     PlotRange -> Full
 ];
-mixedcorrfgfx = Plot[
+mixedcorrfgfx[cutoff_:maxtime] := Plot[
     {Re[mixedcorrf[t]], Im[mixedcorrf[t]]},
-    {t, 0, maxtime},
+    {t, 0, cutoff},
     PlotLegends -> {"Re", "Im"},
+    PlotLabel -> "Mixed chain correlation fn",
     PlotRange -> Full
 ];
 
@@ -187,7 +190,12 @@ sdf[x_?NumericQ, upperbound_:maxtime] := (1 / Pi) NIntegrate[
 ]
 (* Expected solution: spectral density function of the semicircle *)
 expsdf[x_] := semicirclecorrf[x, originalfrequency, originalcoupling]
-expsdfgfx = Plot[expsdf[w], {w, minfreq, maxfreq}, PlotRange -> Full];
+expsdfgfx = Plot[
+    expsdf[w],
+    {w, minfreq, maxfreq},
+    PlotLabel -> "Spectral density",
+    PlotRange -> Full
+];
 
 (* Expected solution: correlation function of the semicircle *)
 expcorrf[t_?NumericQ] := NIntegrate[
@@ -202,20 +210,23 @@ expcorrf[t_?NumericQ] := NIntegrate[
     AccuracyGoal -> 5,
     Method -> {"GlobalAdaptive", Method -> "GaussKronrodRule"}
 ]
-expcorrfgfx = Plot[
+expcorrfgfx[cutoff_:maxtime] := Plot[
     {Re[expcorrf[t]], Im[expcorrf[t]]},
-    {t, 0, maxtime},
+    {t, 0, cutoff},
     PlotLegends -> {"Re", "Im"},
+    PlotLabel -> "Expected",
     PlotRange -> Full
 ];
-diffmixedcorrfgfx = Plot[
+diffmixedcorrfgfx[cutoff_:maxtime] := Plot[
     Abs[expcorrf[t]-mixedcorrf[t]],
-    {t, 0, maxtime},
+    {t, 0, cutoff},
+    PlotLabel -> "Difference expected/mixed chain",
     PlotRange -> Full
 ];
-diffseparatecorrfgfx = Plot[
+diffseparatecorrfgfx[cutoff_:maxtime] := Plot[
     Abs[expcorrf[t]-separatecorrf[t]],
-    {t, 0, maxtime},
+    {t, 0, cutoff},
+    PlotLabel -> "Difference expected/separate chains",
     PlotRange -> Full
 ];
 
@@ -225,9 +236,9 @@ Export[
     exportfilename,
     GraphicsGrid[
         {
-            {expcorrfgfx, expsdfgfx},
-            {mixedcorrfgfx, separatecorrfgfx},
-            {diffmixedcorrfgfx, diffseparatecorrfgfx}
+            {expcorrfgfx[2], expsdfgfx},
+            {mixedcorrfgfx[2], separatecorrfgfx[2]},
+            {diffmixedcorrfgfx[2], diffseparatecorrfgfx[2]}
         }
     ]
 ]
