@@ -793,6 +793,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
     times_file = get(kwargs, :io_times, nothing)
     store_state0 = get(kwargs, :store_psi0, false)
     convergence_factor_bonddims = get(kwargs, :convergence_factor_bonddims, 1e-4)
+    max_bond = get(kwargs, :max_bond, maxlinkdim(state))
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -818,64 +819,74 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
         # See Dunnet and Chin, 2020 [arXiv:2007.13528v2].
         # Procedure for each site i ∈ {1, …, N-1} (i.e. for each bond):
         for bond in 1:(N - 1)
-            @show bond
-            PH1 = ProjMPO(H) # Create a new one each time...
-            singlesite!(PH1)
-            orthogonalize!(state, bond)
-            ITensors.position!(PH1, state, bond)
-            H1 = PH1(state[bond])
-
-            _, S, V = svd(state[bond], uniqueinds(state[bond], state[bond + 1]))
-            C = S * V
-            zerosite!(PH1)
-            ITensors.position!(PH1, state, bond + 1)
-            K = PH1(C)
-
-            singlesite!(PH1)
-            orthogonalize!(state, bond + 1)
-            #ITensors.position!(PH1, state, bond+1)
-            H2 = PH1(state[bond + 1]) # <--------
-
-            f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
-            @show f
-
-            while true # do-while block emulation
-                # 2. Increase the bond dimension by 1, and repeat.
-                bond_index = commonind(state[bond], state[bond + 1])
-                current_bonddim = ITensors.dim(bond_index)
-                aux = Index(current_bonddim + 1; tags=tags(bond_index))
-                state[bond] = state[bond] * delta(bond_index, aux)
-                state[bond + 1] = state[bond + 1] * delta(bond_index, aux)
-
-                PH2 = ProjMPO(H)
-                singlesite!(PH2)
+            if ITensors.dim(commonind(state[bond], state[bond + 1])) < max_bond
+                # Skip all this if the bond is already at (or above!) the maximum
+                # allowed value.
+                @show bond
+                PH1 = ProjMPO(H) # Create a new one each time...
+                singlesite!(PH1)
                 orthogonalize!(state, bond)
-                ITensors.position!(PH2, state, bond)
-                H1 = PH2(state[bond])
+                ITensors.position!(PH1, state, bond)
+                H1 = PH1(state[bond])
 
                 _, S, V = svd(state[bond], uniqueinds(state[bond], state[bond + 1]))
                 C = S * V
-                zerosite!(PH2)
-                ITensors.position!(PH2, state, bond + 1)
-                K = PH2(C)
+                zerosite!(PH1)
+                ITensors.position!(PH1, state, bond + 1)
+                K = PH1(C)
 
-                singlesite!(PH2)
+                singlesite!(PH1)
                 orthogonalize!(state, bond + 1)
-                #ITensors.position!(PH2, state, bond+1)
-                H2 = PH2(state[bond + 1])
+                #ITensors.position!(PH1, state, bond+1)
+                H2 = PH1(state[bond + 1]) # <--------
 
-                new_f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+                f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+                @show f
 
-                #new_f/f - 1 > convergence_factor_bonddims || break
-                if new_f / f - 1 > convergence_factor_bonddims
-                    @info "[Step $s] new_f/f - 1 = $(new_f/f - 1): trying again with a greater ($bond, $(bond+1)) dimension."
-                    f = new_f
-                else
-                    @info "[Step $s] Increased bond ($bond, $(bond+1)) dimension to $current_bonddim."
-                    break
+                while true # do-while block emulation
+                    # Increase the bond dimension by 1, and repeat if needed.
+                    bond_index = commonind(state[bond], state[bond + 1])
+                    current_bonddim = ITensors.dim(bond_index)
+                    aux = Index(current_bonddim + 1; tags=tags(bond_index))
+                    state[bond] = state[bond] * delta(bond_index, aux)
+                    state[bond + 1] = state[bond + 1] * delta(bond_index, aux)
+
+                    PH2 = ProjMPO(H)
+                    singlesite!(PH2)
+                    orthogonalize!(state, bond)
+                    ITensors.position!(PH2, state, bond)
+                    H1 = PH2(state[bond])
+
+                    _, S, V = svd(state[bond], uniqueinds(state[bond], state[bond + 1]))
+                    C = S * V
+                    zerosite!(PH2)
+                    ITensors.position!(PH2, state, bond + 1)
+                    K = PH2(C)
+
+                    singlesite!(PH2)
+                    orthogonalize!(state, bond + 1)
+                    #ITensors.position!(PH2, state, bond+1)
+                    H2 = PH2(state[bond + 1])
+
+                    new_f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+
+                    if (
+                        new_f / f - 1 > convergence_factor_bonddims &&
+                        current_bonddim + 1 < max_bond
+                    )
+                        @info "[Step $s] new_f/f - 1 = $(new_f/f - 1): trying again with " *
+                            "a greater ($bond, $(bond+1)) dimension."
+                        f = new_f
+                    else
+                        @info "[Step $s] Increased bond ($bond, $(bond+1)) dimension " *
+                            "to $current_bonddim."
+                        break
+                    end
                 end
+            else
+                @info "[Step $s] Max dimension for bond ($bond, $(bond+1)) reached. " *
+                    "Skipping."
             end
-            # Now the state at the given bond should already have the right dimension.
         end
 
         # Prepare for first iteration.
