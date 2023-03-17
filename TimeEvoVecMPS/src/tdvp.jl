@@ -823,48 +823,13 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 # Skip all this if the bond is already at (or above!) the maximum
                 # allowed value.
                 @show bond
-                PH1 = ProjMPO(H) # Create a new one each time...
-                singlesite!(PH1)
-                orthogonalize!(state, bond)
-                ITensors.position!(PH1, state, bond)
-                H1 = PH1(state[bond])
-
-                _, S, V = svd(state[bond], uniqueinds(state[bond], state[bond + 1]))
-                C = S * V
-                zerosite!(PH1)
-                ITensors.position!(PH1, state, bond + 1)
-                K = PH1(C)
-
-                singlesite!(PH1)
-                orthogonalize!(state, bond + 1)
-                #ITensors.position!(PH1, state, bond+1)
-                H2 = PH1(state[bond + 1]) # <--------
-
-                f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+                f = bondconvergencemeasure(H, state, bond)
                 @show f
 
                 while true # do-while block emulation
                     # Increase the bond dimension by 1, and repeat if needed.
                     new_bonddim = growbond!(state, bond)
-
-                    PH2 = ProjMPO(H)
-                    singlesite!(PH2)
-                    orthogonalize!(state, bond)
-                    ITensors.position!(PH2, state, bond)
-                    H1 = PH2(state[bond])
-
-                    _, S, V = svd(state[bond], uniqueinds(state[bond], state[bond + 1]))
-                    C = S * V
-                    zerosite!(PH2)
-                    ITensors.position!(PH2, state, bond + 1)
-                    K = PH2(C)
-
-                    singlesite!(PH2)
-                    orthogonalize!(state, bond + 1)
-                    #ITensors.position!(PH2, state, bond+1)
-                    H2 = PH2(state[bond + 1])
-
-                    new_f = real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+                    new_f = bondconvergencemeasure(H, state, bond)
 
                     if (
                         new_f / f - 1 > convergence_factor_bonddims &&
@@ -875,7 +840,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                         f = new_f
                     else
                         @info "[Step $s] Increased bond ($bond, $(bond+1)) dimension " *
-                        "to $(new_bonddim - 1)."
+                            "to $(new_bonddim - 1)."
                         break
                     end
                 end
