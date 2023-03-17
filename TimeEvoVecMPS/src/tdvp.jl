@@ -845,11 +845,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
                 while true # do-while block emulation
                     # Increase the bond dimension by 1, and repeat if needed.
-                    bond_index = commonind(state[bond], state[bond + 1])
-                    current_bonddim = ITensors.dim(bond_index)
-                    aux = Index(current_bonddim + 1; tags=tags(bond_index))
-                    state[bond] = state[bond] * delta(bond_index, aux)
-                    state[bond + 1] = state[bond + 1] * delta(bond_index, aux)
+                    new_bonddim = growbond!(state, bond)
 
                     PH2 = ProjMPO(H)
                     singlesite!(PH2)
@@ -872,14 +868,14 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
                     if (
                         new_f / f - 1 > convergence_factor_bonddims &&
-                        current_bonddim + 1 < max_bond
+                        new_bonddim < max_bond
                     )
                         @info "[Step $s] new_f/f - 1 = $(new_f/f - 1): trying again with " *
                             "a greater ($bond, $(bond+1)) dimension."
                         f = new_f
                     else
                         @info "[Step $s] Increased bond ($bond, $(bond+1)) dimension " *
-                            "to $current_bonddim."
+                        "to $(new_bonddim - 1)."
                         break
                     end
                 end

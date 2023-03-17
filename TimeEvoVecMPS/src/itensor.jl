@@ -1,6 +1,8 @@
 # some extensions for ITensors functionality
 # the goal is to eventually contribute these upstream if found appropriate
 
+export growbond!
+
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel>=0
         return filter(x->plev(x)==plevel, is)
@@ -32,4 +34,17 @@ function reorthogonalize!(psi::MPS)
     psi[1] /= sqrt(inner(psi,psi))
 end
 
+"""
+    growbond!(v::MPS, bond::Integer; increment::Integer=1)
 
+Grow the bond dimension of the MPS `v` between sites `bond` and `bond+1` by `increment`.
+Return the new bond dimension.
+"""
+function growbond!(v::MPS, bond::Integer; increment::Integer=1)::Integer
+    bond_index = commonind(v[bond], v[bond + 1])
+    current_bonddim = ITensors.dim(bond_index)
+    aux = Index(current_bonddim + increment; tags=tags(bond_index))
+    v[bond] = v[bond] * delta(bond_index, aux)
+    v[bond + 1] = v[bond + 1] * delta(bond_index, aux)
+    return current_bonddim + increment
+end
