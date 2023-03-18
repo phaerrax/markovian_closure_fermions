@@ -816,36 +816,9 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
     for s in 1:nsteps
         # Before each sweep, we grow the bond dimensions a bit.
-        # See Dunnet and Chin, 2020 [arXiv:2007.13528v2].
+        # See Dunnett and Chin, 2020 [arXiv:2007.13528v2].
         @debug "[Step $s] Attempting to grow the bond dimensions."
-        for bond in 1:(N - 1)
-            if ITensors.dim(commonind(state[bond], state[bond + 1])) < max_bond
-                # Skip all this if the bond is already at (or above!) the maximum
-                # allowed value.
-                f = bondconvergencemeasure(H, state, bond)
-                while true # (do-while block emulation)
-                    # Increase the bond dimension by 1, and repeat if needed.
-                    new_bonddim = growbond!(state, bond)
-                    new_f = bondconvergencemeasure(H, state, bond)
-
-                    if (
-                        new_f / f - 1 > convergence_factor_bonddims &&
-                        new_bonddim < max_bond
-                    )
-                        @debug "[Step $s, bond ($bond,$(bond+1))] f(d+1)/f(d) - 1 = " *
-                        "$(new_f/f - 1): trying again with a greater dimension."
-                        f = new_f # and begin a new iteration of the while block.
-                    else
-                        @debug "[Step $s, bond ($bond,$(bond+1))] Increased bond " *
-                        "dimension to $(new_bonddim - 1)."
-                        # We can go on to the next bond in the MPS.
-                        break
-                    end
-                end
-            else
-                @debug "[Step $s, bond ($bond,$(bond+1))] Max dimension reached. Skipping."
-            end
-        end
+        adaptbonddimensions!(state, H, max_bond, convergence_factor_bonddims)
 
         # Prepare for first iteration.
         orthogonalize!(state, 1)
