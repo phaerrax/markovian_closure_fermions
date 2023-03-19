@@ -105,33 +105,32 @@ function adaptbonddimensions!(
     v::MPS, H::MPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     for bond in 1:(length(v) - 1)
-        if ITensors.dim(commonind(v[bond], v[bond + 1])) < max_bond
+        if linkdim(v, bond) < max_bond
             # Skip all this if the bond is already at (or above!) the maximum
             # allowed value.
             f = bondconvergencemeasure(H, v, bond)
             while true # (do-while block emulation)
-                # Increase the bond dimension by 1, and repeat if needed.
-                new_bonddim = growbond!(v, bond)
-                # TODO: first we shoud _try_ to enlarge the bond dimensions and see if the
-                # convergence is reached, and actually grow the MPS only if the test
-                # is not passed. As it is now, the MPS always gets enlarged once if
-                # entering the while block the current bond dimensions is less than the
-                # imposed limit.
-                new_f = bondconvergencemeasure(H, v, bond)
+                # Increase the bond dimension by 1, check convergence, repeat if needed.
+                vcopy = copy(v)
+                new_bonddim = growbond!(vcopy, bond)
+                new_f = bondconvergencemeasure(H, vcopy, bond)
 
+                # If new_f / f ≈ 1, within the given threshold, then f was already OK
+                # and we discard the new MPS, keeping the non-enlarged state.
                 if (new_f / f - 1 > convergence_factor_bonddims && new_bonddim < max_bond)
-                    @debug "[Bond ($bond,$(bond+1))] f(d+1)/f(d) - 1 = " *
-                        "$(new_f/f - 1): trying again with a greater dimension."
+                    growbond!(v, bond)
+                    d = linkdim(v, bond)
+                    @debug "[Bond ($bond,$(bond+1))] f($d)/f($(d-1)) - 1 > " *
+                        "$convergence_factor_bonddims: increasing dimension to $d."
                     f = new_f # and begin a new iteration of the while block.
                 else
-                    @debug "[Bond ($bond,$(bond+1))] Increased bond " *
-                        "dimension to $(new_bonddim - 1)."
-                    # We can go on to the next bond in the MPS.
-                    break
+                    @debug "[Bond ($bond,$(bond+1))] Convergence reached for now."
+                    break # and proceed with the next bond in the MPS.
                 end
             end
         else
             @debug "[Bond ($bond,$(bond+1))] Max dimension reached. Skipping."
         end
     end
+    return nothing
 end
