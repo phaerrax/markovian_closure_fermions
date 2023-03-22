@@ -49,25 +49,11 @@ let
     h += eps, "n", systempos
 
     # - system-chain interaction
-    if lowercase(parameters["interaction_type"]) == "xx"
-        h += im*lcoups[1], "c", systempos, "c", leftchain_sites[1]
-        h += im*lcoups[1], "c", systempos, "c†", leftchain_sites[1]
-        h += im*lcoups[1], "c†", systempos, "c", leftchain_sites[1]
-        h += im*lcoups[1], "c†", systempos, "c†", leftchain_sites[1]
+    h += lcoups[1], "c†", systempos, "c", leftchain_sites[1]
+    h += lcoups[1], "c†", leftchain_sites[1], "c", systempos
 
-        h += im*rcoups[1], "c", systempos, "c", rightchain_sites[1]
-        h += im*rcoups[1], "c", systempos, "c†", rightchain_sites[1]
-        h += im*rcoups[1], "c†", systempos, "c", rightchain_sites[1]
-        h += im*rcoups[1], "c†", systempos, "c†", rightchain_sites[1]
-    elseif lowercase(parameters["interaction_type"]) == "exchange"
-        h += lcoups[1], "c†", systempos, "c", leftchain_sites[1]
-        h += lcoups[1], "c†", leftchain_sites[1], "c", systempos
-
-        h += rcoups[1], "c†", systempos, "c", rightchain_sites[1]
-        h += rcoups[1], "c†", rightchain_sites[1], "c", systempos
-    else
-        throw(error("Unrecognized interaction type. Please use \"xx\" or \"exchange\"."))
-    end
+    h += rcoups[1], "c†", systempos, "c", rightchain_sites[1]
+    h += rcoups[1], "c†", rightchain_sites[1], "c", systempos
 
     # - chain terms
     for (j, site) in enumerate(leftchain_sites)
