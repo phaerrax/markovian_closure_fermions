@@ -1,0 +1,9 @@
+{
+    "parameters": [1, 0.5],
+    "spectral_density": "1/(10pi) * sqrt((2a[2]-a[1]+x)*(2a[2]+a[1]-x))",
+    "domain": [0, 2],
+    "temperature": 2,
+    "chemical_potential": 1,
+    "number_of_oscillators": 200,
+    "PolyChaos_nquad": 1000
+}
