@@ -5,6 +5,7 @@
 *.csv
 *.pdf
 *.tedopa
+*.thermofield
 
 # File di slurm
 *.out
