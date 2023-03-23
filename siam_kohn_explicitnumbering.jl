@@ -9,8 +9,10 @@ include("./TDVP_lib_VecRho.jl")
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
 # An impurity is interacting with a fermionic thermal bath, which is mapped onto two
 # discrete chains by means of a thermofield+TEDOPA transformation.
+#
 # Contrary to `siam_kohn.jl`, in this script an explicit site numbering for the chains
-# is used.
+# is used. This serves the purpose of checking whether the more intuitive enumeration
+# of the sites used in the “twin” script is correct (it is).
 
 let
     parameters = load_pars(ARGS[1])
