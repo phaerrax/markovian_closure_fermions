@@ -1,16 +1,15 @@
 {
-    "sys_en": 0,
-    "sys_en_alt": -3.926,
+    "sys_en": -0.3926,
     "sys_ini": "Emp",
 
     "chain_length": 40,
     "thermofield_coefficients": "test/siam/semicircle_T2.thermofield",
 
-    "out_file":   "test/siam/nint_measurements.dat",
-    "ranks_file": "test/siam/nint_ranks.dat",
-    "times_file": "test/siam/nint_times.dat",
+    "out_file":   "test/siam/nint_pureT2_measurements.dat",
+    "ranks_file": "test/siam/nint_pureT2_ranks.dat",
+    "times_file": "test/siam/nint_pureT2_times.dat",
 
-    "tmax":        35,
+    "tmax":        20,
     "tstep":       0.01,
     "ms_stride":   10,
     "max_bond":    40,
