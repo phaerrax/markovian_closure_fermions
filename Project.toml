@@ -1,7 +1,11 @@
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+ITensorTDVP = "25707e16-a4db-4a07-99d9-4d67b7af0342"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+Observers = "338f10d5-c7f1-4033-a7d1-f9dec39bcaa0"
 Permutations = "2ae35dd2-176d-5d53-8349-f30d82d94d4f"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PseudomodesTTEDOPA = "79a75d10-d622-4972-b86a-039507c8d45b"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TimeEvoVecMPS = "386e0f54-b56d-4c26-8648-19598745e6c2"

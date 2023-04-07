@@ -1,0 +1,26 @@
+{
+    "sys_en": 2,
+    "sys_coup": 0,
+    "sys_ini": "Up",
+    "interaction_type": "xx",
+
+    "chain_length": 100,
+    "tedopa_coefficients": "test/speedtest/sd.tedopa",
+
+    "out_file":   "test/speedtest/spinchain_TimeEvoVecMPS_measurements.dat",
+    "ranks_file": "/dev/null",
+    "times_file": "/dev/null",
+
+    "tmax":        5,
+    "tstep":       0.005,
+    "ms_stride":   1,
+    "max_bond":    15,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "observables":
+    {
+        "N":  [ 1 ]
+    }
+}

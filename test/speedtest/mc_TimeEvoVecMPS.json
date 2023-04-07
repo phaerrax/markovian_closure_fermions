@@ -1,0 +1,32 @@
+{
+    "sys_en": 1,
+    "sys_coup": 0,
+    "sys_ini": "Up",
+    "interaction_type": "xx",
+
+    "chain_length": 5,
+    "tedopa_coefficients": "test/speedtest/sd.tedopa",
+
+    "out_file":   "test/speedtest/mc_TimeEvoVecMPS_measurements.dat",
+    "ranks_file": "/dev/null",
+    "times_file": "/dev/null",
+
+    "tmax":        5,
+    "tstep":       0.005,
+    "ms_stride":   10,
+    "max_bond":    50,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+    "MC_betas":  "mc_standard_parameters/betas_6.dat",
+    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+    "asympt_frequency": 0,
+    "asympt_coupling": 0.5,
+
+    "observables":
+    {
+        "vN":  [ 1 ]
+    }
+}

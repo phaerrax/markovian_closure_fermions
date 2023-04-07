@@ -71,20 +71,23 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    tdvp1!(
-        psi,
-        H,
-        timestep,
-        tmax;
-        hermitian=true,
-        normalize=true,
-        callback=cb,
-        progress=true,
-        exp_tol=parameters["exp_tol"],
-        krylovdim=parameters["krylov_dim"],
-        store_psi0=true,
-        io_file=parameters["out_file"],
-        io_ranks=parameters["ranks_file"],
-        io_times=parameters["times_file"],
-    )
+    stime = @elapsed begin
+        tdvp1!(
+            psi,
+            H,
+            timestep,
+            tmax;
+            hermitian=true,
+            normalize=true,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=true,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+        )
+    end
+    println("Elapsed time: $stime")
 end
