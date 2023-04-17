@@ -41,7 +41,7 @@ function TrackerProjMPO(H::MPO)
     )
 end
 
-function copy(P::TrackerProjMPO)
+function Base.copy(P::TrackerProjMPO)
     return TrackerProjMPO(P.lpos, P.rpos, P.nsite, copy(P.ids), copy(P.H), copy(P.LR))
 end
 
