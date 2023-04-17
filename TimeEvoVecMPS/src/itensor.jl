@@ -89,7 +89,7 @@ end
 
 """
     function adaptbonddimensions!(
-        v::MPS, H::MPO, max_bond::Int, convergence_factor_bonddims::Real
+        v::MPS, PH::TrackerProjMPO, max_bond::Int, convergence_factor_bonddims::Real
     )
 
 If necessary, enlarge the bond dimensions of the MPS `v`, so that it can dynamically and
@@ -104,11 +104,10 @@ simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
 function adaptbonddimensions!(
-    v::MPS, H::MPO, max_bond::Int, convergence_factor_bonddims::Real
+    v::MPS, PH::TrackerProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     for bond in 1:(length(v) - 1)
         if linkdim(v, bond) < max_bond
-            PH = TrackerProjMPO(H)
             # Skip all this if the bond is already at (or above!) the maximum
             # allowed value.
             f = bondconvergencemeasure(PH, v, bond)

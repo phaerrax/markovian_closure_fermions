@@ -815,16 +815,15 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
     N = length(state)
 
     for s in 1:nsteps
+        PH = TrackerProjMPO(H)
+        orthogonalize!(state, 1)
+        ITensors.set_nsite!(PH, 1)
+        position!(PH, state, 1)
+
         # Before each sweep, we grow the bond dimensions a bit.
         # See Dunnett and Chin, 2020 [arXiv:2007.13528v2].
         @debug "[Step $s] Attempting to grow the bond dimensions."
-        adaptbonddimensions!(state, H, max_bond, convergence_factor_bonddims)
-
-        # Prepare for first iteration.
-        orthogonalize!(state, 1)
-        PH = ProjMPO(H)
-        singlesite!(PH)
-        position!(PH, state, 1)
+        adaptbonddimensions!(state, PH, max_bond, convergence_factor_bonddims)
 
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -841,7 +840,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 # 1. Project the Hamiltonian on the current site.
                 #    --------------------------------------------
 
-                singlesite!(PH)
+                ITensors.set_nsite!(PH, 1)
                 ITensors.position!(PH, state, site)
 
                 # 3. Evolve C(n) backwards in time according for a time step Δt, before
@@ -896,7 +895,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                     #    -----------------------------------------------------------
 
                     # Calculate the new zero-site projection of the evolution operator.
-                    zerosite!(PH)
+                    ITensors.set_nsite!(PH, 0)
                     position!(PH, state, ha == 1 ? site + 1 : site)
                     # Shouldn't we have ha == 1 ? site+1 : site-1 ?
 
@@ -923,7 +922,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
                     # Reset the single-site projection of the evolution operator,
                     # ready for the next sweep.
-                    singlesite!(PH)
+                    ITensors.set_nsite!(PH, 1)
                 else
                     # There's nothing to do if the half-sweep is at the last site.
                     state[site] = φ
