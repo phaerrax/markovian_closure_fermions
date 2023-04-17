@@ -84,7 +84,7 @@ function bondconvergencemeasure(PH::TrackerProjMPO, v::MPS, bond::Integer)::Real
     ITensors.position!(PH, vv, bond + 1) # Force recalculation of projections
     H2 = PH(vv[bond + 1])
 
-    return real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
+    return norm(H1)^2 + norm(H2)^2 + norm(K)^2
 end
 
 """
