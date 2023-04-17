@@ -74,8 +74,8 @@ function ITensors.position!(P::TrackerProjMPO, psi::MPS, pos::Int)
     # since the last update. More precisely, if `n` appears in this list then the bond
     # (n, n+1) has been changed in some way, and we will need to update the projection.
     bonds_with_different_id = findall(==(false), newids .== ids(P))
-    @debug "State's current bond IDs: $newids"
-    @debug "Saved bond IDs: $(ids(P))"
+    @debug "State's current bonds: $(linkinds(psi))"
+    @debug "Saved bond IDs: $([Int(n % 1000) for n in ids(P)])"
     # A changed bond may signify that the MPS sites it connects have been recalculated.
     # The typical situation is when we reorthogonalize the MPS and move the orthocenter
     # from n to n+1; this means factorizing psi[n] and multplying psi[n+1] by the "factor
