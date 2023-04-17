@@ -51,7 +51,6 @@ function ITensors.set_nsite!(P::TrackerProjMPO, nsite)
 end
 
 ids(P::TrackerProjMPO) = P.ids
-bondids(v::MPS) = id.(linkinds(v))
 
 """
     position!(P::ProjMPO, psi::MPS, pos::Int)
@@ -68,8 +67,20 @@ function ITensors.position!(P::TrackerProjMPO, psi::MPS, pos::Int)
     #    stored ones.
     # 2) Find out which bonds are "new".
     # 3) Recalculate the projections associated to those sites (and only on those sites).
-    #
-    newids = bondids(psi)
+
+    # Sometimes we have to call position! when some sites of the MPS are not linked.
+    # For example, during the TDVP algorithm, after, say, ψ[1] has been evolved, we
+    # factorize it as ψ[1] = Q*R, set ψ[1] = Q and evolve R back in time using the ProjMPO
+    # object. When we move its position on site 2, however, the MPS is disconnected, since
+    # Q and ψ[2] do not share a link Index (for now: after its backwards evolution, we
+    # set ψ[2] = ψ[2]*R and the MPS is connected again).
+    # If we just calculated the IDs of the link indices of the state, we'd get an error
+    # since the (1,2) bond is currently `nothing`.
+    # So, here's a dirty hack: we see if there's a `nothing` in the link indices, and
+    # do as if it were an Index with ID = 0. Hopefully, this will not match any other
+    # index ID, and this method will carry on updating the projection on such bond.
+    newids = [isnothing(ind) ? zero(ITensors.IDType) : id(ind) for ind in linkinds(psi)]
+
     # Get the (vector) indices where the IDs don't match: these are the bonds that changed
     # since the last update. More precisely, if `n` appears in this list then the bond
     # (n, n+1) has been changed in some way, and we will need to update the projection.
