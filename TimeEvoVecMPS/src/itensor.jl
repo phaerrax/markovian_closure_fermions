@@ -50,10 +50,10 @@ function growbond!(v::MPS, bond::Integer; increment::Integer=1)::Integer
 end
 
 """
-    bondconvergencemeasure(H::MPO, state::MPS, bond::Integer)
+    bondconvergencemeasure(PH::TrackerProjMPO, state::MPS, bond::Integer)
 
 Return a measure of the convergence for the bond dimension on the bond (`bond`, `bond+1`)
-of the MPS `state` for a time-evolution determined by `H`. See [1] for details.
+of the MPS `state` for a time-evolution determined by `PH`. See [1] for details.
 
 # References:
 [1] Dunnett, Angus J. and Chin, Alex W. (2020).
@@ -62,25 +62,27 @@ Time-Dependent-Variational-Principle method for Matrix Product States: Towards e
 simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
-function bondconvergencemeasure(H::MPO, state::MPS, bond::Integer)::Real
-    v = copy(state) # So that the re-orthogonalizing doesn't touch `state`
-    PH = ProjMPO(H) # We need to create a new one each time we call the function
+function bondconvergencemeasure(PH::TrackerProjMPO, v::MPS, bond::Integer)::Real
+    orthogonalize!(v, bond) # Just to make sure
 
-    PH.nsite = 1
-    orthogonalize!(v, bond)
+    ITensors.set_nsite!(PH, 1)
     ITensors.position!(PH, v, bond)
     H1 = PH(v[bond])
 
-    _, S, V = svd(v[bond], uniqueinds(v[bond], v[bond + 1]))
-    C = S * V
-    PH.nsite = 0
-    ITensors.position!(PH, v, bond + 1)
-    K = PH(C)
+    ITensors.set_nsite!(PH, 0)
+    Q, R = factorize(v[bond], uniqueinds(v[bond], v[bond + 1]); ortho="left", which_decomp="qr")
 
-    PH.nsite = 1
-    orthogonalize!(v, bond + 1)
-    #ITensors.position!(PH, v, bond+1)
-    H2 = PH(v[bond + 1])
+    # We reuse Q and R to perform a sort of a manual reorthogonalization of the MPS.
+    vv = copy(v)
+    vv[bond] = Q
+    vv[bond + 1] *= R
+
+    ITensors.position!(PH, vv, bond + 1)
+    K = PH(R)
+
+    ITensors.set_nsite!(PH, 1)
+    ITensors.position!(PH, vv, bond + 1) # Force recalculation of projections
+    H2 = PH(vv[bond + 1])
 
     return real(scalar(H1 * H1) + scalar(H2 * H2) + scalar(K * K))
 end
@@ -106,14 +108,15 @@ function adaptbonddimensions!(
 )
     for bond in 1:(length(v) - 1)
         if linkdim(v, bond) < max_bond
+            PH = TrackerProjMPO(H)
             # Skip all this if the bond is already at (or above!) the maximum
             # allowed value.
-            f = bondconvergencemeasure(H, v, bond)
+            f = bondconvergencemeasure(PH, v, bond)
             while true # (do-while block emulation)
                 # Increase the bond dimension by 1, check convergence, repeat if needed.
                 vcopy = copy(v)
                 new_bonddim = growbond!(vcopy, bond)
-                new_f = bondconvergencemeasure(H, vcopy, bond)
+                new_f = bondconvergencemeasure(PH, vcopy, bond)
 
                 # If new_f / f ≈ 1, within the given threshold, then f was already OK
                 # and we discard the new MPS, keeping the non-enlarged state.
