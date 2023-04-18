@@ -35,7 +35,7 @@ function TrackerProjMPO(H::MPO)
         0,
         length(H) + 1,
         2,
-        Vector{ITensors.IDType}(undef, length(H) - 1),
+        zeros(ITensors.IDType, length(H) - 1),
         H,
         Vector{ITensor}(undef, length(H)),
     )
