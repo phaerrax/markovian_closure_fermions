@@ -1,7 +1,7 @@
 # some extensions for ITensors functionality
 # the goal is to eventually contribute these upstream if found appropriate
 
-export growbond!, bondconvergencemeasure, adaptbonddimensions!
+export growbond!, bondconvergencemeasure, adaptbonddimensions!, recompute!
 
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel>=0
@@ -50,7 +50,7 @@ function growbond!(v::MPS, bond::Integer; increment::Integer=1)::Integer
 end
 
 """
-    bondconvergencemeasure(PH::TrackerProjMPO, state::MPS, bond::Integer)
+    bondconvergencemeasure(PH::AbstractProjMPO, state::MPS, bond::Integer)
 
 Return a measure of the convergence for the bond dimension on the bond (`bond`, `bond+1`)
 of the MPS `state` for a time-evolution determined by `PH`. See [1] for details.
@@ -62,34 +62,35 @@ Time-Dependent-Variational-Principle method for Matrix Product States: Towards e
 simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
-function bondconvergencemeasure(PH::TrackerProjMPO, v::MPS, bond::Integer)::Real
-    orthogonalize!(v, bond) # Just to make sure
+function bondconvergencemeasure(PH::ITensors.AbstractProjMPO, v::MPS, bond::Integer)::Real
+    #orthogonalize!(v, bond) # this causes trouble
 
     ITensors.set_nsite!(PH, 1)
     ITensors.position!(PH, v, bond)
     H1 = PH(v[bond])
 
-    ITensors.set_nsite!(PH, 0)
-    Q, R = factorize(v[bond], uniqueinds(v[bond], v[bond + 1]); ortho="left", which_decomp="qr")
-
-    # We reuse Q and R to perform a sort of a manual reorthogonalization of the MPS.
+    Q, R = factorize(
+        v[bond], uniqueinds(v[bond], v[bond + 1]); ortho="left", which_decomp="qr"
+    )
     vv = copy(v)
     vv[bond] = Q
     vv[bond + 1] *= R
+    ITensors.setleftlim!(vv, bond)
+    ITensors.setrightlim!(vv, bond + 1)
 
     ITensors.position!(PH, vv, bond + 1)
-    K = PH(R)
-
-    ITensors.set_nsite!(PH, 1)
-    ITensors.position!(PH, vv, bond + 1) # Force recalculation of projections
     H2 = PH(vv[bond + 1])
+
+    ITensors.set_nsite!(PH, 0)
+    ITensors.position!(PH, vv, bond + 1) # Force recalculation
+    K = PH(R)
 
     return norm(H1)^2 + norm(H2)^2 + norm(K)^2
 end
 
 """
     function adaptbonddimensions!(
-        v::MPS, PH::TrackerProjMPO, max_bond::Int, convergence_factor_bonddims::Real
+        v::MPS, PH::AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
     )
 
 If necessary, enlarge the bond dimensions of the MPS `v`, so that it can dynamically and
@@ -104,7 +105,7 @@ simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
 function adaptbonddimensions!(
-    v::MPS, PH::TrackerProjMPO, max_bond::Int, convergence_factor_bonddims::Real
+    v::MPS, PH::ITensors.AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     for bond in 1:(length(v) - 1)
         if linkdim(v, bond) < max_bond
@@ -115,24 +116,84 @@ function adaptbonddimensions!(
                 # Increase the bond dimension by 1, check convergence, repeat if needed.
                 vcopy = copy(v)
                 new_bonddim = growbond!(vcopy, bond)
+                # Update PH using the new sites at `bond` and `bond + 1`:
+                recompute!(PH, vcopy, bond)
                 new_f = bondconvergencemeasure(PH, vcopy, bond)
 
                 # If new_f / f ≈ 1, within the given threshold, then f was already OK
                 # and we discard the new MPS, keeping the non-enlarged state.
                 if (new_f / f - 1 > convergence_factor_bonddims && new_bonddim < max_bond)
-                    growbond!(v, bond)
-                    d = linkdim(v, bond)
+                    d = growbond!(v, bond) # Actually increase v's bond dimensions
+                    #d = linkdim(v, bond)
                     @debug "[Bond ($bond,$(bond+1))] f($d)/f($(d-1)) - 1 > " *
                         "$convergence_factor_bonddims: increasing dimension to $d."
                     f = new_f # and begin a new iteration of the while block.
                 else
-                    @debug "[Bond ($bond,$(bond+1))] Convergence reached for now."
+                    # Bring PH back to its form before v's bond dimension was increased.
+                    recompute!(PH, v, bond)
+                    @debug "[Bond ($bond,$(bond+1))] Convergence reached at d=$(linkdim(v, bond))."
                     break # and proceed with the next bond in the MPS.
                 end
             end
         else
             @debug "[Bond ($bond,$(bond+1))] Max dimension reached. Skipping."
         end
+    end
+    return nothing
+end
+
+"""
+    recompute!(P::AbstractProjMPO, psi::MPS, n::Int)
+
+Recompute `P`'s projection operators assuming that `psi` has changed on sites
+(`n`, `n+1`). The position of the projection is not changed.
+"""
+function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
+    N = length(P.H)
+    @assert n ≤ N - 1
+    # Since v[n] and v[n+1] have changed, we assume that all projection operators
+    # currently stored in P which contain those two sites are invalid.
+    # Consequently, P.LR[n] and P.LR[n+1] must be recomputed.
+    # We spot three cases:
+    # 1) n, n+1 ≤ P.lpos
+    #    In this case, the right projections are fine, and we recompute P.LR[i] for each
+    #    i = n, n+1, ..., P.lpos.
+    # 2) n, n+1 ≥ P.rpos
+    #    We redo P.LR[N], P.LR[N-1], ..., P.LR[n].
+    # 3) n = P.lpos
+    #    Here n+1 may or may not be = P.rpos, it depends on P.nsite.
+    #    The projection in P.LR[n] must surely be recomputed, but if n+1 is in the "open"
+    #    (unprojected) part of the ProjMPO, what happens if we recompute P.LR[n+1]?
+    #    It doesn't affect the product of P with a tensor in this configuration, but
+    #    it might affect later calculations when we shift the projection on another site.
+    #    Now, if we move the projection to the right, P.LR[n+1] will get overwritten, so
+    #    no problem there; if we move to the left, or we decrease P.nsite, then P.LR[n+1]
+    #    will _not_ be recomputed by position!, which will instead reuse (assuming it has
+    #    already been computed) what is already in P.LR. So anyway it is best to just
+    #    recompute P.LR[n], P.LR[n+1] and be done with it.
+    if n + 1 ≤ P.lpos
+        L = (n - 1 < 1 ? ITensors.OneITensor() : P.LR[n - 1])
+
+        L = L * v[n] * P.H[n] * dag(prime(v[n]))
+        P.LR[n] = L
+        L = L * v[n + 1] * P.H[n + 1] * dag(prime(v[n + 1]))
+        P.LR[n + 1] = L
+    elseif n ≥ P.rpos
+        R = (n + 2 > N ? ITensors.OneITensor() : P.LR[n + 2])
+
+        R = R * v[n + 1] * P.H[n + 1] * dag(prime(v[n + 1]))
+        P.LR[n + 1] = R
+        R = R * v[n] * P.H[n] * dag(prime(v[n]))
+        P.LR[n] = R
+    elseif n == P.lpos
+        L = (n - 1 ≤ 0 ? ITensors.OneITensor() : P.LR[n - 1])
+        R = (n + 2 ≥ N + 1 ? ITensors.OneITensor() : P.LR[n + 2])
+        P.LR[n] = L * v[n] * P.H[n] * dag(prime(v[n]))
+        P.LR[n + 1] = R * v[n + 1] * P.H[n + 1] * dag(prime(v[n + 1]))
+    else
+        @warn "v[n] and v[n+1] have changed but sites n and n+1 are currently associated " *
+            "to the \"open part\" of the projection represented by the ProjMPO object. " *
+            "This may lead to some issues. Be careful."
     end
     return nothing
 end
