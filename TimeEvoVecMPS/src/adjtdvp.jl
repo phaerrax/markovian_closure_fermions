@@ -269,14 +269,13 @@ function adaptiveadjtdvp1vec!(
 
     prev_t = zero(Δt)
     for s in 1:nsteps
-        @debug "[Step $s] Attempting to grow the bond dimensions."
-        adaptbonddimensions!(operator, H, max_bond, convergence_factor_bonddims)
-
-        # Prepare for first iteration.
-        orthogonalize!(operator, 1)
         PH = ProjMPO(H)
-        singlesite!(PH)
+        orthogonalize!(operator, 1)
+        ITensors.set_nsite!(PH, 1)
         position!(PH, operator, 1)
+
+        @debug "[Step $s] Attempting to grow the bond dimensions."
+        adaptbonddimensions!(operator, PH, max_bond, convergence_factor_bonddims)
 
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -293,7 +292,7 @@ function adaptiveadjtdvp1vec!(
                 # 1. Project the Hamiltonian on the current site.
                 #    --------------------------------------------
 
-                singlesite!(PH)
+                ITensors.set_nsite!(PH, 1)
                 ITensors.position!(PH, operator, site)
 
                 # 2. Evolve A(site) for half the time-step Δt.
@@ -344,7 +343,7 @@ function adaptiveadjtdvp1vec!(
                     #    -----------------------------------------------------------
 
                     # Calculate the new zero-site projection of the evolution operator.
-                    zerosite!(PH)
+                    ITensors.set_nsite!(PH, 0)
                     position!(PH, operator, ha == 1 ? site + 1 : site)
                     # Shouldn't we have ha == 1 ? site+1 : site-1 ?
 
@@ -371,7 +370,7 @@ function adaptiveadjtdvp1vec!(
 
                     # Reset the single-site projection of the evolution operator,
                     # ready for the next sweep.
-                    singlesite!(PH)
+                    ITensors.set_nsite!(PH, 1)
                 else
                     # There's nothing to do if the half-sweep is at the last site.
                     operator[site] = φ
