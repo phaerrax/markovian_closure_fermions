@@ -18,6 +18,7 @@
     "discarded_w": 10e-12,
     "exp_tol":     10e-10,
     "krylov_dim":  10,
+    "convergence_factor_bondadapt": 1e-8,
 
     "MC_alphas": "mc_standard_parameters/alphas_6.dat",
     "MC_betas":  "mc_standard_parameters/betas_6.dat",

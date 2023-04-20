@@ -162,7 +162,7 @@ let
         io_file=parameters["out_file"],
         io_ranks=parameters["ranks_file"],
         io_times=parameters["times_file"],
-        convergence_factor_bonddims=1e-4,
+        convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
         max_bond=parameters["max_bond"]
     )
 end

@@ -150,14 +150,14 @@ let
         hermitian=false,
         normalize=false,
         callback=cb,
-        progress=false,
+        progress=true,
         exp_tol=parameters["exp_tol"],
         krylovdim=parameters["krylov_dim"],
         store_psi0=false,
         io_file=parameters["out_file"],
         io_ranks=parameters["ranks_file"],
         io_times=parameters["times_file"],
-        convergence_factor_bonddims=1e-4,
+        convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
         max_bond=parameters["max_bond"]
     )
 end
