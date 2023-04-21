@@ -406,11 +406,8 @@ function stretchBondDim(state::MPS, extDim::Int64)
     psiExt = copy(state)
     NN = length(psiExt)
     for n in 1:(NN - 1)
-        a = commonind(psiExt[n], psiExt[n + 1])
-        tagsa = tags(a)
-        add_indx = Index(extDim; tags=tagsa)
-        psiExt[n] = psiExt[n] * delta(a, add_indx)
-        psiExt[n + 1] = psiExt[n + 1] * delta(a, add_indx)
+        growbond!(psiExt, n; increment=extDim - 1)
+        # The result will have a bond dimension of extDim on all bonds.
     end
     #println("Overlap <original|extended> states: ", dot(state,psiExt));
     return psiExt, dot(state, psiExt)

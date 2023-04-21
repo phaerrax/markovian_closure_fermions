@@ -1,0 +1,39 @@
+{
+    "sys_en": 2,
+    "sys_coup": 0,
+    "sys_ini": "Up",
+    "interaction_type": "xx",
+
+    "chain_length": 10,
+    "tedopa_coefficients": "test/adaptive_tdvp1/test.tedopa",
+
+    "out_file":   "test/adaptive_tdvp1/measurements.dat",
+    "ranks_file": "test/adaptive_tdvp1/ranks.dat",
+    "times_file": "test/adaptive_tdvp1/times.dat",
+
+    "tmax":        0.2,
+    "tstep":       0.01,
+    "ms_stride":   2,
+    "max_bond":    40,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+    "convergence_factor_bondadapt": 1e-8,
+
+    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+    "MC_betas":  "mc_standard_parameters/betas_6.dat",
+    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+    "asympt_frequency": 0,
+    "asympt_coupling": 0.5,
+
+    "observables":
+    {
+        "vecσx": [1],
+        "vecσz": [1],
+        "vecN":  [
+            1,
+            2,
+            12,17
+        ]
+    }
+}
