@@ -1,7 +1,7 @@
 # some extensions for ITensors functionality
 # the goal is to eventually contribute these upstream if found appropriate
 
-export growbond!, bondconvergencemeasure, adaptbonddimensions!, recompute!
+export growbond!, bondconvergencemeasure, adaptbonddimensions!, recompute!, maxlinkdims
 
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel>=0
@@ -107,8 +107,9 @@ https://doi.org/10.48550/arXiv.2007.13528
 function adaptbonddimensions!(
     v::MPS, PH::ITensors.AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
+    maxbonddimensions = maxlinkdims(v, max_bond)
     for bond in 1:(length(v) - 1)
-        if linkdim(v, bond) < max_bond
+        if linkdim(v, bond) < maxbonddimensions[bond]
             # Skip all this if the bond is already at (or above!) the maximum
             # allowed value.
             f = bondconvergencemeasure(PH, v, bond)
@@ -196,4 +197,20 @@ function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
             "This may lead to some issues. Be careful."
     end
     return nothing
+end
+
+function maxlinkdims(v::MPS, maxbonddim::Int)::Vector{Int}
+    # Naive method:
+    #   dims = dim.(siteinds(only, v)) .^ (1:length(v))
+    #   return min.(min.(dims, reverse(dims)), Ref(maxdim))
+    # but if `v` has a lot of sites, the calculations in `dims` quickly overflow.
+    # We go through the logarithms instead, so as to avoid the exponentiation.
+    # Once we cap the values at `maxbonddim`, we can safely exponentiate.
+    sitedims = dim.(siteinds(only, v))
+    logdims = (1:length(v)) .* log2.(sitedims)
+    cappedlogdims =
+        min.(
+            min.(logdims[1:(end - 1)], reverse(logdims[1:(end - 1)])), Ref(log2(maxbonddim))
+        )
+    return Int.(round.(2 .^ cappedlogdims))
 end
