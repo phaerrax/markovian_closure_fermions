@@ -108,6 +108,7 @@ function adaptbonddimensions!(
     v::MPS, PH::ITensors.AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     maxbonddimensions = maxlinkdims(v, max_bond)
+    @show ITensors.linkdims(v)
     for bond in 1:(length(v) - 1)
         if linkdim(v, bond) < maxbonddimensions[bond]
             # Skip all this if the bond is already at (or above!) the maximum
@@ -123,7 +124,7 @@ function adaptbonddimensions!(
 
                 # If new_f / f ≈ 1, within the given threshold, then f was already OK
                 # and we discard the new MPS, keeping the non-enlarged state.
-                if (new_f / f - 1 > convergence_factor_bonddims && new_bonddim < max_bond)
+                if (new_f / f - 1 > convergence_factor_bonddims && new_bonddim ≤ max_bond)
                     d = growbond!(v, bond) # Actually increase v's bond dimensions
                     #d = linkdim(v, bond)
                     @debug "[Bond ($bond,$(bond+1))] f($d)/f($(d-1)) - 1 > " *
