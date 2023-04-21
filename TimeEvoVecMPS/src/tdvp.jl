@@ -815,7 +815,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
     N = length(state)
 
     for s in 1:nsteps
-        PH = TrackerProjMPO(H)
+        PH = ProjMPO(H)
         orthogonalize!(state, 1)
         ITensors.set_nsite!(PH, 1)
         position!(PH, state, 1)
