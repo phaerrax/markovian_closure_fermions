@@ -3,7 +3,7 @@ using IterTools
 using DelimitedFiles
 using PseudomodesTTEDOPA
 
-include("./TDVP_lib_VecRho.jl")
+include("../TDVP_lib_VecRho.jl")
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).

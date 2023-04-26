@@ -2,7 +2,7 @@ using ITensors
 using DelimitedFiles
 using PseudomodesTTEDOPA
 
-include("./TDVP_lib_VecRho.jl")
+include("../TDVP_lib_VecRho.jl")
 
 let
     parameters = load_pars(ARGS[1])

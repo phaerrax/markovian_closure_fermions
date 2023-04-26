@@ -3,7 +3,7 @@ using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
-include("./TDVP_lib_VecRho.jl")
+include("../TDVP_lib_VecRho.jl")
 
 let
     parameters = load_pars(ARGS[1])

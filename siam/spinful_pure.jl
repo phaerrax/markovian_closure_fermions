@@ -3,7 +3,7 @@ using IterTools
 using DelimitedFiles
 using PseudomodesTTEDOPA
 
-include("./TDVP_lib_VecRho.jl")
+include("../TDVP_lib_VecRho.jl")
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
@@ -51,7 +51,7 @@ let
     psi0 = MPS(sites, [initialsites[i] for i in 1:total_size])
 
     # Copy initial state into evolving state.
-    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
+    psi, overlap = stretchBondDim(psi0, 4)
 
     # Hamiltonian of the system:
     h = OpSum()
@@ -115,7 +115,7 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    tdvp1!(
+    adaptivetdvp1!(
         psi,
         H,
         timestep,
@@ -130,5 +130,7 @@ let
         io_file=parameters["out_file"],
         io_ranks=parameters["ranks_file"],
         io_times=parameters["times_file"],
+        convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
+        max_bond=parameters["max_bond"]
     )
 end
