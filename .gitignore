@@ -6,6 +6,7 @@
 *.pdf
 *.tedopa
 *.thermofield
+*.gnuplot
 
 # File di slurm
 *.out
