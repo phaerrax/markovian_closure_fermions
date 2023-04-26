@@ -1,0 +1,24 @@
+{
+    "sys_en": -0.3926,
+    "sys_ini": "Emp",
+
+    "chain_length": 40,
+    "thermofield_coefficients": "test/siam/pure_interleaved/semicircle_T2.thermofield",
+
+    "out_file":   "test/siam/pure_interleaved/noninteracting_T2_measurements.dat",
+    "ranks_file": "test/siam/pure_interleaved/noninteracting_T2_ranks.dat",
+    "times_file": "test/siam/pure_interleaved/noninteracting_T2_times.dat",
+
+    "tmax":        40,
+    "tstep":       0.01,
+    "ms_stride":   10,
+    "max_bond":    60,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "observables":
+    {
+        "n":  [1,41,81]
+    }
+}

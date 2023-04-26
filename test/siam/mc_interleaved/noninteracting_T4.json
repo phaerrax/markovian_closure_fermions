@@ -1,0 +1,37 @@
+{
+    "sys_en": -0.3926,
+    "sys_ini": "Dn",
+
+    "chain_length": 5,
+    "thermofield_coefficients": "test/siam/mc_interleaved/semicircle_T4.thermofield",
+
+    "out_file":   "test/siam/mc_interleaved/noninteracting_T4_measurements.dat",
+    "ranks_file": "test/siam/mc_interleaved/noninteracting_T4_ranks.dat",
+    "times_file": "test/siam/mc_interleaved/noninteracting_T4_times.dat",
+
+    "tmax":        40,
+    "tstep":       0.01,
+    "ms_stride":   10,
+    "max_bond":    100,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+    "MC_betas":  "mc_standard_parameters/betas_6.dat",
+    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+
+    "empty_asympt_frequency": 0.5,
+    "empty_asympt_coupling": 0.25,
+    "filled_asympt_frequency": -0.5,
+    "filled_asympt_coupling": 0.25,
+
+    "observables":
+    {
+        "vN":  [
+            1,
+            2,3,10,11,
+            12,13,22,23
+        ]
+    }
+}
