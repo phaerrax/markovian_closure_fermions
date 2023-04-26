@@ -1,0 +1,36 @@
+{
+    "sys_en": 2,
+    "sys_coup": 0,
+    "sys_ini": "Up",
+    "interaction_type": "exchange",
+
+    "chain_length": 6,
+    "tedopa_coefficients": "test/mc_fermions_without_strings/semicircle_T1.tedopa",
+
+    "out_file":   "test/mc_fermions_without_strings/mc_strings_T1_measurements.dat",
+    "ranks_file": "/dev/null",
+    "times_file": "/dev/null",
+
+    "tmax":        30,
+    "tstep":       0.01,
+    "ms_stride":   10,
+    "max_bond":    60,
+    "discarded_w": 10e-12,
+    "exp_tol":     10e-10,
+    "krylov_dim":  10,
+
+    "MC_alphas": "mc_standard_parameters/alphas_6.dat",
+    "MC_betas":  "mc_standard_parameters/betas_6.dat",
+    "MC_coups":  "mc_standard_parameters/coupls_6.dat",
+    "asympt_frequency": 1,
+    "asympt_coupling": 0.5,
+
+    "observables":
+    {
+        "vN":  [
+            1,
+            2,3,4,5,6,7,
+            8,13
+        ]
+    }
+}
