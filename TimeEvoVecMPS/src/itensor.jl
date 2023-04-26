@@ -108,7 +108,6 @@ function adaptbonddimensions!(
     v::MPS, PH::ITensors.AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     maxbonddimensions = maxlinkdims(v, max_bond)
-    @show ITensors.linkdims(v)
     for bond in 1:(length(v) - 1)
         if linkdim(v, bond) < maxbonddimensions[bond]
             # Skip all this if the bond is already at (or above!) the maximum
