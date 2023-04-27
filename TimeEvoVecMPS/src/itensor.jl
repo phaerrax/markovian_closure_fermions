@@ -105,6 +105,13 @@ function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
     return nothing
 end
 
+"""
+    maxlinkdims(v::MPS, maxbonddim::Int)::Vector{Int}
+
+Return a vector containing the maximum bond dimensions that the MPS `v` can have, taking
+into account both the physical dimension of its sites and a manually set upper bound
+`maxbonddim`. The function assumes that all sites share the same physical dimension.
+"""
 function maxlinkdims(v::MPS, maxbonddim::Int)::Vector{Int}
     # Naive method:
     #   dims = dim.(siteinds(only, v)) .^ (1:length(v))
