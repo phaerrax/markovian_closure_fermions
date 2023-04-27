@@ -13,9 +13,13 @@ include("itensor.jl")
 include("bondgate.jl")
 include("bondop.jl")
 include("callback.jl")
+
 include("tebd.jl")
+
 include("tdvp.jl")
 include("adjtdvp.jl")
+include("adaptivetdvp.jl")
+
 include("testutils.jl")
 
 end # module
