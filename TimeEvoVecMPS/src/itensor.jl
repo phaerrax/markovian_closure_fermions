@@ -1,7 +1,7 @@
 # some extensions for ITensors functionality
 # the goal is to eventually contribute these upstream if found appropriate
 
-export growbond!, recompute!, maxlinkdims
+export growbond!, recompute!, maxlinkdims, stretchBondDim, growMPS, growMPS!
 
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel>=0
@@ -50,11 +50,66 @@ function growbond!(v::MPS, bond::Integer; increment::Integer=1)::Integer
 end
 
 """
+    growMPS(v::MPS, dims::Vector{<:Integer})
+
+Grow the dimension of `v`'s bond indices so that the result has a bond dimension of
+`dims[n]` on bond (`n`, `n+1`).
+Return the new MPS and its overlap with the original one.
+"""
+function growMPS(v::MPS, dims::Vector{<:Integer})
+    @assert length(dims) == length(v)-1
+    v_ext = copy(v)
+    for (n,d) in zip(1:(length(v)- 1), dims)
+        growbond!(v_ext, n; increment=d - 1)
+    end
+    @debug "Overlap ⟨original|extended⟩: $(dot(v, v_ext))"
+    return v_ext, dot(v, v_ext)
+end
+
+"""
+    growMPS(v::MPS, d::Integer)
+
+Grow the dimension of `v`'s bond indices so that the result has a bond dimension of
+`d` on each of its bonds.
+Return the new MPS and its overlap with the original one.
+"""
+growMPS(v::MPS, d::Integer) = growMPS(v, fill(d, length(v)-1))
+
+const stretchBondDim = growMPS
+
+"""
+    growMPS!(v::MPS, dims::Vector{<:Integer})
+
+Grow the dimension of `v`'s bond indices (in place) so that the result has a bond dimension
+of `dims[n]` on bond (`n`, `n+1`).
+Return the overlap of the new MPS with the original one.
+"""
+function growMPS!(v::MPS, dims::Vector{<:Integer})
+    @assert length(dims) == length(v)-1
+    v_ext = copy(v)
+    for (n,d) in zip(1:(length(v)- 1), dims)
+        growbond!(v, n; increment=d - 1)
+    end
+    @debug "Overlap ⟨original|extended⟩: $(dot(v, v_ext))"
+    return dot(v, v_ext)
+end
+
+"""
+    growMPS!(v::MPS, d::Integer)
+
+Grow the dimension of `v`'s bond indices (in place) so that the result has a bond dimension
+of `d` on each of its bonds.
+Return the overlap of the new MPS with the original one.
+"""
+growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v)-1))
+
+"""
     recompute!(P::AbstractProjMPO, psi::MPS, n::Int)
 
 Recompute `P`'s projection operators assuming that `psi` has changed on sites
 (`n`, `n+1`). The position of the projection is not changed.
 """
+
 function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
     N = length(P.H)
     @assert n ≤ N - 1
