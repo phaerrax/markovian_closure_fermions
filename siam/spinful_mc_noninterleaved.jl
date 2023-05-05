@@ -253,10 +253,6 @@ let
     end
     L = MPO(ℓ, sites)
 
-    # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
-    # the number of singular values between the bonds.
-    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
-
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
@@ -270,21 +266,47 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    tdvp1vec!(
-        psi,
-        L,
-        timestep,
-        tmax,
-        sites;
-        hermitian=false,
-        normalize=false,
-        callback=cb,
-        progress=true,
-        exp_tol=parameters["exp_tol"],
-        krylovdim=parameters["krylov_dim"],
-        store_psi0=false,
-        io_file=parameters["out_file"],
-        io_ranks=parameters["ranks_file"],
-        io_times=parameters["times_file"],
-    )
+    if get(parameters, "convergence_factor_bondadapt", 0) == 0
+        @info "Using standard algorithm."
+        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+        tdvp1vec!(
+            psi,
+            L,
+            timestep,
+            tmax,
+            sites;
+            hermitian=false,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+        )
+    else
+        @info "Using adaptive algorithm."
+        psi, _ = stretchBondDim(psi0, 4)
+        adaptivetdvp1vec!(
+            psi,
+            L,
+            timestep,
+            tmax,
+            sites;
+            hermitian=false,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
+            max_bond=parameters["max_bond"],
+        )
+    end
 end

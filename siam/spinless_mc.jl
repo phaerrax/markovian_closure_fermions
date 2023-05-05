@@ -58,16 +58,16 @@ let
 
     chain_length = parameters["chain_length"]
     closure_length = length(empty_closure_ω)
-total_size=system_length + 2chain_length + 2closure_length
+    total_size = system_length + 2chain_length + 2closure_length
 
     # Site ranges
     system_site = 1
     filled_chain = range(; start=3, step=2, length=chain_length)
-    filled_closure = range(; start=filled_chain[end]+2, step=2, length=closure_length)
+    filled_closure = range(; start=filled_chain[end] + 2, step=2, length=closure_length)
     empty_chain = range(; start=2, step=2, length=chain_length)
-    empty_closure = range(; start=empty_chain[end]+2, step=2, length=closure_length)
+    empty_closure = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
 
-sites = siteinds("vS=1/2", total_size)
+    sites = siteinds("vS=1/2", total_size)
     initialsites = Dict(
         [
             system_site => parameters["sys_ini"]
@@ -93,25 +93,35 @@ sites = siteinds("vS=1/2", total_size)
         ℓ += empty_chain_coups[1] * gkslcommutator("σ+", system_site, "σ-", empty_chain[1])
         ℓ += empty_chain_coups[1] * gkslcommutator("σ-", system_site, "σ+", empty_chain[1])
         ℓ +=
-        -filled_chain_coups[1] * gkslcommutator("σ+", system_site, "σz", empty_chain[1], "σ-", filled_chain[1])
+            -filled_chain_coups[1] *
+            gkslcommutator("σ+", system_site, "σz", empty_chain[1], "σ-", filled_chain[1])
         ℓ +=
-        -filled_chain_coups[1] * gkslcommutator("σ-", system_site, "σz", empty_chain[1], "σ+", filled_chain[1])
+            -filled_chain_coups[1] *
+            gkslcommutator("σ-", system_site, "σz", empty_chain[1], "σ+", filled_chain[1])
 
         # Hamiltonian of the chain stubs:
         for (j, site) in enumerate(empty_chain)
             ℓ += empty_chain_freqs[j] * gkslcommutator("N", site)
         end
         for (j, (site1, site2)) in enumerate(partition(empty_chain, 2, 1))
-            ℓ += -empty_chain_coups[j + 1] * gkslcommutator("σ+", site1, "σz", site1+1, "σ-", site2)
-            ℓ += -empty_chain_coups[j + 1] * gkslcommutator("σ-", site1, "σz", site1+1, "σ+", site2)
+            ℓ +=
+                -empty_chain_coups[j + 1] *
+                gkslcommutator("σ+", site1, "σz", site1 + 1, "σ-", site2)
+            ℓ +=
+                -empty_chain_coups[j + 1] *
+                gkslcommutator("σ-", site1, "σz", site1 + 1, "σ+", site2)
         end
 
         for (j, site) in enumerate(filled_chain)
             ℓ += filled_chain_freqs[j] * gkslcommutator("N", site)
         end
         for (j, (site1, site2)) in enumerate(partition(filled_chain, 2, 1))
-            ℓ += -filled_chain_coups[j + 1] * gkslcommutator("σ+", site1, "σz", site1+1, "σ-", site2)
-            ℓ += -filled_chain_coups[j + 1] * gkslcommutator("σ-", site1, "σz", site1+1, "σ+", site2)
+            ℓ +=
+                -filled_chain_coups[j + 1] *
+                gkslcommutator("σ+", site1, "σz", site1 + 1, "σ-", site2)
+            ℓ +=
+                -filled_chain_coups[j + 1] *
+                gkslcommutator("σ-", site1, "σz", site1 + 1, "σ+", site2)
         end
     end
 
@@ -120,8 +130,8 @@ sites = siteinds("vS=1/2", total_size)
         ℓ += empty_closure_ω[j] * gkslcommutator("N", site)
     end
     for (j, (site1, site2)) in enumerate(partition(empty_closure, 2, 1))
-        ℓ += -empty_closure_g[j] * gkslcommutator("σ-", site1, "σz", site1+1, "σ+", site2)
-        ℓ += -empty_closure_g[j] * gkslcommutator("σ+", site1, "σz", site1+1, "σ-", site2)
+        ℓ += -empty_closure_g[j] * gkslcommutator("σ-", site1, "σz", site1 + 1, "σ+", site2)
+        ℓ += -empty_closure_g[j] * gkslcommutator("σ+", site1, "σz", site1 + 1, "σ-", site2)
     end
     for (j, site) in enumerate(empty_closure)
         chainedge = empty_chain[end]
@@ -145,8 +155,10 @@ sites = siteinds("vS=1/2", total_size)
         ℓ += filled_closure_ω[j] * gkslcommutator("N", site)
     end
     for (j, (site1, site2)) in enumerate(partition(filled_closure, 2, 1))
-        ℓ += -filled_closure_g[j] * gkslcommutator("σ-", site1, "σz", site1+1, "σ+", site2)
-        ℓ += -filled_closure_g[j] * gkslcommutator("σ+", site1, "σz", site1+1, "σ-", site2)
+        ℓ +=
+            -filled_closure_g[j] * gkslcommutator("σ-", site1, "σz", site1 + 1, "σ+", site2)
+        ℓ +=
+            -filled_closure_g[j] * gkslcommutator("σ+", site1, "σz", site1 + 1, "σ-", site2)
     end
     for (j, site) in enumerate(filled_closure)
         chainedge = filled_chain[end]
@@ -193,10 +205,6 @@ sites = siteinds("vS=1/2", total_size)
     end
     L = MPO(ℓ, sites)
 
-    # Enlarge the bond dimensions so that TDVP1 has the possibility to grow
-    # the number of singular values between the bonds.
-    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
-
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
@@ -210,21 +218,47 @@ sites = siteinds("vS=1/2", total_size)
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    tdvp1vec!(
-        psi,
-        L,
-        timestep,
-        tmax,
-        sites;
-        hermitian=false,
-        normalize=false,
-        callback=cb,
-        progress=true,
-        exp_tol=parameters["exp_tol"],
-        krylovdim=parameters["krylov_dim"],
-        store_psi0=false,
-        io_file=parameters["out_file"],
-        io_ranks=parameters["ranks_file"],
-        io_times=parameters["times_file"],
-    )
+    if get(parameters, "convergence_factor_bondadapt", 0) == 0
+        @info "Using standard algorithm."
+        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+        tdvp1vec!(
+            psi,
+            L,
+            timestep,
+            tmax,
+            sites;
+            hermitian=false,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+        )
+    else
+        @info "Using adaptive algorithm."
+        psi, _ = stretchBondDim(psi0, 2)
+        adaptivetdvp1vec!(
+            psi,
+            L,
+            timestep,
+            tmax,
+            sites;
+            hermitian=false,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
+            max_bond=parameters["max_bond"],
+        )
+    end
 end

@@ -76,7 +76,6 @@ let
             repeat(["vId"], chain_length + closure_length)
         ],
     )
-    targetop, _ = stretchBondDim(init_targetop, parameters["max_bond"])
     opgrade = "even"
 
     # Site ranges
@@ -280,21 +279,46 @@ let
         adjℓ += 0.5filled_closure_γ[j], "Ndn⋅", site
         adjℓ += 0.5filled_closure_γ[j], "⋅Ndn", site
     end
+
     adjL = MPO(adjℓ, sites)
 
-    adjtdvp1vec!(
-        targetop,
-        init_state,
-        adjL,
-        parameters["tstep"],
-        parameters["tmax"],
-        parameters["ms_stride"] * parameters["tstep"],
-        sites;
-        progress=true,
-        exp_tol=parameters["exp_tol"],
-        krylovdim=parameters["krylov_dim"],
-        io_file=parameters["out_file"],
-        io_ranks=parameters["ranks_file"],
-        io_times=parameters["times_file"],
-    )
+    if get(parameters, "convergence_factor_bondadapt", 0) == 0
+        @info "Using standard algorithm."
+        targetop, _ = stretchBondDim(init_targetop, parameters["max_bond"])
+        adjtdvp1vec!(
+            targetop,
+            init_state,
+            adjL,
+            parameters["tstep"],
+            parameters["tmax"],
+            parameters["ms_stride"] * parameters["tstep"],
+            sites;
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+        )
+    else
+        @info "Using adaptive algorithm."
+        targetop, _ = stretchBondDim(init_targetop, 4)
+        adaptiveadjtdvp1vec!(
+            targetop,
+            init_state,
+            adjL,
+            parameters["tstep"],
+            parameters["tmax"],
+            parameters["ms_stride"] * parameters["tstep"],
+            sites;
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
+            max_bond=parameters["max_bond"],
+        )
+    end
 end

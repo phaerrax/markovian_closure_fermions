@@ -39,9 +39,6 @@ let
         [repeat(["Occ"], chain_length); system_initstate; repeat(["Emp"], chain_length)],
     )
 
-    # Copy initial state into evolving state.
-    psi, overlap = stretchBondDim(psi0, parameters["max_bond"])
-
     # Hamiltonian of the system:
     h = OpSum()
 
@@ -87,20 +84,45 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    tdvp1!(
-        psi,
-        H,
-        timestep,
-        tmax;
-        hermitian=true,
-        normalize=false,
-        callback=cb,
-        progress=true,
-        exp_tol=parameters["exp_tol"],
-        krylovdim=parameters["krylov_dim"],
-        store_psi0=false,
-        io_file=parameters["out_file"],
-        io_ranks=parameters["ranks_file"],
-        io_times=parameters["times_file"],
-    )
+    if get(parameters, "convergence_factor_bondadapt", 0) == 0
+        @info "Using standard algorithm."
+        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+        tdvp1!(
+            psi,
+            H,
+            timestep,
+            tmax;
+            hermitian=true,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+        )
+    else
+        @info "Using adaptive algorithm."
+        psi, _ = stretchBondDim(psi0, 2)
+        adaptivetdvp1!(
+            psi,
+            H,
+            timestep,
+            tmax;
+            hermitian=true,
+            normalize=false,
+            callback=cb,
+            progress=true,
+            exp_tol=parameters["exp_tol"],
+            krylovdim=parameters["krylov_dim"],
+            store_psi0=false,
+            io_file=parameters["out_file"],
+            io_ranks=parameters["ranks_file"],
+            io_times=parameters["times_file"],
+            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
+            max_bond=parameters["max_bond"],
+        )
+    end
 end
