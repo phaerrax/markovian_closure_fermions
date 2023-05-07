@@ -7,14 +7,14 @@
     "chain_length": 40,
     "thermofield_coefficients": "test/siam/interacting/semicircle_T2.thermofield",
 
-    "out_file":   "test/siam/interacting/pure_T2_measurements.dat",
-    "ranks_file": "test/siam/interacting/pure_T2_ranks.dat",
-    "times_file": "test/siam/interacting/pure_T2_times.dat",
+    "out_file":   "test/siam/interacting/pure_T2_b100_measurements.dat",
+    "ranks_file": "test/siam/interacting/pure_T2_b100_ranks.dat",
+    "times_file": "test/siam/interacting/pure_T2_b100_times.dat",
 
     "tmax":        20,
     "tstep":       0.01,
     "ms_stride":   10,
-    "max_bond":    80,
+    "max_bond":    100,
     "discarded_w": 10e-12,
     "exp_tol":     10e-10,
     "krylov_dim":  10,
