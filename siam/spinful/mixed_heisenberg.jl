@@ -4,8 +4,6 @@ using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 using IterTools
 
-include("../../TDVP_lib_VecRho.jl")
-
 # This script tries to emulate the simulation of the interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
 # An impurity is interacting with a spin-1/2 fermionic thermal bath, which is mapped onto

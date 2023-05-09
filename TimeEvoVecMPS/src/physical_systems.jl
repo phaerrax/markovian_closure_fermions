@@ -1,22 +1,4 @@
-using ITensors
-using JSON
-using DelimitedFiles
-using Permutations
-using TimeEvoVecMPS
-using PseudomodesTTEDOPA
-
-"""
-    load_pars(file_name::String)
-
-Load the JSON file `file_name` into a dictionary.
-"""
-function load_pars(file_name::String)
-    input = open(file_name)
-    s = read(input, String)
-    # Aggiungo anche il nome del file alla lista di parametri.
-    p = JSON.parse(s)
-    return p
-end
+export defineSystem, createMPO, createMPO2MC, createMPOVecRho
 
 function defineSystem(;
     sys_type::String="HvS=1/2",
@@ -391,13 +373,4 @@ function createMPOVecRho(
     #################################
 
     return MPO(thempo, sysenv)
-end
-
-function createObs(lookat)
-    vobs = opPos[]
-    for a in lookat
-        push!(vobs, opPos(a[1], a[2]))
-    end
-
-    return vobs
 end

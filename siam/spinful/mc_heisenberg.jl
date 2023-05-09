@@ -4,8 +4,6 @@ using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 using IterTools
 
-include("../../TDVP_lib_VecRho.jl")
-
 # This script tries to emulate the simulation of the interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
 # An impurity is interacting with a spin-1/2 fermionic thermal bath, which is mapped onto
@@ -236,34 +234,34 @@ let
         # • {a↓ₖ, a↓ₖ†} = {a↑ₖ, a↑ₖ†} = 1;
         # • Fₖ anticommutes with a↓ₖ, a↓ₖ†, a↑ₖ and a↑ₖ†.
 
-        # c↑ₖ† ρ c↑ₖ = a↑ₖ† Fₖ₋₁ ⋯ F₁ ρ F₁ ⋯ Fₖ₋₁ a↑ₖ
+        # c↑ₖ† X c↑ₖ = a↑ₖ† Fₖ₋₁ ⋯ F₁ X F₁ ⋯ Fₖ₋₁ a↑ₖ
         opstring = [repeat(["F⋅ * ⋅F"], site - 1); "Aup†⋅ * ⋅Aup"]
         adjℓ += (
             gradefactor * empty_closure_γ[j],
             collect(Iterators.flatten(zip(opstring, 1:site)))...,
         )
-        # c↓ₖ† ρ c↓ₖ = a↓ₖ†Fₖ Fₖ₋₁ ⋯ F₁ ρ F₁ ⋯ Fₖ₋₁ Fₖa↓ₖ
+        # c↓ₖ† X c↓ₖ = a↓ₖ†Fₖ Fₖ₋₁ ⋯ F₁ X F₁ ⋯ Fₖ₋₁ Fₖa↓ₖ
         opstring = [repeat(["F⋅ * ⋅F"], site - 1); "Adn†F⋅ * ⋅FAdn"]
         adjℓ += (
             gradefactor * empty_closure_γ[j],
             collect(Iterators.flatten(zip(opstring, 1:site)))...,
         )
 
-        # -½ (c↑ₖ† c↑ₖ ρ + ρ c↑ₖ† c↑ₖ) = -½ (a↑ₖ† a↑ₖ ρ + ρ a↑ₖ† a↑ₖ)
+        # -½ (c↑ₖ† c↑ₖ X + X c↑ₖ† c↑ₖ) = -½ (a↑ₖ† a↑ₖ X + X a↑ₖ† a↑ₖ)
         adjℓ += -0.5empty_closure_γ[j], "Nup⋅", site
         adjℓ += -0.5empty_closure_γ[j], "⋅Nup", site
-        # -½ (c↓ₖ† c↓ₖ ρ + ρ c↓ₖ† c↓ₖ) = -½ (a↓ₖ† a↓ₖ ρ + ρ a↓ₖ† a↓ₖ)
+        # -½ (c↓ₖ† c↓ₖ X + X c↓ₖ† c↓ₖ) = -½ (a↓ₖ† a↓ₖ X + X a↓ₖ† a↓ₖ)
         adjℓ += -0.5empty_closure_γ[j], "Ndn⋅", site
         adjℓ += -0.5empty_closure_γ[j], "⋅Ndn", site
     end
     for (j, site) in enumerate(filled_closure)
-        # c↑ₖ ρ c↑ₖ† = F₁ ⋯ Fₖ₋₁ a↑ₖ ρ a↑ₖ† Fₖ₋₁ ⋯ F₁
+        # c↑ₖ X c↑ₖ† = F₁ ⋯ Fₖ₋₁ a↑ₖ X a↑ₖ† Fₖ₋₁ ⋯ F₁
         opstring = [repeat(["F⋅ * ⋅F"], site - 1); "Aup⋅ * ⋅Aup†"]
         adjℓ += (
             gradefactor * filled_closure_γ[j],
             collect(Iterators.flatten(zip(opstring, 1:site)))...,
         )
-        # c↓ₖ ρ c↓ₖ† = F₁ ⋯ Fₖ₋₁ Fₖa↓ₖ ρ a↓ₖ†Fₖ Fₖ₋₁ ⋯ F₁
+        # c↓ₖ X c↓ₖ† = F₁ ⋯ Fₖ₋₁ Fₖa↓ₖ X a↓ₖ†Fₖ Fₖ₋₁ ⋯ F₁
         opstring = [repeat(["F⋅ * ⋅F"], site - 1); "FAdn⋅ * ⋅Adn†F"]
         adjℓ += (
             gradefactor * filled_closure_γ[j],
@@ -309,7 +307,7 @@ let
         )
     else
         @info "Using adaptive algorithm."
-        targetop, _ = stretchBondDim(init_targetop, 4)
+        targetop, _ = stretchBondDim(init_targetop, 16)
         adaptiveadjtdvp1vec!(
             targetop,
             init_state,

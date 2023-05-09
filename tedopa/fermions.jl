@@ -1,8 +1,7 @@
 using ITensors
 using DelimitedFiles
 using PseudomodesTTEDOPA
-
-include("../TDVP_lib_VecRho.jl")
+using TimeEvoVecMPS
 
 let
     parameters = load_pars(ARGS[1])

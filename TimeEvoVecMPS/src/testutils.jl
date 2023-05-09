@@ -1,5 +1,19 @@
 # a bunch of convenience functions that are currently helpful for testing
-export tfi_mpo, complex!,TFIgs, tfi_bondop
+export load_pars, tfi_mpo, complex!,TFIgs, tfi_bondop
+
+
+"""
+    load_pars(file_name::String)
+
+Load the JSON file `file_name` into a dictionary.
+"""
+function load_pars(file_name::String)
+    input = open(file_name)
+    s = read(input, String)
+    # Aggiungo anche il nome del file alla lista di parametri.
+    p = JSON.parse(s)
+    return p
+end
 
 function tfi_mpo(J,h,sites)
     ampo = AutoMPO()

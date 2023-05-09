@@ -3,6 +3,7 @@ export TEvoCallback,
     LocalMeasurementCallback,
     SpecCallback,
     opPos,
+    createObs,
     LocalPosMeasurementCallback,
     LocalPosVecMeasurementCallback,
     measurement_ts
@@ -103,6 +104,14 @@ struct LocalPosMeasurementCallback <: TEvoCallback
     measurements::Dict{String,Measurement}
     ts::Vector{Float64}
     dt_measure::Float64
+end
+
+function createObs(lookat)
+    vobs = opPos[]
+    for a in lookat
+        push!(vobs, opPos(a[1], a[2]))
+    end
+    return vobs
 end
 
 """

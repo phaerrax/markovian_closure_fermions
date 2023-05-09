@@ -6,7 +6,10 @@ using LinearAlgebra
 using Printf
 using KrylovKit: exponentiate
 using ProgressMeter
-
+using JSON
+using DelimitedFiles
+using Permutations
+using PseudomodesTTEDOPA
 
 include("trackerprojmpo.jl")
 include("itensor.jl")
@@ -21,5 +24,7 @@ include("adjtdvp.jl")
 include("adaptivetdvp.jl")
 
 include("testutils.jl")
+
+include("physical_systems.jl")
 
 end # module
