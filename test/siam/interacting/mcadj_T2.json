@@ -4,7 +4,7 @@
     "spin_interaction": 0.7,
     "interaction_type": "exchange",
 
-    "chain_length": 5,
+    "chain_length": 6,
     "thermofield_coefficients": "test/siam/interacting/semicircle_T2.thermofield",
 
     "MC_alphas": "mc_standard_parameters/alphas_6.dat",
@@ -19,12 +19,14 @@
     "ranks_file": "test/siam/interacting/mcadj_T2_ranks.dat",
     "times_file": "test/siam/interacting/mcadj_T2_times.dat",
 
-    "tmax":        20,
+    "tmax":        2,
     "tstep":       0.01,
     "ms_stride":   10,
-    "max_bond":    120,
+    "max_bond":    100,
     "discarded_w": 10e-12,
     "exp_tol":     10e-10,
     "krylov_dim":  10,
-    "convergence_factor_bondadapt": 1e-8
+    "convergence_factor_bondadapt": 1e-8,
+
+    "system_observable": "Ntot"
 }
