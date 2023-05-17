@@ -19,6 +19,7 @@ include("callback.jl")
 
 include("tebd.jl")
 
+include("tdvp_step.jl")
 include("tdvp.jl")
 include("adjtdvp.jl")
 include("adaptivetdvp.jl")
