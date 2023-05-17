@@ -251,7 +251,7 @@ end
 """
     measure_localops!(
         cb::LocalPosMeasurementCallback,
-        ψ::MPS,
+        wf::ITensor,
         i::Int,
         alg
     )
@@ -289,6 +289,71 @@ function measure_localops!(
             # different dictionary entry for each one of them.
             measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(m)
         end
+    end
+
+    return nothing
+end
+
+"""
+    measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, i::Int, alg)
+
+Measure each operator defined inside the callback object `cb` on the given MPS `psi`
+at the selected site `i` (depending on the algorithm `alg`).
+
+The function is implemented so as to contract the minimum number of tensor sites as
+needed to provide a correct result, given `i` and the orthocentre of the MPS.
+"""
+function measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, site::Int, alg)
+    # Get the operators defined on the given site.
+    operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
+
+    # Why do we need this function?
+    # We are sweeping right-to-left during a TDVP step, and we have just completed the
+    # evolution on site `site`.
+    # The MPS `psi` is now such that `psi[site]` is correctly updated at time `t`, but
+    # the orthocentre is on site `psi[site - 1]` (the step involves decomposing `psi[site]`
+    # into `Q * R` then leaving `Q` at the site and incorporating `R` into `psi[site - 1]`).
+    # This means that we cannot just use `psi[site]` to calculate the expectation value
+    # of an operator at site `site`, nor can we use the orthocentre `psi[site - 1]` for
+    # operators at site `site - 1` since it has not yet completed its evolution step.
+    # So what do we do?
+    # We take all sites between `site` and the orthocentre of the MPS, form an ITensor
+    # with those, and sandwich the operator.
+    oc = ortho_lims(psi) # This is a range
+    if site in oc
+        site_range = oc
+    elseif site < first(oc)
+        site_range = site:last(oc)
+    else # site > last(oc)
+        site_range = first(oc):site
+    end
+
+    for o in operators_thisbond
+        if o.op == "Norm"
+            x = norm(wf)
+        else
+            x = ITensor.OneITensor()
+            for s in site_range
+                if s == o.pos
+                    x *= dot(psi[s], noprime(op(sites(cb), o.op, s) * psi[s]))
+                else
+                    x *= dot(psi[s], psi[s])
+                end
+            end
+            x = scalar(x)
+        end
+        imag(x) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+
+        # NOTE Since we don't have an operator for each site, we have a single value
+        # for each operator in cb, and operators associated to different sites have
+        # different entries in the dictionary.
+        # Brought to an extreme, when using the other measure_localops! method a single
+        # operator A on every site of the chain would have a single dicionary entry,
+        # a list whose elements are the expectation values of A on each site.
+        # With this method, instead, if we have different operators Aᵢ for each
+        # site, they are not bunched up in a single line, but there will be a
+        # different dictionary entry for each one of them.
+        measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(x)
     end
 
     return nothing
