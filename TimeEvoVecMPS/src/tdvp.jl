@@ -393,8 +393,13 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
         pbar = nothing
     end
 
+    # Usually TDVP is used for ordinary time evolution according to a Hamiltonian given
+    # by `H`, and a real-valued time step `timestep`, combined in the evolution operator
+    # U(-itH).
+    # Passing an imaginary time step iτ (and `tf`) as an argument results in an evolution
+    # according to the operator U(-τH), useful for thermalization processes.
     Δt = im * timestep
-    imag(Δt) == 0 && (Δt = real(Δt))
+    imag(Δt) == 0 && (Δt = real(Δt)) # Discard imaginary part if time step is real.
 
     store_state0 && (state0 = copy(state))
 
@@ -407,8 +412,8 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
     # Prepare for first iteration
     orthogonalize!(state, 1)
     PH = ProjMPO(H)
-    singlesite!(PH)
-    position!(PH, state, 1)
+    ITensors.set_nsite!(PH, 1)
+    ITensors.position!(PH, state, 1)
 
     for s in 1:nsteps
         stime = @elapsed begin
@@ -419,127 +424,33 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
                 # (bond, ha) where bond is the bond number and ha is the half-sweep number.
                 # The kwarg ncenter determines the end and turning points of the loop: if
                 # it equals 1, then we perform a sweep on each single site.
-                # 
-                # Create a one-site projection of the Hamiltonian on the first site.
-                singlesite!(PH)
-                ITensors.position!(PH, state, site)
 
-                # TODO Here we could merge TDVP1 and TDVP2.
-                # φ = state[site]
-
-                # DEBUG
-                #println("Forward time evolution: site, ha ",site, ha);
-
-                #exptime = @elapsed begin
-                φ, info = exponentiate(
+                # ha == 1  =>  left-to-right sweep
+                # ha == 2  =>  right-to-left sweep
+                sweepdir = (ha == 1 ? "right" : "left")
+                tdvp_site_update!(
                     PH,
-                    -0.5Δt,
-                    state[site];
-                    ishermitian=hermitian,
-                    tol=exp_tol,
+                    state,
+                    site,
+                    -0.5Δt; # forward by -im*timestep/2, backwards by im*timestep/2.
+                    sweepdir=sweepdir,
+                    hermitian=hermitian,
+                    exp_tol=exp_tol,
                     krylovdim=krylovdim,
                     maxiter=maxiter,
-                    eager=true,
                 )
-                #end
-                #println("Forward exponentiation elapsed time: ", exptime)
-                info.converged == 0 && throw("exponentiate did not converge")
-
-                # Replace (temporarily) the local tensor with the evolved one.
-                state[site] = φ
-
-                # Calculate the expectation values of the observables within cb.
-                # TODO Check if measurement is faulty.
-                #mtime = @elapsed begin
                 apply!(
                     cb,
                     state;
                     t=s * timestep,
                     bond=site,
-                    sweepend=ha == 2,
-                    sweepdir=ha == 1 ? "right" : "left",
-                    #spec=spec,
+                    sweepend=(ha == 2),
+                    sweepdir=sweepdir,
                     alg=TDVP1(),
                 )
-                #end mtime
-                #println("Tempo per misure: ", mtime)
-
-                # Copypasted from
-                #https://github.com/ITensor/ITensorTDVP.jl/blob/main/src/tdvp_step.jl
-                if (ha == 1 && (site != N)) || (ha == 2 && site != 1)
-                    # Start from a right-canonical MPS A, where each matrix A(n) = Aᵣ(n) is
-                    # right-orthogonal.
-                    # Start at site n = 1 and repeat the following steps:
-                    # 1. Evolve A(n) for a time step Δt.
-                    # 2. Factorize the updated A(n) as Aₗ(n)C(n) such that the matrix Aₗ,
-                    # which will be left at site n, is left-orthogonal.
-                    # 3. Evolve C(n) backwards in time according for a time step Δt, before
-                    # absorbing it into the next site to create A(n + 1) = C(n)Aᵣ(n + 1).
-                    # 4. Evolve A(n + 1) and so on...
-                    #
-                    b1 = (ha == 1 ? site + 1 : site) # ???
-                    Δb = (ha == 1 ? +1 : -1)
-                    # site + Δb is the physical index of the next site in the sweep.
-                    uinds = uniqueinds(φ, state[site + Δb])
-
-                    #svdtime = @elapsed begin
-                    U, S, V = svd(φ, uinds)
-                    #end
-                    #println("Tempo svd: ", svdtime)
-
-                    state[site] = U # This is left(right)-orthogonal if ha==1(2).
-                    phi0 = S * V
-                    if ha == 1
-                        ITensors.setleftlim!(state, site)
-                    elseif ha == 2
-                        ITensors.setrightlim!(state, site)
-                    end
-
-                    zerosite!(PH)
-                    #postime = @elapsed begin
-                    position!(PH, state, b1)
-                    #end
-                    #println("tempo position site+1", postime)
-
-                    #Debug
-                    #println("Backward-time site, ha", site, ha)
-                    #exptime = @elapsed begin
-                    phi0, info = exponentiate(
-                        PH,
-                        0.5Δt,
-                        phi0;
-                        ishermitian=hermitian,
-                        tol=exp_tol,
-                        krylovdim=krylovdim,
-                        maxiter=maxiter,
-                        eager=true,
-                    )
-                    #end
-                    #println("Tempo esponenziazione indietro: ", exptime)
-                    #println("backward done!")
-
-                    # Reunite the backwards-evolved C(site) with the matrix on the
-                    # next site.
-                    state[site + Δb] = phi0 * state[site + Δb]
-
-                    if ha == 1
-                        ITensors.setrightlim!(state, site + Δb + 1)
-                    elseif ha == 2
-                        ITensors.setleftlim!(state, site + Δb - 1)
-                    end
-
-                    singlesite!(PH)
-                end
-
-                # Adesso il passo di evoluzione e` finito.
-                # Considerando che misuriamo "durante" lo sweep
-                # a sx, adesso l'ortogonality center e` sul sito a sx del bond
-                # quindi credo che la misura vada spostata piu` su
-                # ovvero prima di rendere il tensore right orthogonal
             end
         end
 
-        #println("time-step time: ",s*dt," t=", stime)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
@@ -599,7 +510,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
     # Vectorized equations of motion usually are not defined by an anti-Hermitian operator
     # such as -im H in Schrödinger's equation, so we do not bother here with "unitary" or
     # "imaginary-time" evolution types. We just have a generic equation of the form
-    # v'(t) = L v(t).
+    # v'(t) = L v(t)  ==>  v(t) = exp(tL) v(0).
 
     store_state0 && (state0 = copy(state))
 
@@ -624,100 +535,18 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 # (bond, ha) where bond is the bond number and ha is the half-sweep number.
                 # The kwarg ncenter determines the end and turning points of the loop: if
                 # it equals 1, then we perform a sweep on each single site.
-
-                # The algorithm starts from a right-canonical MPS A, where each matrix
-                # A(n) = Aᵣ(n) is right-orthogonal.
-
-                # 1. Project the Hamiltonian on the current site.
-                #    --------------------------------------------
-
-                singlesite!(PH)
-                ITensors.position!(PH, state, site)
-
-                # 3. Evolve C(n) backwards in time according for a time step Δt, before
-                # absorbing it into the next site to create A(n + 1) = C(n)Aᵣ(n + 1).
-                # 4. Evolve A(n + 1) and so on...
-
-                # 2. Evolve A(site) for half the time-step Δt.
-                #    -----------------------------------------
-
-                φ, info = exponentiate(
+                sweepdir = (ha == 1 ? "right" : "left")
+                tdvp_site_update!(
                     PH,
-                    0.5Δt,
-                    state[site];
-                    ishermitian=hermitian,
-                    tol=exp_tol,
+                    state,
+                    site,
+                    0.5Δt;
+                    sweepdir=sweepdir,
+                    hermitian=hermitian,
+                    exp_tol=exp_tol,
                     krylovdim=krylovdim,
                     maxiter=maxiter,
-                    eager=true,
                 )
-                info.converged == 0 && throw("exponentiate did not converge")
-
-                # Now we take different steps depending on whether we are at
-                # the end of the half-sweep or not.
-                if (ha == 1 && site != N) || (ha == 2 && site != 1)
-                    # 3. Factorize the updated A(site) as Aₗ(site)C(site) such that the
-                    #    matrix Aₗ is left-orthogonal.
-                    #    --------------------------------------------------------------
-
-                    Δs = (ha == 1 ? 1 : -1)
-                    # site + Δs is the physical index of the next site in the sweep.
-
-                    # Perform the SVD decomposition. Note that the group of indices
-                    # provided by the second argument is interpreted as the "left index"
-                    # of φ, therefore there is no need to "reverse" the indices when we
-                    # are performing the right-to-left sweep: everything is taken care of
-                    # by ITensors accordingly.
-                    U, S, V = svd(φ, uniqueinds(φ, state[site + Δs]))
-
-                    state[site] = U # This is left(right)-orthogonal if ha==1(2).
-                    C = S * V
-                    if ha == 1
-                        ITensors.setleftlim!(state, site)
-                        # This has something to do with the range within the MPS where the
-                        # orthogonality properties hold...
-                    elseif ha == 2
-                        ITensors.setrightlim!(state, site)
-                    end
-
-                    # 4. Evolve C(site) backwards in time of a half-step Δt/2 and
-                    #    incorporate in the matrix Aᵣ(site+1) of the next site along
-                    #    the sweep.
-                    #    -----------------------------------------------------------
-
-                    # Calculate the new zero-site projection of the evolution operator.
-                    zerosite!(PH)
-                    position!(PH, state, ha == 1 ? site + 1 : site)
-                    # Shouldn't we have ha == 1 ? site+1 : site-1 ?
-
-                    C, info = exponentiate(
-                        PH,
-                        -0.5Δt,
-                        C;
-                        ishermitian=hermitian,
-                        tol=exp_tol,
-                        krylovdim=krylovdim,
-                        maxiter=maxiter,
-                        eager=true,
-                    )
-
-                    # Incorporate the backwards-evolved C(site) with the matrix on the
-                    # next site.
-                    state[site + Δs] = C * state[site + Δs]
-
-                    if ha == 1
-                        ITensors.setrightlim!(state, site + Δs + 1)
-                    elseif ha == 2
-                        ITensors.setleftlim!(state, site + Δs - 1)
-                    end
-
-                    # Reset the single-site projection of the evolution operator,
-                    # ready for the next sweep.
-                    singlesite!(PH)
-                else
-                    # There's nothing to do if the half-sweep is at the last site.
-                    state[site] = φ
-                end
             end
         end
 
@@ -730,7 +559,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 t=Δt * s,
                 bond=site,
                 sweepend=true,
-                sweepdir="right", # The value doesn't matter.
+                sweepdir="right", # This value doesn't matter.
                 alg=TDVP1(),
             )
         end

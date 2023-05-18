@@ -10,6 +10,7 @@ The keyword argument `sweepdir` indicates the direction of the current sweep.
 function tdvp_site_update!(
     PH, psi::MPS, site::Int, time_step; sweepdir, hermitian, exp_tol, krylovdim, maxiter
 )
+    N = length(psi)
     ITensors.set_nsite!(PH, 1)
     ITensors.position!(PH, psi, site)
 
@@ -42,9 +43,9 @@ function tdvp_site_update!(
         U, S, V = svd(phi, uniqueinds(phi, psi[next_site]))
         psi[site] = U # This is left(right)-orthogonal if ha==1(2).
         C = S * V
-        if ha == 1
+        if sweepdir == "right"
             ITensors.setleftlim!(psi, site)
-        elseif ha == 2
+        elseif sweepdir == "left"
             ITensors.setrightlim!(psi, site)
         end
 
