@@ -14,7 +14,7 @@ function tdvp_site_update!(
     ITensors.position!(PH, psi, site)
 
     # Forward evolution half-step.
-    φ, info = exponentiate(
+    phi, info = exponentiate(
         PH,
         time_step,
         psi[site];
@@ -28,21 +28,18 @@ function tdvp_site_update!(
 
     # Backward evolution half-step.
     # (it is necessary only if we're not already at the edges of the MPS)
-    if (sweepdir == "rightwards" && (site != N)) || (sweepdir == "leftwards" && site != 1)
-        # ha == 1  =>  left-to-right sweep
-        # ha == 2  =>  right-to-left sweep
-
-        new_proj_base_site = (sweepdir == "rightwards" ? site + 1 : site)
+    if (sweepdir == "right" && (site != N)) || (sweepdir == "left" && site != 1)
+        new_proj_base_site = (sweepdir == "right" ? site + 1 : site)
         # When we are sweeping right-to-left and switching from a 1-site projection to a
         # 0-site one, the right-side projection moves one site to the left, but the “base”
         # site of the ProjMPO doesn't move  ==>  new_proj_base_site = site
         # In the other sweep direction, the left-side projection moves one site to the left
         # and so does the “base” site  ==>  new_proj_base_site = site + 1
 
-        next_site = (sweepdir == "rightwards" ? site + 1 : site - 1)
+        next_site = (sweepdir == "right" ? site + 1 : site - 1)
         # This is the physical index of the next site in the sweep.
 
-        U, S, V = svd(φ, uniqueinds(φ, psi[next_site]))
+        U, S, V = svd(phi, uniqueinds(phi, psi[next_site]))
         psi[site] = U # This is left(right)-orthogonal if ha==1(2).
         C = S * V
         if ha == 1
@@ -71,9 +68,9 @@ function tdvp_site_update!(
 
         # Now the orthocenter is on `next_site`.
         # Set the new orthogonality limits of the MPS.
-        if sweepdir == "rightwards"
+        if sweepdir == "right"
             ITensors.setrightlim!(psi, next_site + 1)
-        elseif sweepdir == "leftwards"
+        elseif sweepdir == "left"
             ITensors.setleftlim!(psi, next_site - 1)
         else
             throw("Unrecognized sweepdir: $sweepdir")
@@ -81,5 +78,8 @@ function tdvp_site_update!(
 
         # Reset the one-site projection… and we're done!
         ITensors.set_nsite!(PH, 1)
+    else
+        # There's nothing to do if the half-sweep is at the last site.
+        psi[site] = phi
     end
 end
