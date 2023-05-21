@@ -1,6 +1,43 @@
+function exponentiate_solver(; kwargs...)
+    # Default function that we provide if no solver is given by the user.
+    function solver(H, time_step, ψ₀; kws...)
+        solver_kwargs = (;
+            ishermitian=get(kwargs, :ishermitian, true),
+            issymmetric=get(kwargs, :issymmetric, true),
+            tol=get(kwargs, :solver_tol, 1E-12),
+            krylovdim=get(kwargs, :solver_krylovdim, 30),
+            maxiter=get(kwargs, :solver_maxiter, 100),
+            verbosity=get(kwargs, :solver_outputlevel, 0),
+            eager=true,
+        )
+        ψₜ, info = exponentiate(H, time_step, ψ₀; solver_kwargs...)
+        return ψₜ, info
+    end
+    return solver
+end
+
+function tdvp_solver(; kwargs...)
+    # Default fallback function if no solver is specified when calling tdvp.
+    solver_backend = get(kwargs, :solver_backend, "exponentiate")
+    if solver_backend == "exponentiate"
+        return exponentiate_solver(; kwargs...)
+    else
+        error(
+            "solver_backend=$solver_backend not recognized (options are only \"exponentiate\")",
+        )
+    end
+end
+
+function tdvp1!(H, t::Number, psi0::MPS; kwargs...)
+    return tdvp(tdvp_solver(; kwargs...), H, t, psi0; kwargs...)
+end
+function tdvp1vec!(H, t::Number, psi0::MPS; kwargs...)
+    return tdvp(tdvp_solver(; kwargs...), H, t, psi0; kwargs...)
+end
+
 """
     function tdvp_site_update!(
-        PH, psi::MPS, i::Int, time_step;
+        solver, PH, psi::MPS, i::Int, time_step;
         sweepdir, hermitian, exp_tol, krylovdim, maxiter
     )
 
@@ -8,23 +45,24 @@ Update site `i` of the MPS `psi` using the 1-site TDVP algorithm with time step 
 The keyword argument `sweepdir` indicates the direction of the current sweep.
 """
 function tdvp_site_update!(
-    PH, psi::MPS, site::Int, time_step; sweepdir, hermitian, exp_tol, krylovdim, maxiter
+    solver,
+    PH,
+    psi::MPS,
+    site::Int,
+    time_step;
+    sweepdir,
+    current_time,
+    hermitian,
+    exp_tol,
+    krylovdim,
+    maxiter,
 )
     N = length(psi)
     ITensors.set_nsite!(PH, 1)
     ITensors.position!(PH, psi, site)
 
     # Forward evolution half-step.
-    phi, info = exponentiate(
-        PH,
-        time_step,
-        psi[site];
-        ishermitian=hermitian,
-        tol=exp_tol,
-        krylovdim=krylovdim,
-        maxiter=maxiter,
-        eager=true,
-    )
+    phi, info = solver(PH, time_step, psi[site]; current_time)
     info.converged == 0 && throw("exponentiate did not converge")
 
     # Backward evolution half-step.
@@ -53,16 +91,7 @@ function tdvp_site_update!(
         ITensors.set_nsite!(PH, 0)
         ITensors.position!(PH, psi, new_proj_base_site)
 
-        C, info = exponentiate(
-            PH,
-            -time_step,
-            C;
-            ishermitian=hermitian,
-            tol=exp_tol,
-            krylovdim=krylovdim,
-            maxiter=maxiter,
-            eager=true,
-        )
+        C, info = solver(PH, -time_step, C; current_time)
 
         # Reunite the backwards-evolved C with the matrix on the next site.
         psi[next_site] *= C

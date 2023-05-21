@@ -377,10 +377,10 @@ end
 function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
     nsteps = Int(tf / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
-    hermitian = get(kwargs, :hermitian, true)
-    exp_tol = get(kwargs, :exp_tol, 1e-14)
-    krylovdim = get(kwargs, :krylovdim, 30)
-    maxiter = get(kwargs, :maxiter, 100)
+    #hermitian = get(kwargs, :hermitian, true)
+    #exp_tol = get(kwargs, :exp_tol, 1e-14)
+    #krylovdim = get(kwargs, :krylovdim, 30)
+    #maxiter = get(kwargs, :maxiter, 100)
     normalize = get(kwargs, :normalize, true)
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
@@ -435,7 +435,7 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
                     -0.5Δt; # forward by -im*timestep/2, backwards by im*timestep/2.
                     sweepdir=sweepdir,
                     hermitian=hermitian,
-                    exp_tol=exp_tol,
+                    tol=exp_tol,
                     krylovdim=krylovdim,
                     maxiter=maxiter,
                 )
@@ -480,6 +480,19 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
     return nothing
 end
 
+function tdvp1vec!(
+    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
+)
+    # (Copied from ITensorsTDVP)
+    for H in Hs
+        ITensors.check_hascommoninds(siteinds, H, psi0)
+        ITensors.check_hascommoninds(siteinds, H, psi0')
+    end
+    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    PHs = ProjMPOSum(Hs)
+    return tdvp1vec!(solver, psi0, PHs, time_step, tf, sites; kwargs...)
+end
+
 """
     tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
@@ -488,7 +501,7 @@ the sweep is complete. Therefore, until this question gets an answer, this funct
 postpones the measurements of all observables until all the sites of the state are
 updated.
 """
-function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
+function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwargs...)
     nsteps = Int(tf / Δt)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
@@ -522,10 +535,10 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
     # Prepare for first iteration.
     orthogonalize!(state, 1)
-    PH = ProjMPO(H)
-    singlesite!(PH)
-    position!(PH, state, 1)
+    ITensors.set_nsite!(PH, 1)
+    ITensors.position!(PH, state, 1)
 
+    current_time = 0.0
     for s in 1:nsteps
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -537,10 +550,12 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 # it equals 1, then we perform a sweep on each single site.
                 sweepdir = (ha == 1 ? "right" : "left")
                 tdvp_site_update!(
+                    solver,
                     PH,
                     state,
                     site,
                     0.5Δt;
+                    current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
@@ -549,6 +564,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 )
             end
         end
+        current_time += Δt
 
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
@@ -556,7 +572,7 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
             apply!(
                 cb,
                 state;
-                t=Δt * s,
+                t=current_time,
                 bond=site,
                 sweepend=true,
                 sweepdir="right", # This value doesn't matter.
@@ -567,13 +583,13 @@ function tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", Δt * s),
+                ("t", current_time),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(
                     io_handle,
