@@ -94,14 +94,48 @@ function adaptbonddimensions!(
     return nothing
 end
 
-
 """
-    adaptivetdvp1!(state, H::MPO, Δt, tf, sites; kwargs...)
+    adaptivetdvp1!(solver, state::MPS, H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
 
 Like `tdvp1!`, but grows the bond dimensions of the MPS along the time evolution until
 a certain convergence criterium is met.
+
+See [`tdvp1!`](@ref).
 """
-function adaptivetdvp1!(state, H::MPO, timestep, tf; kwargs...)
+function adaptivetdvp1!(
+    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number; kwargs...
+)
+    # (Copied from ITensorsTDVP)
+    for H in Hs
+        ITensors.check_hascommoninds(siteinds, H, psi0)
+        ITensors.check_hascommoninds(siteinds, H, psi0')
+    end
+    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    PHs = ProjMPOSum(Hs)
+    return adaptivetdvp1!(solver, psi0, PHs, time_step, tf; kwargs...)
+end
+
+"""
+    adaptivetdvp1!(solver, state::MPS, H::MPO, Δt::Number, tf::Number; kwargs...)
+
+Like `tdvp1!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`tdvp1!`](@ref).
+"""
+function adaptivetdvp1!(solver, state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
+    return adaptivetdvp1!(solver, state::MPS, ProjMPO(H), timestep, tf; kwargs...)
+end
+
+"""
+    adaptivetdvp1!(solver, state::MPS, PH, Δt::Number, tf::Number; kwargs...)
+
+Like `tdvp1!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`tdvp1!`](@ref).
+"""
+function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
     nsteps = Int(tf / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
@@ -135,12 +169,11 @@ function adaptivetdvp1!(state, H::MPO, timestep, tf; kwargs...)
 
     # Prepare for first iteration
     orthogonalize!(state, 1)
-    PH = ProjMPO(H)
     singlesite!(PH)
     position!(PH, state, 1)
 
+    current_time = 0.0
     for s in 1:nsteps
-        PH = ProjMPO(H)
         orthogonalize!(state, 1)
         ITensors.set_nsite!(PH, 1)
         position!(PH, state, 1)
@@ -157,17 +190,23 @@ function adaptivetdvp1!(state, H::MPO, timestep, tf; kwargs...)
                 # The kwarg ncenter determines the end and turning points of the loop: if
                 # it equals 1, then we perform a sweep on each single site.
                 sweepdir = (ha == 1 ? "right" : "left")
-                tdvp_site_update!(PH, state, site, -0.5Δt;
+                tdvp_site_update!(
+                    solver,
+                    PH,
+                    state,
+                    site,
+                    -0.5Δt;
+                    current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
                     sweepdir=sweepdir,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,
-                    maxiter=maxiter
-                   )
+                    maxiter=maxiter,
+                )
                 apply!(
                     cb,
                     state;
-                    t=s * timestep,
+                    t=current_time,
                     bond=site,
                     sweepend=(ha == 2),
                     sweepdir=sweepdir,
@@ -175,17 +214,18 @@ function adaptivetdvp1!(state, H::MPO, timestep, tf; kwargs...)
                 )
             end
         end
+        current_time += timestep
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", timestep * s),
+                ("t", current_time),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && timestep * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
             else
@@ -206,12 +246,47 @@ function adaptivetdvp1!(state, H::MPO, timestep, tf; kwargs...)
 end
 
 """
-    adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
+    adaptivetdvp1vec!(solver, state::MPS, H::MPO, Δt::Number, tf::Number, sites; kwargs...)
 
 Like `tdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
 a certain convergence criterium is met.
+
+See [`tdvp1vec!`](@ref).
 """
-function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
+function adaptivetdvp1vec!(
+    solver, psi0::MPS, Ls::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
+)
+    # (Copied from ITensorsTDVP)
+    for H in Hs
+        ITensors.check_hascommoninds(siteinds, H, psi0)
+        ITensors.check_hascommoninds(siteinds, H, psi0')
+    end
+    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    PHs = ProjMPOSum(Hs)
+    return tdvp1vec!(solver, psi0, PHs, time_step, tf, sites; kwargs...)
+end
+
+"""
+    adaptivetdvp1vec!(solver, state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+
+Like `tdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`tdvp1vec!`](@ref).
+"""
+function adaptivetdvp1vec!(solver, state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+    return adaptivetdvp1vec!(solver, state, ProjMPO(L), Δt, tf, sites; kwargs...)
+end
+
+"""
+    adaptivetdvp1vec!(solver, state::MPS, L, Δt::Number, tf::Number, sites; kwargs...)
+
+Like `tdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`tdvp1vec!`](@ref).
+"""
+function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwargs...)
     nsteps = Int(tf / Δt)
     cb = get(kwargs, :callback, NoTEvoCallback())
     hermitian = get(kwargs, :hermitian, true)
@@ -245,8 +320,8 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 
     N = length(state)
 
+    current_time = 0.0
     for s in 1:nsteps
-        PH = ProjMPO(H)
         orthogonalize!(state, 1)
         ITensors.set_nsite!(PH, 1)
         position!(PH, state, 1)
@@ -264,10 +339,12 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 # it equals 1, then we perform a sweep on each single site.
                 sweepdir = (ha == 1 ? "right" : "left")
                 tdvp_site_update!(
+                                  solver,
                     PH,
                     state,
                     site,
                     0.5Δt;
+                    current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
@@ -276,6 +353,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
                 )
             end
         end
+        current_time += Δt
 
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
@@ -283,7 +361,7 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
             apply!(
                 cb,
                 state;
-                t=Δt * s,
+                t=current_time,
                 bond=site,
                 sweepend=true,
                 sweepdir="right", # This value doesn't matter.
@@ -294,13 +372,13 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", Δt * s),
+                ("t", current_time),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && Δt * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(
                     io_handle,
@@ -331,33 +409,107 @@ function adaptivetdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
 end
 
 """
-    adaptiveadjtdvp1vec!(operator::MPS, initialstate::MPS, H::MPO, Δt, tf, meas_stride, sites; kwargs...)
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        L::Vector{MPO},
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
 
-Compute the time evolution, generated by the GKSL superoperator encoded in `H`, of the
-operator `operator` in the Heisenberg picture, periodically measuring its expectation
-value on the state `initialstate`.
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
 
-# Arguments
-- `operator::MPS`: an MPS representing the initial value of the operator.
-- `initialstate::MPS` an MPS representing the initial state of the system.
-- `H::MPO`: the MPO representing the GKSL "superoperator".
-- `Δt`: the time step for the evolution.
-- `tf`: the end time of the simulation.
-- `meas_stride`: time between each measurement.
-- `sites`: an array of ITensor sites on which the MPSs and MPOs above are defined.
-
-# Keyword arguments
-- `io_file`: output file of the measurements.
-- `ranks_file`: output file for the bond dimensions of the operator's MPS.
-- `times_file`: output file for the simulation time.
-
-# Other keyword options, passed to `KrylovKit.exponentiate`
-- `exp_tol::Real` -> `tol`
-- `krylovdim::Int`
-- `maxiter::Int`
+See [`adjtdvp1vec!`](@ref).
 """
 function adaptiveadjtdvp1vec!(
-    operator::MPS, initialstate::MPS, H::MPO, Δt, tf, meas_stride, sites; kwargs...
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    Ls::Vector{MPO},
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    for L in Ls
+        ITensors.check_hascommoninds(siteinds, L, operator)
+        ITensors.check_hascommoninds(siteinds, L, operator')
+    end
+    Ls .= ITensors.permute.(Ls, Ref((linkind, siteinds, linkind)))
+    PLs = ProjMPOSum(Ls)
+    return adaptiveadjtdvp1vec!(
+        solver, operator, initialstate, PLs, Δt, tf, meas_stride, sites; kwargs...
+    )
+end
+
+"""
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        L::MPO,
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
+
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`adjtdvp1vec!`](@ref).
+"""
+function adaptiveadjtdvp1vec!(
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    L::MPO,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    return adaptiveadjtdvp1vec!(
+        solver, operator, initialstate, ProjMPO(L), Δt, tf, meas_stride, sites; kwargs...
+    )
+end
+
+"""
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        PH,
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
+
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`adjtdvp1vec!`](@ref).
+"""
+function adaptiveadjtdvp1vec!(
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    PH,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
 )
     nsteps = Int(tf / Δt)
     exp_tol = get(kwargs, :exp_tol, 1e-14)
@@ -390,9 +542,8 @@ function adaptiveadjtdvp1vec!(
 
     N = length(operator)
 
-    prev_t = zero(Δt)
+    current_time = zero(Δt)
     for s in 1:nsteps
-        PH = ProjMPO(H)
         orthogonalize!(operator, 1)
         ITensors.set_nsite!(PH, 1)
         position!(PH, operator, 1)
@@ -410,10 +561,12 @@ function adaptiveadjtdvp1vec!(
                 # it equals 1, then we perform a sweep on each single site.
                 sweepdir = (ha == 1 ? "right" : "left")
                 tdvp_site_update!(
+                    solver,
                     PH,
                     operator,
                     site,
                     0.5Δt;
+                    current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
                     hermitian=false,
                     exp_tol=exp_tol,
@@ -422,13 +575,12 @@ function adaptiveadjtdvp1vec!(
                 )
             end
         end
-        prev_t += Δt
-        t = Δt * s
+        current_time += Δt
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", t),
+                ("t", current_time),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(operator)),
             ],
@@ -438,7 +590,7 @@ function adaptiveadjtdvp1vec!(
         # We can then calculate the expectation values on the initial state.
         #if t - prev_t ≈ meas_stride... how does this work?
         if true
-            @printf(io_handle, "%40.15f", t)
+            @printf(io_handle, "%40.15f", current_time)
             @printf(io_handle, "%40.15f", real(inner(initialstate, operator)))
             @printf(io_handle, "\n")
             flush(io_handle)

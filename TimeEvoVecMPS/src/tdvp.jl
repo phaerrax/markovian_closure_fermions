@@ -374,7 +374,73 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
     return nothing
 end
 
-function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
+"""
+    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)
+
+Integrate the Schrödinger equation ``d/dt ψₜ = -i Hⱼ ψₜ`` using the one-site TDVP algorithm,
+where `ψ` represents the state of the system and the elements of `⃗H` form… in some way… the
+Hamiltonian operator of the system.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ψ::MPS`: the state of the system.
+- `⃗H:Vector{MPO}`: a list of MPOs.
+- `Δt::Number`: time step of the evolution.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
+"""
+function tdvp1!(
+    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
+)
+    # (Copied from ITensorsTDVP)
+    for H in Hs
+        ITensors.check_hascommoninds(siteinds, H, psi0)
+        ITensors.check_hascommoninds(siteinds, H, psi0')
+    end
+    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    PHs = ProjMPOSum(Hs)
+    return tdvp1!(solver, psi0, PHs, time_step, tf, sites; kwargs...)
+end
+
+"""
+    tdvp1!(solver, ψ::MPS, H::MPO, Δt::Number, tf::Number, sites; kwargs...)
+
+Integrate the Schrödinger equation ``d/dt ψₜ = -i H ψₜ`` using the one-site TDVP algorithm,
+where `ψ` represents the state of the system and the elements of `H` is the Hamiltonian
+operator of the system.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ψ::MPS`: the state of the system.
+- `H::MPO`: the Hamiltonian operator.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
+"""
+function tdvp1!(solver, state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
+    return tdvp1!(solver, state, ProjMPO(H), timestep, tf; kwargs...)
+end
+
+"""
+    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)
+
+Integrate the Schrödinger equation ``d/dt ψₜ = -i Hⱼ ψₜ`` using the one-site TDVP algorithm,
+where `ψ` represents the state of the system and the elements of `⃗H` form… in some way… the
+Hamiltonian operator of the system.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ψ::MPS`: the state of the system.
+- `PH`: a ProjMPO-like operator encoding the Hamiltonian operator.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
+"""
+function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
     nsteps = Int(tf / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
     #hermitian = get(kwargs, :hermitian, true)
@@ -409,12 +475,12 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
 
     N = length(state)
 
-    # Prepare for first iteration
+    # Prepare for first iteration.
     orthogonalize!(state, 1)
-    PH = ProjMPO(H)
     ITensors.set_nsite!(PH, 1)
     ITensors.position!(PH, state, 1)
 
+    current_time = 0.0
     for s in 1:nsteps
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -429,10 +495,12 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
                 # ha == 2  =>  right-to-left sweep
                 sweepdir = (ha == 1 ? "right" : "left")
                 tdvp_site_update!(
+                    solver,
                     PH,
                     state,
                     site,
                     -0.5Δt; # forward by -im*timestep/2, backwards by im*timestep/2.
+                    current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
                     sweepdir=sweepdir,
                     hermitian=hermitian,
                     tol=exp_tol,
@@ -440,27 +508,22 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
                     maxiter=maxiter,
                 )
                 apply!(
-                    cb,
-                    state;
-                    t=s * timestep,
-                    bond=site,
-                    sweepend=(ha == 2),
-                    sweepdir=sweepdir,
-                    alg=TDVP1(),
+                    cb, state; t=current_time, bond=site, sweepend=(ha == 2), sweepdir=sweepdir, alg=TDVP1()
                 )
             end
         end
+        current_time += timestep
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
             showvalues=[
-                ("t", timestep * s),
+                ("t", current_time),
                 ("Δt step time", round(stime; digits=3)),
                 ("Max bond-dim", maxlinkdim(state)),
             ],
         )
 
-        if !isempty(measurement_ts(cb)) && timestep * s ≈ measurement_ts(cb)[end]
+        if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
             else
@@ -480,22 +543,91 @@ function tdvp1!(state, H::MPO, timestep, tf; kwargs...)
     return nothing
 end
 
+"""
+    tdvp1vec!(solver, ρ::MPS, L::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)
+
+Integrate the equation of motion ``d/dt ρₜ = Lᵢ(ρₜ)`` using the one-site TDVP algorithm,
+where `ρ` represents the state of the system and the elements of `L` form… in some way… the
+evolution operator.
+The state `ρ` is assumed to be a density matrix in a vectorized form, so that the equation
+of motion can be a more general master equation such as the GKSL one.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ρ::MPS`: the state of the system.
+- `L::Vector{MPO}`: a list of MPOs.
+- `Δt::Number`: time step of the evolution.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `L` are defined.
+
+# Implementation
+For vectorized state it is still unclear whether the measurements can be made before
+the sweep is complete. Therefore, until this question gets an answer, this function
+postpones the measurements of all observables until all the sites of the state are
+updated.
+"""
 function tdvp1vec!(
-    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
+    solver, psi0::MPS, Ls::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
 )
     # (Copied from ITensorsTDVP)
-    for H in Hs
-        ITensors.check_hascommoninds(siteinds, H, psi0)
-        ITensors.check_hascommoninds(siteinds, H, psi0')
+    for L in Ls
+        ITensors.check_hascommoninds(siteinds, L, psi0)
+        ITensors.check_hascommoninds(siteinds, L, psi0')
     end
-    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
-    PHs = ProjMPOSum(Hs)
-    return tdvp1vec!(solver, psi0, PHs, time_step, tf, sites; kwargs...)
+    Ls .= ITensors.permute.(Ls, Ref((linkind, siteinds, linkind)))
+    PLs = ProjMPOSum(Ls)
+    return tdvp1vec!(solver, psi0, PLs, time_step, tf, sites; kwargs...)
 end
 
 """
-    tdvp1vec!(state, H::MPO, Δt, tf, sites; kwargs...)
+    tdvp1vec!(solver, ρ::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
 
+Integrate the equation of motion ``d/dt ρₜ = L(ρₜ)`` using the one-site TDVP algorithm,
+where `ρ` represents the state of the system and `L` the evolution operator.
+The state `ρ` is assumed to be a density matrix in a vectorized form, so that the equation
+of motion can be a more general master equation such as the GKSL one.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ρ::MPS`: the state of the system.
+- `L::MPO`: the evolution operator.
+- `Δt::Number`: time step of the evolution.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `L` are defined.
+
+# Implementation
+For vectorized state it is still unclear whether the measurements can be made before
+the sweep is complete. Therefore, until this question gets an answer, this function
+postpones the measurements of all observables until all the sites of the state are
+updated.
+"""
+function tdvp1vec!(solver, state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+    return tdvp1vec!(solver, state, ProjMPO(L), Δt, tf, sites; kwargs...)
+end
+
+"""
+    tdvp1vec!(solver, ρ::MPS, L, Δt::Number, tf::Number, sites; kwargs...)
+
+Integrate the equation of motion ``d/dt ρₜ = ℒ(ρₜ)`` using the one-site TDVP algorithm,
+where `ρ` represents the state of the system and `L` the evolution operator.
+The state `ρ` is assumed to be a density matrix in a vectorized form, so that the equation
+of motion can be a more general master equation such as the GKSL one.
+
+# Arguments
+- `solver`: a function which takes three arguments `A`, `t`, `B` (and possibly other keyword
+    arguments) where `t` is a time step, `B` an ITensor and `A` a linear operator on `B`,
+    returning the time-evolved `B`.
+- `ρ::MPS`: the state of the system.
+- `L`: a ProjMPO-like object encoding the evolution operator.
+- `Δt::Number`: time step of the evolution.
+- `tf::Number`: end time of the evolution.
+- `sites`: a collection of sites, on which `ρ` and `L` are defined.
+
+# Implementation
 For vectorized state it is still unclear whether the measurements can be made before
 the sweep is complete. Therefore, until this question gets an answer, this function
 postpones the measurements of all observables until all the sites of the state are
