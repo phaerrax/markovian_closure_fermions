@@ -1,4 +1,4 @@
-export adjtdvp1vec!
+export adjtdvp1vec!, adaptiveadjtdvp1vec!
 
 using ITensors: position!
 
@@ -174,6 +174,211 @@ function adjtdvp1vec!(
             flush(io_handle)
 
             @printf(ranks_handle, "%40.15f", current_time)
+            for bonddim in ITensors.linkdims(operator)
+                @printf(ranks_handle, "%10d", bonddim)
+            end
+            @printf(ranks_handle, "\n")
+            flush(ranks_handle)
+
+            printoutput_stime(times_handle, stime)
+        end
+    end
+
+    !isnothing(io_file) && close(io_handle)
+    !isnothing(ranks_file) && close(ranks_handle)
+    !isnothing(times_file) && close(times_handle)
+
+    return nothing
+end
+
+"""
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        L::Vector{MPO},
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
+
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`adjtdvp1vec!`](@ref).
+"""
+function adaptiveadjtdvp1vec!(
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    Ls::Vector{MPO},
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    for L in Ls
+        ITensors.check_hascommoninds(siteinds, L, operator)
+        ITensors.check_hascommoninds(siteinds, L, operator')
+    end
+    Ls .= ITensors.permute.(Ls, Ref((linkind, siteinds, linkind)))
+    PLs = ProjMPOSum(Ls)
+    return adaptiveadjtdvp1vec!(
+        solver, operator, initialstate, PLs, Δt, tf, meas_stride, sites; kwargs...
+    )
+end
+
+"""
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        L::MPO,
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
+
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`adjtdvp1vec!`](@ref).
+"""
+function adaptiveadjtdvp1vec!(
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    L::MPO,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    return adaptiveadjtdvp1vec!(
+        solver, operator, initialstate, ProjMPO(L), Δt, tf, meas_stride, sites; kwargs...
+    )
+end
+
+"""
+    adaptiveadjtdvp1vec!(
+        solver,
+        operator::MPS,
+        initialstate::MPS,
+        PH,
+        Δt::Number,
+        tf::Number,
+        meas_stride::Number,
+        sites;
+        kwargs...,
+    )
+
+Like `adjtdvp1vec!`, but grows the bond dimensions of the MPS along the time evolution until
+a certain convergence criterium is met.
+
+See [`adjtdvp1vec!`](@ref).
+"""
+function adaptiveadjtdvp1vec!(
+    solver,
+    operator::MPS,
+    initialstate::MPS,
+    PH,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    nsteps = Int(tf / Δt)
+    exp_tol = get(kwargs, :exp_tol, 1e-14)
+    krylovdim = get(kwargs, :krylovdim, 30)
+    maxiter = get(kwargs, :maxiter, 100)
+    io_file = get(kwargs, :io_file, nothing)
+    ranks_file = get(kwargs, :io_ranks, nothing)
+    times_file = get(kwargs, :io_times, nothing)
+    convergence_factor_bonddims = get(kwargs, :convergence_factor_bonddims, 1e-4)
+    max_bond = get(kwargs, :max_bond, maxlinkdim(operator))
+
+    if get(kwargs, :progress, true)
+        pbar = Progress(nsteps; desc="Evolving operator... ")
+    else
+        pbar = nothing
+    end
+
+    # Vectorized equations of motion usually are not defined by an anti-Hermitian operator
+    # such as -im H in Schrödinger's equation, so we do not bother here with "unitary" or
+    # "imaginary-time" evolution types. We just have a generic equation of the form
+    # v'(t) = L v(t).
+
+    io_handle = open(io_file, "w")
+    @printf(io_handle, "%20s", "time")
+    @printf(io_handle, "%20s", "exp_val")
+    @printf(io_handle, "\n")
+
+    ranks_handle = writeheaders_ranks(ranks_file, length(operator))
+    times_handle = writeheaders_stime(times_file)
+
+    N = length(operator)
+
+    current_time = zero(Δt)
+    for s in 1:nsteps
+        orthogonalize!(operator, 1)
+        ITensors.set_nsite!(PH, 1)
+        position!(PH, operator, 1)
+
+        @debug "[Step $s] Attempting to grow the bond dimensions."
+        adaptbonddimensions!(operator, PH, max_bond, convergence_factor_bonddims)
+
+        stime = @elapsed begin
+            # In TDVP1 only one site at a time is modified, so we iterate on the sites
+            # of the operator MPS, not its bonds.
+            for (site, ha) in sweepnext(N; ncenter=1)
+                # sweepnext(N) is an iterable object that evaluates to tuples of the form
+                # (bond, ha) where bond is the bond number and ha is the half-sweep number.
+                # The kwarg ncenter determines the end and turning points of the loop: if
+                # it equals 1, then we perform a sweep on each single site.
+                sweepdir = (ha == 1 ? "right" : "left")
+                tdvp_site_update!(
+                    solver,
+                    PH,
+                    operator,
+                    site,
+                    0.5Δt;
+                    current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
+                    sweepdir=sweepdir,
+                    hermitian=false,
+                    exp_tol=exp_tol,
+                    krylovdim=krylovdim,
+                    maxiter=maxiter,
+                )
+            end
+        end
+        current_time += Δt
+
+        !isnothing(pbar) && ProgressMeter.next!(
+            pbar;
+            showvalues=[
+                ("t", current_time),
+                ("Δt step time", round(stime; digits=3)),
+                ("Max bond-dim", maxlinkdim(operator)),
+            ],
+        )
+
+        # Now the backwards sweep has ended, so the whole MPS of the operator is up-to-date.
+        # We can then calculate the expectation values on the initial state.
+        #if t - prev_t ≈ meas_stride... how does this work?
+        if true
+            @printf(io_handle, "%40.15f", current_time)
+            @printf(io_handle, "%40.15f", real(inner(initialstate, operator)))
+            @printf(io_handle, "\n")
+            flush(io_handle)
+
+            @printf(ranks_handle, "%40.15f", t)
             for bonddim in ITensors.linkdims(operator)
                 @printf(ranks_handle, "%10d", bonddim)
             end

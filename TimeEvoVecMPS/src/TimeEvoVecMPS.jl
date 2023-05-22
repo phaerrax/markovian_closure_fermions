@@ -16,15 +16,20 @@ include("itensor.jl")
 include("bondgate.jl")
 include("bondop.jl")
 include("callback.jl")
+include("utils.jl")
 
 include("tebd.jl")
 
+# TDVP base functions
 include("timedependentsum.jl")
-
-include("tdvp_step.jl")
-include("tdvp.jl")
-include("adjtdvp.jl")
 include("adaptivetdvp.jl")
+include("tdvp_step.jl")
+
+# TDVP variants
+include("tdvp_variants/tdvp1.jl")
+include("tdvp_variants/tdvp1vec.jl")
+include("tdvp_variants/adjtdvp1vec.jl")
+include("tdvp_variants/tdvp_other.jl")
 
 include("testutils.jl")
 
