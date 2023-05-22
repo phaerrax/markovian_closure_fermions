@@ -1,5 +1,5 @@
 function exponentiate_solver(; kwargs...)
-    # Default function that we provide if no solver is given by the user.
+    # Default solver that we provide if no solver is given by the user.
     function solver(H, time_step, ψ₀; kws...)
         solver_kwargs = (;
             ishermitian=get(kwargs, :ishermitian, true),
@@ -17,22 +17,76 @@ function exponentiate_solver(; kwargs...)
 end
 
 function tdvp_solver(; kwargs...)
-    # Default fallback function if no solver is specified when calling tdvp.
+    # Fallback solver function if no solver is specified when calling tdvp.
     solver_backend = get(kwargs, :solver_backend, "exponentiate")
     if solver_backend == "exponentiate"
         return exponentiate_solver(; kwargs...)
     else
         error(
-            "solver_backend=$solver_backend not recognized (options are only \"exponentiate\")",
+            "solver_backend=$solver_backend not recognized " *
+            "(the only option is \"exponentiate\")",
         )
     end
 end
 
-function tdvp1!(H, t::Number, psi0::MPS; kwargs...)
-    return tdvp(tdvp_solver(; kwargs...), H, t, psi0; kwargs...)
+# Fallback functions if no solver is given.
+function tdvp1!(state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
+    return tdvp1!(tdvp_solver(; kwargs...), state, H, timestep, tf; kwargs...)
 end
-function tdvp1vec!(H, t::Number, psi0::MPS; kwargs...)
-    return tdvp(tdvp_solver(; kwargs...), H, t, psi0; kwargs...)
+function adaptivetdvp1!(state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
+    return adaptivetdvp1!(tdvp_solver(; kwargs...), state, H, timestep, tf; kwargs...)
+end
+
+function tdvp1vec!(state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+    return tdvp1vec!(tdvp_solver(; kwargs...), state, L, Δt, tf, sites; kwargs...)
+end
+function adaptivetdvp1vec!(state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+    return adaptivetdvp1vec!(tdvp_solver(; kwargs...), state, L, Δt, tf, sites; kwargs...)
+end
+
+function adjtdvp1vec!(
+    operator::MPS,
+    initialstate::MPS,
+    H::MPO,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    return adjtdvp1vec!(
+        tdvp_solver(; kwargs...),
+        operator,
+        initialstate,
+        H,
+        Δt,
+        tf,
+        meas_stride,
+        sites;
+        kwargs...,
+    )
+end
+function adaptiveadjtdvp1vec!(
+    operator::MPS,
+    initialstate::MPS,
+    H::MPO,
+    Δt::Number,
+    tf::Number,
+    meas_stride::Number,
+    sites;
+    kwargs...,
+)
+    return adaptiveadjtdvp1vec!(
+        tdvp_solver(; kwargs...),
+        operator,
+        initialstate,
+        H,
+        Δt,
+        tf,
+        meas_stride,
+        sites;
+        kwargs...,
+    )
 end
 
 """
