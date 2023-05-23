@@ -1,6 +1,7 @@
 module TimeEvoVecMPS
 
 using ITensors
+using IterTools
 using LinearAlgebra
 #using MKL
 using Printf
