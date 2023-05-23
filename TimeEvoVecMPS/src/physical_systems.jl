@@ -1,4 +1,59 @@
+export Closure, closure
+export freq,
+       innercoup,
+       outercoup,
+       damp,
+       freqs,
+       innercoups,
+       outercoups,
+       damps
+
 export defineSystem, createMPO, createMPO2MC, createMPOVecRho
+
+struct Closure
+    frequency
+    innercoupling
+    outercoupling
+    damping
+    function Closure(ω::Vector{<:Real}, γ::Vector{<:Real}, g::Vector{<:Real}, ζ::Vector{<:Complex})
+        if (
+            length(ω) - 1 != length(g) ||
+            length(ω) != length(γ) ||
+            length(ω) != length(ζ)
+        )
+            error("Lengths of input parameters do not match.")
+        end
+        return new(ω, g, ζ, γ)
+    end
+end
+function closure(
+    Ω::Number, K::Number, α::Matrix{<:Real}, β::Matrix{<:Real}, w::Matrix{<:Real}
+)
+    return closure(
+        Ω, K, α[:, 1] .+ im .* α[:, 2], β[:, 1] .+ im .* β[:, 2], w[:, 1] .+ im .* w[:, 2]
+    )
+end
+function closure(
+    Ω::Number, K::Number, α::Vector{<:Complex}, β::Vector{<:Complex}, w::Vector{<:Complex}
+)
+    frequency = @. Ω - 2K * imag(α)
+    damping = @. -4K * real(α)
+    innercoupling = @. -2K * imag(β)
+    outercoupling = @. K * w
+    return Closure(frequency, damping, innercoupling, outercoupling)
+end
+
+Base.length(mc::Closure) = Base.length(mc.frequency)
+
+freqs(mc::Closure) = mc.frequency
+innercoups(mc::Closure) = mc.innercoupling
+outercoups(mc::Closure) = mc.outercoupling
+damps(mc::Closure) = mc.damping
+
+freq(mc::Closure, j::Int) = mc.frequency[j]
+innercoup(mc::Closure, j::Int) = mc.innercoupling[j]
+outercoup(mc::Closure, j::Int) = mc.outercoupling[j]
+damp(mc::Closure, j::Int) = mc.damping[j]
 
 function defineSystem(;
     sys_type::String="HvS=1/2",
