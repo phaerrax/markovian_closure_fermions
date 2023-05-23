@@ -80,6 +80,7 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
     store_state0 = get(kwargs, :store_psi0, false)
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -130,6 +131,7 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                     -0.5Δt; # forward by -im*timestep/2, backwards by im*timestep/2.
                     current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=hermitian,
                     tol=exp_tol,
                     krylovdim=krylovdim,
@@ -226,6 +228,7 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
     store_state0 = get(kwargs, :store_psi0, false)
     convergence_factor_bonddims = get(kwargs, :convergence_factor_bonddims, 1e-4)
     max_bond = get(kwargs, :max_bond, maxlinkdim(state))
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -275,6 +278,7 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
                     -0.5Δt;
                     current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,

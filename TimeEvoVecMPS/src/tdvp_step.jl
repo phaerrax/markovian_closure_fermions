@@ -92,7 +92,7 @@ end
 """
     function tdvp_site_update!(
         solver, PH, psi::MPS, i::Int, time_step;
-        sweepdir, hermitian, exp_tol, krylovdim, maxiter
+        sweepdir, current_time, which_decomp="qr", hermitian, exp_tol, krylovdim, maxiter
     )
 
 Update site `i` of the MPS `psi` using the 1-site TDVP algorithm with time step `time_step`.
@@ -106,6 +106,7 @@ function tdvp_site_update!(
     time_step;
     sweepdir,
     current_time,
+    which_decomp="qr",
     hermitian,
     exp_tol,
     krylovdim,
@@ -132,9 +133,19 @@ function tdvp_site_update!(
         next_site = (sweepdir == "right" ? site + 1 : site - 1)
         # This is the physical index of the next site in the sweep.
 
-        U, S, V = svd(phi, uniqueinds(phi, psi[next_site]))
-        psi[site] = U # This is left(right)-orthogonal if ha==1(2).
-        C = S * V
+        if which_decomp == "qr"
+            Q, C = factorize(phi, uniqueinds(phi, psi[next_site]); which_decomp="qr")
+            psi[site] = Q # This is left(right)-orthogonal if ha==1(2).
+        elseif which_decomp == "svd"
+            U, S, V = svd(phi, uniqueinds(phi, psi[next_site]))
+            psi[site] = U # This is left(right)-orthogonal if ha==1(2).
+            C = S * V
+        else
+            error(
+                "Decomposition $which_decomp not supported. Please use \"qr\" or \"svd\"."
+            )
+        end
+
         if sweepdir == "right"
             ITensors.setleftlim!(psi, site)
         elseif sweepdir == "left"

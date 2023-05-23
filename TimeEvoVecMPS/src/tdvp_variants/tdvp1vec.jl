@@ -104,6 +104,7 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
     store_state0 = get(kwargs, :store_psi0, false)
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -148,6 +149,7 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
                     0.5Δt;
                     current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,
@@ -265,6 +267,7 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
     store_state0 = get(kwargs, :store_psi0, false)
     convergence_factor_bonddims = get(kwargs, :convergence_factor_bonddims, 1e-4)
     max_bond = get(kwargs, :max_bond, maxlinkdim(state))
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving state... ")
@@ -311,6 +314,7 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
                     0.5Δt;
                     current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=hermitian,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,

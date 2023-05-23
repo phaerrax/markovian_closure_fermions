@@ -100,6 +100,7 @@ function adjtdvp1vec!(
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
     times_file = get(kwargs, :io_times, nothing)
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving operator... ")
@@ -146,6 +147,7 @@ function adjtdvp1vec!(
                     0.5Δt;
                     current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=false,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,
@@ -303,6 +305,7 @@ function adaptiveadjtdvp1vec!(
     times_file = get(kwargs, :io_times, nothing)
     convergence_factor_bonddims = get(kwargs, :convergence_factor_bonddims, 1e-4)
     max_bond = get(kwargs, :max_bond, maxlinkdim(operator))
+    decomp = get(kwargs, :which_decomp, "qr")
 
     if get(kwargs, :progress, true)
         pbar = Progress(nsteps; desc="Evolving operator... ")
@@ -351,6 +354,7 @@ function adaptiveadjtdvp1vec!(
                     0.5Δt;
                     current_time=(ha == 1 ? current_time + 0.5Δt : current_time + Δt),
                     sweepdir=sweepdir,
+                    which_decomp=decomp,
                     hermitian=false,
                     exp_tol=exp_tol,
                     krylovdim=krylovdim,
