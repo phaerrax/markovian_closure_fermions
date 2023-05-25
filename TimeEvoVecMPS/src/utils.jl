@@ -1,33 +1,9 @@
-export sitenumber, jwstring
-
 zerosite!(PH::ProjMPO) = (PH.nsite = 0)
 singlesite!(PH::ProjMPO) = (PH.nsite = 1)
 twosite!(PH::ProjMPO) = (PH.nsite = 2)
 
 struct TDVP1 end
 struct TDVP2 end
-
-"""
-    sitenumber(i::Index)
-
-Return the site number of the given Index, i.e. the number in the "n=N" tag.
-"""
-function sitenumber(i::Index)
-    st = split(replace(string.(tags.(i)), "\"" => ""), ",")
-    sitetag = first(filter!(s -> occursin("n=", s), st))
-    # TODO what if sitetag is empty?
-    siten = replace(sitetag, "n=" => "")
-    return parse(Int, siten)
-end
-
-"""
-    jwstring(; start, stop, op::AbstractString="F")
-
-Return the vector ``(op, start + 1, op, start + 2, ..., op, stop - 1)``.
-"""
-function jwstring(; start, stop, op::AbstractString="F")
-    return collect(Iterators.flatten([(op, start + k) for k in 1:(stop - start - 1)]))
-end
 
 """
     writeheaders_data(io_file, cb; kwargs...)
