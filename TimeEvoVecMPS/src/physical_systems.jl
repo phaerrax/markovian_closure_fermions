@@ -8,7 +8,7 @@ export freq,
        outercoups,
        damps
 
-export spin_chain, closure_op, filled_closure_op
+export exchange_interaction, spin_chain, closure_op, filled_closure_op
 export defineSystem, createMPO, createMPO2MC, createMPOVecRho
 
 struct Closure
@@ -64,7 +64,42 @@ Return an OpSum object encoding the Markovian closure operators with parameters 
 `chain_edge_site`.
 This closure replaces a chain starting from an empty state.
 """
-function closure_op(mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int)
+function closure_op(
+    ::SiteType"vS=1/2", mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int
+)
+    ℓ = OpSum()
+    for (j, site) in enumerate(sitenumber.(sites))
+        ℓ += freq(mc, j) * gkslcommutator("N", site)
+    end
+    for (j, (site1, site2)) in enumerate(partition(sitenumber.(sites), 2, 1))
+        jws = jwstring(; start=site1, stop=site2)
+        ℓ +=
+            innercoup(mc, j) * (
+                gkslcommutator("σ-", site1, jws..., "σ+", site2) +
+                gkslcommutator("σ+", site1, jws..., "σ-", site2)
+            )
+    end
+    for (j, site) in enumerate(sitenumber.(sites))
+        jws = jwstring(; start=chain_edge_site, stop=site)
+        ℓ += (
+            outercoup(mc, j) * gkslcommutator("σ+", chain_edge_site, jws..., "σ-", site) +
+            conj(outercoup(mc, j)) *
+            gkslcommutator("σ-", chain_edge_site, jws..., "σ+", site)
+        )
+    end
+
+    for (j, site) in enumerate(sitenumber.(sites))
+        # a ρ a†
+        opstring = [repeat(["F⋅ * ⋅F"], site - 1); "σ-⋅ * ⋅σ+"]
+        ℓ += (damp(mc, j), collect(Iterators.flatten(zip(opstring, 1:site)))...)
+        # -0.5 (a† a ρ + ρ a† a)
+        ℓ += -0.5damp(mc, j), "N⋅", site
+        ℓ += -0.5damp(mc, j), "⋅N", site
+    end
+    return ℓ
+end
+
+function closure_op(::SiteType"vElectron", mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int)
     ℓ = OpSum()
     for (j, site) in enumerate(sitenumber.(sites))
         ℓ += freq(mc, j) * gkslcommutator("Ntot", site)
@@ -135,7 +170,43 @@ Return an OpSum object encoding the Markovian closure operators with parameters 
 `chain_edge_site`.
 This closure replaces a chain starting from a completely filled state.
 """
-function filled_closure_op(mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int)
+function filled_closure_op(
+    ::SiteType"vS=1/2", mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int
+)
+    ℓ = OpSum()
+    for (j, site) in enumerate(sitenumber.(sites))
+        ℓ += freq(mc, j) * gkslcommutator("N", site)
+    end
+    for (j, (site1, site2)) in enumerate(partition(sitenumber.(sites), 2, 1))
+        jws = jwstring(; start=site1, stop=site2)
+        ℓ +=
+            innercoup(mc, j) * (
+                gkslcommutator("σ-", site1, jws..., "σ+", site2) +
+                gkslcommutator("σ+", site1, jws..., "σ-", site2)
+            )
+    end
+    for (j, site) in enumerate(sitenumber.(sites))
+        jws = jwstring(; start=chain_edge_site, stop=site)
+        ℓ += (
+            outercoup(mc, j) * gkslcommutator("σ+", chain_edge_site, jws..., "σ-", site) +
+            conj(outercoup(mc, j)) *
+            gkslcommutator("σ-", chain_edge_site, jws..., "σ+", site)
+        )
+    end
+
+    for (j, site) in enumerate(sitenumber.(sites))
+        # a† ρ a
+        opstring = [repeat(["F⋅ * ⋅F"], site - 1); "σ+⋅ * ⋅σ-"]
+        ℓ += (damp(mc, j), collect(Iterators.flatten(zip(opstring, 1:site)))...)
+        # -0.5 (a a† ρ + ρ a a†)
+        ℓ += 0.5damp(mc, j), "N⋅", site
+        ℓ += 0.5damp(mc, j), "⋅N", site
+        ℓ += -damp(mc, j), "Id", site
+    end
+    return ℓ
+end
+
+function filled_closure_op(::SiteType"vElectron", mc::Closure, sites::Vector{<:Index}, chain_edge_site::Int)
     ℓ = OpSum()
     for (j, site) in enumerate(sitenumber.(sites))
         ℓ += freq(mc, j) * gkslcommutator("Ntot", site)
@@ -208,7 +279,23 @@ end
 Return an OpSum object encoding the Hamiltonian part ``-i[H, –]`` of the GKSL equation
 for a spin chain of frequencies `freqs` and coupling constants `coups`, on `sites`.
 """
-function spin_chain(freqs, coups, sites::Vector{<:Index})
+function spin_chain(::SiteType"vS=1/2", freqs, coups, sites::Vector{<:Index})
+    ℓ = OpSum()
+    for (j, site) in enumerate(sitenumber.(sites))
+        ℓ += freqs[j] * gkslcommutator("N", site)
+    end
+    for (j, (site1, site2)) in enumerate(partition(sitenumber.(sites), 2, 1))
+        jws = jwstring(; start=site1, stop=site2)
+        ℓ +=
+            coups[j + 1] * (
+                gkslcommutator("σ+", site1, jws..., "σ-", site2) +
+                gkslcommutator("σ-", site1, jws..., "σ+", site2)
+            )
+    end
+    return ℓ
+end
+
+function spin_chain(::SiteType"vElectron", freqs, coups, sites::Vector{<:Index})
     ℓ = OpSum()
     for (j, site) in enumerate(sitenumber.(sites))
         ℓ += freqs[j] * gkslcommutator("Ntot", site)
@@ -220,6 +307,35 @@ function spin_chain(freqs, coups, sites::Vector{<:Index})
         ℓ += +coups[j + 1] * gkslcommutator("Adn†", site1, jws..., "FAdn", site2)
         ℓ += -coups[j + 1] * gkslcommutator("Adn", site1, jws..., "FAdn†", site2)
     end
+    return ℓ
+end
+
+function exchange_interaction(::SiteType"vS=1/2", s1::Index, s2::Index)
+    site1 = sitenumber(s1)
+    site2 = sitenumber(s2)
+
+    ℓ = OpSum()
+    jws = jwstring(; start=site1, stop=site2)
+    ℓ += (
+        gkslcommutator("σ+", site1, jws..., "σ-", site2) +
+        gkslcommutator("σ-", site1, jws..., "σ+", site2)
+    )
+    return ℓ
+end
+
+function exchange_interaction(::SiteType"vElectron", s1::Index, s2::Index)
+    site1 = sitenumber(s1)
+    site2 = sitenumber(s2)
+    # c↑ᵢ† c↑ᵢ₊₁ + c↑ᵢ₊₁† c↑ᵢ + c↓ᵢ† c↓ᵢ₊₁ + c↓ᵢ₊₁† c↓ᵢ =
+    # a↑ᵢ† Fᵢ a↑ᵢ₊₁ - a↑ᵢ Fᵢ a↑ᵢ₊₁† + a↓ᵢ† Fᵢ₊₁ a↓ᵢ₊₁ - a↓ᵢ Fᵢ₊₁ a↓ᵢ₊₁†
+    ℓ = OpSum()
+    jws = jwstring(; start=site1, stop=site2)
+    ℓ += (
+        gkslcommutator("Aup†F", site1, jws..., "Aup", site2) -
+        gkslcommutator("AupF", site1, jws..., "Aup†", site2) +
+        gkslcommutator("Adn†", site1, jws..., "FAdn", site2) -
+        gkslcommutator("Adn", site1, jws..., "FAdn†", site2)
+    )
     return ℓ
 end
 

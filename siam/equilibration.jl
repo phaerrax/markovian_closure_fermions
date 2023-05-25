@@ -5,22 +5,6 @@ using TimeEvoVecMPS
 using IterTools
 import KrylovKit: exponentiate
 
-function exchange_interaction(s1::Index, s2::Index)
-    site1 = sitenumber(s1)
-    site2 = sitenumber(s2)
-    # c↑ᵢ† c↑ᵢ₊₁ + c↑ᵢ₊₁† c↑ᵢ + c↓ᵢ† c↓ᵢ₊₁ + c↓ᵢ₊₁† c↓ᵢ =
-    # a↑ᵢ† Fᵢ a↑ᵢ₊₁ - a↑ᵢ Fᵢ a↑ᵢ₊₁† + a↓ᵢ† Fᵢ₊₁ a↓ᵢ₊₁ - a↓ᵢ Fᵢ₊₁ a↓ᵢ₊₁†
-    ℓ = OpSum()
-    jws = jwstring(; start=site1, stop=site2)
-    ℓ += (
-        gkslcommutator("Aup†F", site1, jws..., "Aup", site2) -
-        gkslcommutator("AupF", site1, jws..., "Aup†", site2) +
-        gkslcommutator("Adn†", site1, jws..., "FAdn", site2) -
-        gkslcommutator("Adn", site1, jws..., "FAdn†", site2)
-    )
-    return ℓ
-end
-
 let
     parameters = load_pars(ARGS[1])
 
@@ -89,17 +73,31 @@ let
     L_lochyb = MPO(
         ε * gkslcommutator("Ntot", system_site) +
         U * gkslcommutator("NupNdn", system_site) +
-        empty_chain_coups[1] *
-        exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
-        filled_chain_coups[1] *
-        exchange_interaction(sites[system_site], sites[filled_chain_range[1]]),
+        empty_chain_coups[1] * exchange_interaction(
+            SiteType("vElectron"), sites[system_site], sites[empty_chain_range[1]]
+        ) +
+        filled_chain_coups[1] * exchange_interaction(
+            SiteType("vElectron"), sites[system_site], sites[filled_chain_range[1]]
+        ),
         sites,
     )
     L_cond = MPO(
-        spin_chain(empty_chain_freqs, empty_chain_coups, sites[empty_chain_range]) +
-        spin_chain(filled_chain_freqs, filled_chain_coups, sites[filled_chain_range]) +
-        closure_op(emptymc, sites[empty_closure_range], chain_edge) +
-        filled_closure_op(filledmc, sites[filled_closure_range], chain_edge),
+        spin_chain(
+            SiteType("vElectron"),
+            empty_chain_freqs,
+            empty_chain_coups,
+            sites[empty_chain_range],
+        ) +
+        spin_chain(
+            SiteType("vElectron"),
+            filled_chain_freqs,
+            filled_chain_coups,
+            sites[filled_chain_range],
+        ) +
+        closure_op(SiteType("vElectron"), emptymc, sites[empty_closure_range], chain_edge) +
+        filled_closure_op(
+            SiteType("vElectron"), filledmc, sites[filled_closure_range], chain_edge
+        ),
         sites,
     )
 
