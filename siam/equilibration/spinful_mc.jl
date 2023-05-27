@@ -74,29 +74,27 @@ let
         ε * gkslcommutator("Ntot", system_site) +
         U * gkslcommutator("NupNdn", system_site) +
         empty_chain_coups[1] * exchange_interaction(
-            SiteType("vElectron"), sites[system_site], sites[empty_chain_range[1]]
+            sites[system_site], sites[empty_chain_range[1]]
         ) +
         filled_chain_coups[1] * exchange_interaction(
-            SiteType("vElectron"), sites[system_site], sites[filled_chain_range[1]]
+            sites[system_site], sites[filled_chain_range[1]]
         ),
         sites,
     )
     L_cond = MPO(
         spin_chain(
-            SiteType("vElectron"),
-            empty_chain_freqs,
-            empty_chain_coups,
+                   empty_chain_freqs[1:chain_length],
+                   empty_chain_coups[2:chain_length],
             sites[empty_chain_range],
         ) +
         spin_chain(
-            SiteType("vElectron"),
-            filled_chain_freqs,
-            filled_chain_coups,
+            filled_chain_freqs[1:chain_length],
+            filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        closure_op(SiteType("vElectron"), emptymc, sites[empty_closure_range], chain_edge) +
+        closure_op( emptymc, sites[empty_closure_range], chain_edge) +
         filled_closure_op(
-            SiteType("vElectron"), filledmc, sites[filled_closure_range], chain_edge
+             filledmc, sites[filled_closure_range], chain_edge
         ),
         sites,
     )
