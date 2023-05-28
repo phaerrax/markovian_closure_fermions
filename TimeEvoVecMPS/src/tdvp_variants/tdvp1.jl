@@ -3,7 +3,7 @@ export tdvp1!, adaptivetdvp1!
 using ITensors: position!
 
 """
-    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)
+    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
 
 Integrate the Schrödinger equation ``d/dt ψₜ = -i Hⱼ ψₜ`` using the one-site TDVP algorithm,
 where `ψ` represents the state of the system and the elements of `⃗H` form… in some way… the
@@ -17,10 +17,9 @@ Hamiltonian operator of the system.
 - `⃗H:Vector{MPO}`: a list of MPOs.
 - `Δt::Number`: time step of the evolution.
 - `tf::Number`: end time of the evolution.
-- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
 """
 function tdvp1!(
-    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number, sites; kwargs...
+    solver, psi0::MPS, Hs::Vector{MPO}, time_step::Number, tf::Number; kwargs...
 )
     # (Copied from ITensorsTDVP)
     for H in Hs
@@ -29,11 +28,11 @@ function tdvp1!(
     end
     Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
     PHs = ProjMPOSum(Hs)
-    return tdvp1!(solver, psi0, PHs, time_step, tf, sites; kwargs...)
+    return tdvp1!(solver, psi0, PHs, time_step, tf; kwargs...)
 end
 
 """
-    tdvp1!(solver, ψ::MPS, H::MPO, Δt::Number, tf::Number, sites; kwargs...)
+    tdvp1!(solver, ψ::MPS, H::MPO, Δt::Number, tf::Number; kwargs...)
 
 Integrate the Schrödinger equation ``d/dt ψₜ = -i H ψₜ`` using the one-site TDVP algorithm,
 where `ψ` represents the state of the system and the elements of `H` is the Hamiltonian
@@ -46,14 +45,13 @@ operator of the system.
 - `ψ::MPS`: the state of the system.
 - `H::MPO`: the Hamiltonian operator.
 - `tf::Number`: end time of the evolution.
-- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
 """
 function tdvp1!(solver, state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
     return tdvp1!(solver, state, ProjMPO(H), timestep, tf; kwargs...)
 end
 
 """
-    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)
+    tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
 
 Integrate the Schrödinger equation ``d/dt ψₜ = -i Hⱼ ψₜ`` using the one-site TDVP algorithm,
 where `ψ` represents the state of the system and the elements of `⃗H` form… in some way… the
@@ -66,15 +64,14 @@ Hamiltonian operator of the system.
 - `ψ::MPS`: the state of the system.
 - `PH`: a ProjMPO-like operator encoding the Hamiltonian operator.
 - `tf::Number`: end time of the evolution.
-- `sites`: a collection of sites, on which `ρ` and `⃗H` are defined.
 """
 function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
     nsteps = Int(tf / timestep)
     cb = get(kwargs, :callback, NoTEvoCallback())
-    #hermitian = get(kwargs, :hermitian, true)
-    #exp_tol = get(kwargs, :exp_tol, 1e-14)
-    #krylovdim = get(kwargs, :krylovdim, 30)
-    #maxiter = get(kwargs, :maxiter, 100)
+    hermitian = get(kwargs, :hermitian, true)
+    exp_tol = get(kwargs, :exp_tol, 1e-14)
+    krylovdim = get(kwargs, :krylovdim, 30)
+    maxiter = get(kwargs, :maxiter, 100)
     normalize = get(kwargs, :normalize, true)
     io_file = get(kwargs, :io_file, nothing)
     ranks_file = get(kwargs, :io_ranks, nothing)
@@ -133,7 +130,7 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                     sweepdir=sweepdir,
                     which_decomp=decomp,
                     hermitian=hermitian,
-                    tol=exp_tol,
+                    exp_tol=exp_tol,
                     krylovdim=krylovdim,
                     maxiter=maxiter,
                 )
