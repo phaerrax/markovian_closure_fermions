@@ -155,7 +155,6 @@ function adjtdvp1vec!(
                 )
             end
         end
-        current_time += Δt
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -184,6 +183,8 @@ function adjtdvp1vec!(
 
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += Δt
     end
 
     !isnothing(io_file) && close(io_handle)
@@ -362,7 +363,6 @@ function adaptiveadjtdvp1vec!(
                 )
             end
         end
-        current_time += Δt
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -391,6 +391,8 @@ function adaptiveadjtdvp1vec!(
 
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += Δt
     end
 
     !isnothing(io_file) && close(io_handle)

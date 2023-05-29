@@ -157,7 +157,6 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
                 )
             end
         end
-        current_time += Δt
 
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
@@ -201,6 +200,8 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += Δt
 
         checkdone!(cb) && break
     end
@@ -322,7 +323,6 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
                 )
             end
         end
-        current_time += Δt
 
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
@@ -366,6 +366,8 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += Δt
 
         checkdone!(cb) && break
     end

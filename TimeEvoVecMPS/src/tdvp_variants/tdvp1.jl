@@ -95,6 +95,7 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
 
     store_state0 && (state0 = copy(state))
 
+    @show io_file
     io_handle = writeheaders_data(io_file, cb; kwargs...)
     ranks_handle = writeheaders_ranks(ranks_file, length(state))
     times_handle = writeheaders_stime(times_file)
@@ -139,7 +140,6 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                 )
             end
         end
-        current_time += timestep
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -159,6 +159,8 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += timestep
 
         checkdone!(cb) && break
     end
@@ -292,7 +294,6 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
                 )
             end
         end
-        current_time += timestep
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -312,6 +313,8 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
+
+        current_time += timestep
 
         checkdone!(cb) && break
     end
