@@ -295,6 +295,28 @@ function measure_localops!(
 end
 
 """
+    smart_contract(A::opPos, ψ::MPS, site_range)
+
+Return the expectation value ``⟨ψ|A|ψ⟩`` contracting only sites in the given range.
+It is assumed that `ψ`'s orthocentre lies within `site_range`.
+"""
+function smart_contract(o::opPos, psi::MPS, site_range)
+    a = ITensors.OneITensor()
+    v = ITensors.OneITensor()
+    s = siteinds(psi)
+    for n in site_range
+        if n == o.pos
+            a *= op(o.op, s, n)
+        else
+            a *= delta(s[n], s[n]')
+        end
+        v *= psi[n]
+    end
+    x = prime(v; tags="Site") * a * v
+    return scalar(x)
+end
+
+"""
     measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, i::Int, alg)
 
 Measure each operator defined inside the callback object `cb` on the given MPS `psi`
@@ -305,7 +327,7 @@ needed to provide a correct result, given `i` and the orthocentre of the MPS.
 """
 function measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, site::Int, alg)
     # Get the operators defined on the given site.
-    operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
+    operators_thisbond = filter(op -> isoncurrentbond(op, site, alg), ops(cb))
 
     # Why do we need this function?
     # We are sweeping right-to-left during a TDVP step, and we have just completed the
@@ -328,21 +350,10 @@ function measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, site::Int,
         site_range = first(oc):site
     end
 
+    sites = siteinds(psi)
     for o in operators_thisbond
-        if o.op == "Norm"
-            x = norm(wf)
-        else
-            x = ITensor.OneITensor()
-            for s in site_range
-                if s == o.pos
-                    x *= dot(psi[s], noprime(op(sites(cb), o.op, s) * psi[s]))
-                else
-                    x *= dot(psi[s], psi[s])
-                end
-            end
-            x = scalar(x)
-        end
-        imag(x) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+        x = smart_contract(o, psi, site_range)
+        imag(x) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(x))")
 
         # NOTE Since we don't have an operator for each site, we have a single value
         # for each operator in cb, and operators associated to different sites have
@@ -535,8 +546,9 @@ function apply!(
             wf = state[bond] * state[bond+1]
             measure_localops!(cb, wf, bond + 1, alg)
         elseif alg isa TDVP1
-            wf = state[bond]
-            measure_localops!(cb, wf, bond, alg)
+            #wf = state[bond]
+            #measure_localops!(cb, wf, bond, alg)
+            measure_localops!(cb, state, bond, alg)
         elseif alg isa TEBDalg
             measure_localops!(cb, wf, bond, alg)
             # NOTE What should wf be here?
