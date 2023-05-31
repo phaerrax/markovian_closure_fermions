@@ -109,7 +109,6 @@ growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v)-1))
 Recompute `P`'s projection operators assuming that `psi` has changed on sites
 (`n`, `n+1`). The position of the projection is not changed.
 """
-
 function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
     N = length(P.H)
     @assert n ≤ N - 1
@@ -156,6 +155,21 @@ function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
         @warn "v[n] and v[n+1] have changed but sites n and n+1 are currently associated " *
             "to the \"open part\" of the projection represented by the ProjMPO object. " *
             "This may lead to some issues. Be careful."
+    end
+    return nothing
+end
+
+"""
+    recompute!(P::ProjMPOSum, psi::MPS, n::Int)
+
+Recompute `P`'s projection operators assuming that `psi` has changed on sites
+(`n`, `n+1`). The position of the projection is not changed.
+"""
+function recompute!(P::ProjMPOSum, v::MPS, n::Int)
+    # See recompute! for AbstractProjMPO types. This just applies the method on
+    # each of P's terms.
+    for t in P.terms
+        recompute!(t, v, n)
     end
     return nothing
 end
