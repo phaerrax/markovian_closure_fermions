@@ -312,7 +312,7 @@ function smart_contract(o::opPos, psi::MPS, site_range)
         end
         v *= psi[n]
     end
-    x = prime(v; tags="Site") * a * v
+    x = dag(prime(v; tags="Site")) * a * v
     return scalar(x)
 end
 
