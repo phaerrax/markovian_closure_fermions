@@ -1,6 +1,6 @@
 export tdvp1!, adaptivetdvp1!
 
-using ITensors: position!
+using ITensors: position!, set_nsite!
 
 """
     tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
@@ -104,8 +104,8 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
 
     # Prepare for first iteration.
     orthogonalize!(state, 1)
-    ITensors.set_nsite!(PH, 1)
-    ITensors.position!(PH, state, 1)
+    set_nsite!(PH, 1)
+    position!(PH, state, 1)
 
     current_time = 0.0
     for s in 1:nsteps
@@ -248,13 +248,13 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
 
     # Prepare for first iteration
     orthogonalize!(state, 1)
-    singlesite!(PH)
+    set_nsite!(PH, 1)
     position!(PH, state, 1)
 
     current_time = 0.0
     for s in 1:nsteps
         orthogonalize!(state, 1)
-        ITensors.set_nsite!(PH, 1)
+        set_nsite!(PH, 1)
         position!(PH, state, 1)
 
         # Before each sweep, we grow the bond dimensions a bit.

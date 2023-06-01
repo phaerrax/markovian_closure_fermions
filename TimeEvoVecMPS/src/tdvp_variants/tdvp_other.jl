@@ -1,6 +1,6 @@
 export tdvp2!, tdvpMC!
 
-using ITensors: position!
+using ITensors: position!, set_nsite!
 
 """
     tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)
@@ -89,7 +89,7 @@ function tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)
                 #       (1, 1), …, (N-1, 1), (N-1, 2), …, (1, 2)
                 #    so that the correct pair of bonds is always (b, b+1).
                 twosite!(PH)
-                ITensors.position!(PH, ψ, b)
+                position!(PH, ψ, b)
                 wf = ψ[b] * ψ[b + 1]
                 wf, info = exponentiate(
                     PH, -0.5Δt, wf; ishermitian=hermitian, tol=exp_tol, krylovdim=krylovdim
@@ -150,8 +150,8 @@ function tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)
                 #    This step is not necessary in the case of imaginary time-evolution [1].
                 i = ha == 1 ? b + 1 : b
                 if 1 < i < N && !(dt isa Complex)
-                    singlesite!(PH)
-                    ITensors.position!(PH, ψ, i)
+                    set_nsite!(PH, 1)
+                    position!(PH, ψ, i)
                     ψ[i], info = exponentiate(
                         PH,
                         0.5Δt,
@@ -261,7 +261,7 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                 # and we shift the projection PH of H such that the set of unprojected
                 # sites begins at site bond.
                 twosite!(PH)
-                ITensors.position!(PH, state, bond)
+                position!(PH, state, bond)
 
                 # Completing a single left-to-right sweep is a first-order integrator that
                 # produces an updated |ψ⟩ at time t + τ with a local integration error of
@@ -318,8 +318,8 @@ function tdvpMC!(state, H::MPO, dt, tf; kwargs...)
                 i = (ha == 1 ? bond + 1 : bond)
                 # The "second site" is the one in the direction of the sweep.
                 if 1 < i < N && !(dt isa Complex)
-                    singlesite!(PH)
-                    ITensors.position!(PH, state, i)
+                    set_nsite!(PH, 1)
+                    position!(PH, state, i)
                     state[i], info = exponentiate(
                         PH,
                         0.5τ,

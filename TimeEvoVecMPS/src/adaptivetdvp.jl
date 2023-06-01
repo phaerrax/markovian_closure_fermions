@@ -1,5 +1,7 @@
 export adaptbonddimensions!
 
+using ITensors: AbstractProjMPO, position!, set_nsite!
+
 """
     bondconvergencemeasure(PH::AbstractProjMPO, state::MPS, bond::Integer)
 
@@ -16,8 +18,8 @@ https://doi.org/10.48550/arXiv.2007.13528
 function bondconvergencemeasure(PH::ITensors.AbstractProjMPO, v::MPS, bond::Integer)::Real
     #orthogonalize!(v, bond) # this causes trouble
 
-    ITensors.set_nsite!(PH, 1)
-    ITensors.position!(PH, v, bond)
+    set_nsite!(PH, 1)
+    position!(PH, v, bond)
     H1 = PH(v[bond])
 
     Q, R = factorize(
@@ -26,14 +28,14 @@ function bondconvergencemeasure(PH::ITensors.AbstractProjMPO, v::MPS, bond::Inte
     vv = copy(v)
     vv[bond] = Q
     vv[bond + 1] *= R
-    ITensors.setleftlim!(vv, bond)
-    ITensors.setrightlim!(vv, bond + 1)
+    setleftlim!(vv, bond)
+    setrightlim!(vv, bond + 1)
 
-    ITensors.position!(PH, vv, bond + 1)
+    position!(PH, vv, bond + 1)
     H2 = PH(vv[bond + 1])
 
-    ITensors.set_nsite!(PH, 0)
-    ITensors.position!(PH, vv, bond + 1) # Force recalculation
+    set_nsite!(PH, 0)
+    position!(PH, vv, bond + 1) # Force recalculation
     K = PH(R)
 
     return norm(H1)^2 + norm(H2)^2 + norm(K)^2
@@ -93,4 +95,3 @@ function adaptbonddimensions!(
     end
     return nothing
 end
-

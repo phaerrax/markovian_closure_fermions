@@ -1,6 +1,6 @@
 export adjtdvp1vec!, adaptiveadjtdvp1vec!
 
-using ITensors: position!
+using ITensors: position!, set_nsite!, linkdims
 
 """
     adjtdvp1vec!(
@@ -125,7 +125,7 @@ function adjtdvp1vec!(
 
     # Prepare for first iteration.
     orthogonalize!(operator, 1)
-    singlesite!(PH)
+    set_nsite!(PH, 1)
     position!(PH, operator, 1)
 
     current_time = zero(Δt)
@@ -175,7 +175,7 @@ function adjtdvp1vec!(
             flush(io_handle)
 
             @printf(ranks_handle, "%40.15f", current_time)
-            for bonddim in ITensors.linkdims(operator)
+            for bonddim in linkdims(operator)
                 @printf(ranks_handle, "%10d", bonddim)
             end
             @printf(ranks_handle, "\n")
@@ -332,7 +332,7 @@ function adaptiveadjtdvp1vec!(
     current_time = zero(Δt)
     for s in 1:nsteps
         orthogonalize!(operator, 1)
-        ITensors.set_nsite!(PH, 1)
+        set_nsite!(PH, 1)
         position!(PH, operator, 1)
 
         @debug "[Step $s] Attempting to grow the bond dimensions."
@@ -383,7 +383,7 @@ function adaptiveadjtdvp1vec!(
             flush(io_handle)
 
             @printf(ranks_handle, "%40.15f", t)
-            for bonddim in ITensors.linkdims(operator)
+            for bonddim in linkdims(operator)
                 @printf(ranks_handle, "%10d", bonddim)
             end
             @printf(ranks_handle, "\n")
