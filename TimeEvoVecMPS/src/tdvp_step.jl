@@ -2,8 +2,6 @@ function exponentiate_solver(; kwargs...)
     # Default solver that we provide if no solver is given by the user.
     function solver(H, time_step, ψ₀; kws...)
         solver_kwargs = (;
-            #ishermitian=get(kwargs, :ishermitian, true),
-            issymmetric=get(kwargs, :issymmetric, true),
             tol=get(kwargs, :solver_tol, 1E-12),
             krylovdim=get(kwargs, :solver_krylovdim, 30),
             maxiter=get(kwargs, :solver_maxiter, 100),
