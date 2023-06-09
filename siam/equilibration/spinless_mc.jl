@@ -50,7 +50,6 @@ let
         start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
 
-    chain_edge = max(filled_closure_range..., empty_closure_range...)
     total_size = system_length + 2chain_length + 2closure_length
 
     sites = siteinds("vS=1/2", total_size)
@@ -70,27 +69,25 @@ let
     # The operators are split as in Kohn's PhD dissertation.
     L_lochyb = MPO(
         ε * gkslcommutator("N", system_site) +
-        empty_chain_coups[1] * exchange_interaction(
-            sites[system_site], sites[empty_chain_range[1]]
-        ) +
-        filled_chain_coups[1] * exchange_interaction(
-            sites[system_site], sites[filled_chain_range[1]]
-        ),
+        empty_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
+        filled_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[filled_chain_range[1]]),
         sites,
     )
     L_cond = MPO(
         spin_chain(
-                   empty_chain_freqs[1:chain_length],
-                   empty_chain_coups[2:chain_length],
+            empty_chain_freqs[1:chain_length],
+            empty_chain_coups[2:chain_length],
             sites[empty_chain_range],
         ) +
         spin_chain(
-                   filled_chain_freqs[1:chain_length],
-                   filled_chain_coups[2:chain_length],
+            filled_chain_freqs[1:chain_length],
+            filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        closure_op(emptymc, sites[empty_closure_range], chain_edge) +
-        filled_closure_op(filledmc, sites[filled_closure_range], chain_edge),
+        closure_op(emptymc, sites[empty_closure_range], empty_chain_range[end]) +
+        filled_closure_op(filledmc, sites[filled_closure_range], filled_chain_range[end]),
         sites,
     )
 
@@ -101,7 +98,10 @@ let
     Ls = [L_lochyb, L_cond]
 
     krylov_kwargs = (;
-        ishermitian=false, krylovdim=parameters["krylov_dim"], tol=parameters["exp_tol"]
+        ishermitian=false,
+        krylovdim=parameters["krylov_dim"],
+        tol=parameters["exp_tol"],
+        issymmetric=false,
     )
 
     #  Specific solver function for time-dependent TDVP.

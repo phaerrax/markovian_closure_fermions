@@ -11,7 +11,7 @@ let
     # Input: system parameters
     system_length = 1
     eps = parameters["sys_en"]
-    U = parameters["spin_interaction"]
+    #U = parameters["spin_interaction"]
 
     # Input: chain parameters
     thermofield_coefficients = readdlm(
@@ -60,7 +60,7 @@ let
     )
 
     slope = parameters["adiabatic_ramp_slope"]
-    ramp(t) = t < inv(slope) ? convert(typeof(t), slope * t) : one(t)
+    ramp(t) = slope*t < 1 ? convert(typeof(t), slope * t) : one(t)
     fs = [ramp, one]
     Hs = [H_lochyb, H_cond]
 
@@ -78,12 +78,6 @@ let
     end
 
     function td_solver(Hs::ProjMPOSum, time_step, ψ₀; kwargs...)
-        # Questa è la funzione che viene innestata in tdvp_site_update!.
-        # Le vengono forniti gli argomenti (H, time_step, psi; current_time); con H costruiamo
-        # l'oggetto TimeDependentSum.
-        # A sua volta, chiama time_dependent_solver con un TimeDependentSum, che è definito in
-        # TimeEvoVecMPS/src/tdvp_step.jl. Qui attacchiamo anche i kwargs specifici di exponentiate,
-        # che vengono passati alla funzione dal time_dependent_solver "più interno".
         return time_dependent_solver(
             TimeDependentSum(fs, Hs), time_step, ψ₀; krylov_kwargs..., kwargs...
         )

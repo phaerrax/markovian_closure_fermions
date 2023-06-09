@@ -48,7 +48,6 @@ let
         start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
 
-    chain_edge = max(filled_closure_range..., empty_closure_range...)
     total_size = system_length + 2chain_length + 2closure_length
 
     sites = siteinds("Fermion", total_size)
@@ -69,46 +68,52 @@ let
 
     H_lochyb = MPO(
         h_loc +
-        emptycoups[1] *  exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
-        filledcoups[1] * exchange_interaction(sites[system_site], sites[filled_chain_range[1]]),
+        emptycoups[1] *
+        exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
+        filledcoups[1] *
+        exchange_interaction(sites[system_site], sites[filled_chain_range[1]]),
         sites,
     )
 
-    H_cond = MPO(
-        spin_chain(
-            emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[empty_chain_range]
-        ) + spin_chain(
-            filledfreqs[1:chain_length],
-            filledcoups[2:chain_length],
-            sites[filled_chain_range],
-        ),
-        sites,
+    h_cond = OpSum()
+    h_cond += spin_chain(
+        emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[empty_chain_range]
+    )
+    h_cond += spin_chain(
+        filledfreqs[1:chain_length], filledcoups[2:chain_length], sites[filled_chain_range]
     )
 
     h_effclosure = OpSum()
-    h_effclosure += spin_chain(freqs(emptymc), innercoups(emptymc), sites[empty_closure_range])
+    h_effclosure += spin_chain(
+        freqs(emptymc), innercoups(emptymc), sites[empty_closure_range]
+    )
     h_effclosure += spin_chain(
         freqs(filledmc), innercoups(filledmc), sites[filled_closure_range]
     )
     for (i, site) in enumerate(empty_closure_range)
-        h_effclosure += outercoup(emptymc, i), "c†", chain_edge, "c", site
-        h_effclosure += conj(outercoup(emptymc, i)), "c†", site, "c", chain_edge
+        h_effclosure += outercoup(emptymc, i), "c†", empty_chain_range[end], "c", site
+        h_effclosure += conj(outercoup(emptymc, i)), "c†", site, "c", empty_chain_range[end]
         h_effclosure += -0.5im * damp(emptymc, i), "n", site
     end
     for (i, site) in enumerate(filled_closure_range)
-        h_effclosure += outercoup(filledmc, i), "c†", chain_edge, "c", site
-        h_effclosure += conj(outercoup(filledmc, i)), "c†", site, "c", chain_edge
+        h_effclosure += outercoup(filledmc, i), "c†", filled_chain_range[end], "c", site
+        h_effclosure += (
+            conj(outercoup(filledmc, i)), "c†", site, "c", filled_chain_range[end]
+        )
         h_effclosure += -0.5im * damp(filledmc, i), "c * c†", site
     end
-    H_effclosure = MPO(h_effclosure, sites)
+    H_effcond = MPO(h_cond + h_effclosure, sites)
 
     slope = parameters["adiabatic_ramp_slope"]
     ramp(t) = slope * t < 1 ? convert(typeof(t), slope * t) : one(t)
     fs = [ramp, one]
-    Hs = [H_lochyb, H_cond]
+    Hs = [H_lochyb, H_effcond]
 
     krylov_kwargs = (;
-        ishermitian=false, krylovdim=parameters["krylov_dim"], tol=parameters["exp_tol"]
+        ishermitian=false,
+        krylovdim=parameters["krylov_dim"],
+        tol=parameters["exp_tol"],
+        issymmetric=false,
     )
 
     #  Specific solver function for time-dependent TDVP.
