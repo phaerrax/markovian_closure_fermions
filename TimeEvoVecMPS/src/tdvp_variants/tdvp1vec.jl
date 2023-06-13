@@ -95,7 +95,7 @@ updated.
 function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwargs...)
     nsteps = Int(tf / Δt)
     cb = get(kwargs, :callback, NoTEvoCallback())
-    hermitian = get(kwargs, :hermitian, true)
+    hermitian = get(kwargs, :hermitian, false)
     exp_tol = get(kwargs, :exp_tol, 1e-14)
     krylovdim = get(kwargs, :krylovdim, 30)
     maxiter = get(kwargs, :maxiter, 100)
