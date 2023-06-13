@@ -1,4 +1,5 @@
 using ITensors
+using ITensors.HDF5
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
@@ -73,18 +74,16 @@ let
     L_lochyb = MPO(
         ε * gkslcommutator("Ntot", system_site) +
         U * gkslcommutator("NupNdn", system_site) +
-        empty_chain_coups[1] * exchange_interaction(
-            sites[system_site], sites[empty_chain_range[1]]
-        ) +
-        filled_chain_coups[1] * exchange_interaction(
-            sites[system_site], sites[filled_chain_range[1]]
-        ),
+        empty_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
+        filled_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[filled_chain_range[1]]),
         sites,
     )
     L_cond = MPO(
         spin_chain(
-                   empty_chain_freqs[1:chain_length],
-                   empty_chain_coups[2:chain_length],
+            empty_chain_freqs[1:chain_length],
+            empty_chain_coups[2:chain_length],
             sites[empty_chain_range],
         ) +
         spin_chain(
@@ -92,10 +91,8 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        closure_op( emptymc, sites[empty_closure_range], chain_edge) +
-        filled_closure_op(
-             filledmc, sites[filled_closure_range], chain_edge
-        ),
+        closure_op(emptymc, sites[empty_closure_range], chain_edge) +
+        filled_closure_op(filledmc, sites[filled_closure_range], chain_edge),
         sites,
     )
 
@@ -143,43 +140,50 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    if get(parameters, "convergence_factor_bondadapt", 0) == 0
-        @info "Using standard algorithm."
-        vecρ₀, _ = stretchBondDim(initstate, parameters["max_bond"])
-        tdvp1vec!(
-            td_solver,
-            vecρ₀,
-            Ls,
-            timestep,
-            tmax,
-            sites;
-            normalize=false,
-            callback=cb,
-            progress=true,
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-        )
-    else
-        @info "Using adaptive algorithm."
-        vecρ₀, _ = stretchBondDim(initstate, 4)
-        adaptivetdvp1vec!(
-            td_solver,
-            vecρ₀,
-            Ls,
-            timestep,
-            tmax,
-            sites;
-            normalize=false,
-            callback=cb,
-            progress=true,
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
-            max_bond=parameters["max_bond"],
-        )
-    end
+    vecρ, _ = stretchBondDim(initstate, parameters["max_bond"])
+    intermediate_state_file = append_if_not_null(parameters["state_file"], "_intermediate")
+
+    @info "Starting equilibration algorithm."
+    tdvp1vec!(
+        td_solver,
+        vecρ,
+        Ls,
+        timestep,
+        inv(slope),
+        sites;
+        normalize=false,
+        callback=cb,
+        progress=true,
+        store_psi0=false,
+        ishermitian=false,
+        issymmetric=false,
+        io_file=append_if_not_null(parameters["out_file"], "_ramp"),
+        io_ranks=append_if_not_null(parameters["ranks_file"], "_ramp"),
+        io_times=append_if_not_null(parameters["times_file"], "_ramp"),
+    )
+
+    f = h5open(intermediate_state_file, "w")
+    write(f, "intermediate_state", vecρ)
+    close(f)
+
+    tdvp1vec!(
+        vecρ,
+        L_lochyb + L_cond,
+        timestep,
+        tmax - inv(slope),
+        sites;
+        normalize=false,
+        callback=cb,
+        progress=true,
+        store_psi0=false,
+        ishermitian=false,
+        issymmetric=false,
+        io_file=append_if_not_null(parameters["out_file"], "_relax"),
+        io_ranks=append_if_not_null(parameters["ranks_file"], "_relax"),
+        io_times=append_if_not_null(parameters["times_file"], "_relax"),
+    )
+
+    f = h5open(parameters["state_file"], "w")
+    write(f, "final_state", vecρ)
+    close(f)
 end

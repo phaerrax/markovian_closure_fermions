@@ -1,3 +1,5 @@
+export append_if_not_null
+
 zerosite!(PH::ProjMPO) = (PH.nsite = 0)
 singlesite!(PH::ProjMPO) = (PH.nsite = 1)
 twosite!(PH::ProjMPO) = (PH.nsite = 2)
@@ -118,4 +120,12 @@ function printoutput_stime(times_handle, stime::Real)
     end
 
     return nothing
+end
+
+function append_if_not_null(filename::AbstractString, str::AbstractString)
+    if filename != "/dev/null"
+        return filename * str
+    else
+        return filename
+    end
 end

@@ -1,4 +1,5 @@
 using ITensors
+using ITensors.HDF5
 using IterTools
 using DelimitedFiles
 using PseudomodesTTEDOPA
@@ -104,41 +105,48 @@ let
         createObs(obs), sites, parameters["ms_stride"] * timestep
     )
 
-    if get(parameters, "convergence_factor_bondadapt", 0) == 0
-        @info "Using standard algorithm."
-        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
-        tdvp1!(
-            td_solver,
-            psi,
-            Hs,
-            timestep,
-            tmax;
-            normalize=false,
-            callback=cb,
-            progress=true,
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-        )
-    else
-        @info "Using adaptive algorithm."
-        psi, _ = stretchBondDim(psi0, 4)
-        adaptivetdvp1!(
-            td_solver,
-            psi,
-            Hs,
-            timestep,
-            tmax;
-            normalize=false,
-            callback=cb,
-            progress=true,
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
-            max_bond=parameters["max_bond"],
-        )
-    end
+    psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+    intermediate_state_file = append_if_not_null(parameters["state_file"], "_intermediate")
+
+    @info "Starting equilibration algorithm."
+    tdvp1!(
+        td_solver,
+        psi,
+        Hs,
+        timestep,
+        inv(slope);
+        normalize=false,
+        callback=cb,
+        progress=true,
+        store_psi0=false,
+        ishermitian=true,
+        issymmetric=false,
+        io_file=append_if_not_null(parameters["out_file"], "_ramp"),
+        io_ranks=append_if_not_null(parameters["ranks_file"], "_ramp"),
+        io_times=append_if_not_null(parameters["times_file"], "_ramp"),
+    )
+
+    f = h5open(intermediate_state_file, "w")
+    write(f, "intermediate_state", psi)
+    close(f)
+
+    tdvp1!(
+        psi,
+        H_lochyb + H_cond,
+        timestep,
+        tmax - inv(slope);
+        normalize=false,
+        callback=cb,
+        progress=true,
+        store_psi0=false,
+        ishermitian=true,
+        issymmetric=false,
+        io_file=append_if_not_null(parameters["out_file"], "_relax"),
+        io_ranks=append_if_not_null(parameters["ranks_file"], "_relax"),
+        io_times=append_if_not_null(parameters["times_file"], "_relax"),
+    )
+
+    f = h5open(parameters["state_file"], "w")
+    write(f, "final_state", psi)
+    close(f)
 end
