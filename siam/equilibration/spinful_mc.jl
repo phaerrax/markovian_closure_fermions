@@ -53,7 +53,6 @@ let
         start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
 
-    chain_edge = max(filled_closure_range..., empty_closure_range...)
     total_size = system_length + 2chain_length + 2closure_length
 
     sites = siteinds("vElectron", total_size)
@@ -91,14 +90,13 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        closure_op(emptymc, sites[empty_closure_range], chain_edge) +
-        filled_closure_op(filledmc, sites[filled_closure_range], chain_edge),
+        closure_op(emptymc, sites[empty_closure_range], empty_chain_range[end]) +
+        filled_closure_op(filledmc, sites[filled_closure_range], filled_chain_range[end]),
         sites,
     )
 
     slope = parameters["adiabatic_ramp_slope"]
-    ramp(t) = t < inv(slope) ? convert(typeof(t), slope * t) : one(t)
-    # (Trying to make it type-stable...)
+    ramp(t) = t * slope < 1 ? convert(typeof(t), slope * t) : one(t)
     fs = [ramp, one]
     Ls = [L_lochyb, L_cond]
 

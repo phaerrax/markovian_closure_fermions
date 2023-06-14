@@ -35,8 +35,6 @@ let
     chain_length = parameters["chain_length"]
     total_size = 2 * chain_length + 1
     systempos = 1
-    #filledchain_sites = (systempos - 1):-1:1
-    #emptychain_sites = (systempos + 1):1:total_size
     filledchain_sites = 3:2:total_size
     emptychain_sites = 2:2:total_size
 

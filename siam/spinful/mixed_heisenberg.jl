@@ -20,7 +20,7 @@ let
     # ------------------------
     system_initstate = parameters["sys_ini"]
     system_length = 1
-    eps = parameters["sys_en"]
+    ε = parameters["sys_en"]
     U = parameters["spin_interaction"]
 
     # Input: chain stub parameters
@@ -36,8 +36,8 @@ let
 
     # Site ranges
     system_site = 1
-    empty_chain = range(; start=2, step=2, length=chain_length)
-    filled_chain = range(; start=3, step=2, length=chain_length)
+    empty_chain_range = range(; start=2, step=2, length=chain_length)
+    filled_chain_range = range(; start=3, step=2, length=chain_length)
 
     total_size = system_length + 2chain_length
 
@@ -45,72 +45,45 @@ let
     initialstates = Dict(
         [
             system_site => parameters["sys_ini"]
-            [st => "UpDn" for st in filled_chain]
-            [st => "Emp" for st in empty_chain]
+            [st => "UpDn" for st in filled_chain_range]
+            [st => "Emp" for st in empty_chain_range]
         ],
     )
     initialops = Dict(
         [
-            system_site => "v"*parameters["system_observable"]
-            [st => "vId" for st in filled_chain]
-            [st => "vId" for st in empty_chain]
+            system_site => "v" * parameters["system_observable"]
+            [st => "vId" for st in filled_chain_range]
+            [st => "vId" for st in empty_chain_range]
         ],
     )
     init_state = MPS(sites, [initialstates[i] for i in 1:total_size])
     init_targetop = MPS(sites, [initialops[i] for i in 1:total_size])
-    opgrade = "even"
 
     # Unitary part of master equation
     # -------------------------------
     adjℓ = OpSum()
 
-    # System Hamiltonian
-    adjℓ += -eps * gkslcommutator("Ntot", system_site)
+    adjℓ += -ε * gkslcommutator("Ntot", system_site)
     adjℓ += -U * gkslcommutator("NupNdn", system_site)
 
-    if chain_length > 0
-        # System-chain interaction:
-        # c↑ᵢ† c↑ᵢ₊₁ + c↑ᵢ₊₁† c↑ᵢ + c↓ᵢ† c↓ᵢ₊₁ + c↓ᵢ₊₁† c↓ᵢ =
-        # a↑ᵢ† Fᵢ a↑ᵢ₊₁ - a↑ᵢ Fᵢ a↑ᵢ₊₁† + a↓ᵢ† Fᵢ₊₁ a↓ᵢ₊₁ - a↓ᵢ Fᵢ₊₁ a↓ᵢ₊₁†
-        adjℓ +=
-            -empty_chain_coups[1] *
-            gkslcommutator("Aup†F", system_site, "Aup", empty_chain[1])
-        adjℓ -=
-            -empty_chain_coups[1] *
-            gkslcommutator("AupF", system_site, "Aup†", empty_chain[1])
-        adjℓ +=
-            -empty_chain_coups[1] *
-            gkslcommutator("Adn†", system_site, "FAdn", empty_chain[1])
-        adjℓ -=
-            -empty_chain_coups[1] *
-            gkslcommutator("Adn", system_site, "FAdn†", empty_chain[1])
+    adjℓ +=
+        empty_chain_coups[1] * 
+        exchange_interaction′(sites[system_site], sites[empty_chain[1]])
 
-            adjℓ += -filled_chain_coups[1] * gkslcommutator("Aup†F",system_site, "F", empty_chain[1], "Aup", filled_chain[1])
-            adjℓ -= -filled_chain_coups[1] * gkslcommutator("AupF", system_site, "F", empty_chain[1], "Aup†", filled_chain[1])
-            adjℓ += -filled_chain_coups[1] * gkslcommutator("Adn†", system_site, "F", empty_chain[1], "FAdn", filled_chain[1])
-            adjℓ -= -filled_chain_coups[1] * gkslcommutator("Adn",  system_site, "F", empty_chain[1], "FAdn†", filled_chain[1])
+    adjℓ +=
+        filled_chain_coups[1] *
+        exchange_interaction′(sites[system_site], sites[filled_chain[1]])
 
-        # Hamiltonian of the chain stubs:
-        for (j, site) in enumerate(empty_chain)
-            adjℓ += -empty_chain_freqs[j] * gkslcommutator("Ntot", site)
-        end
-        for (j, (site1, site2)) in enumerate(partition(empty_chain, 2, 1))
-            adjℓ += -empty_chain_coups[j + 1] * gkslcommutator("Aup†F",site1, "F", site1+1, "Aup", site2)
-            adjℓ -= -empty_chain_coups[j + 1] * gkslcommutator("AupF", site1, "F", site1+1, "Aup†", site2)
-            adjℓ += -empty_chain_coups[j + 1] * gkslcommutator("Adn†", site1, "F", site1+1, "FAdn", site2)
-            adjℓ -= -empty_chain_coups[j + 1] * gkslcommutator("Adn",  site1, "F", site1+1, "FAdn†", site2)
-        end
-
-        for (j, site) in enumerate(filled_chain)
-            adjℓ += -filled_chain_freqs[j] * gkslcommutator("Ntot", site)
-        end
-        for (j, (site1, site2)) in enumerate(partition(filled_chain, 2, 1))
-            adjℓ += -filled_chain_coups[j + 1] * gkslcommutator("Aup†F",site1, "F", site1+1, "Aup", site2)
-            adjℓ -= -filled_chain_coups[j + 1] * gkslcommutator("AupF", site1, "F", site1+1, "Aup†", site2)
-            adjℓ += -filled_chain_coups[j + 1] * gkslcommutator("Adn†", site1, "F", site1+1, "FAdn", site2)
-            adjℓ -= -filled_chain_coups[j + 1] * gkslcommutator("Adn",  site1, "F", site1+1, "FAdn†", site2)
-        end
-    end
+    adjℓ += spin_chain′(
+        empty_chain_freqs[1:chain_length],
+        empty_chain_coups[2:chain_length],
+        sites[empty_chain_range],
+    )
+    adjℓ += spin_chain′(
+        filled_chain_freqs[1:chain_length],
+        filled_chain_coups[2:chain_length],
+        sites[filled_chain_range],
+    )
 
     adjL = MPO(adjℓ, sites)
 

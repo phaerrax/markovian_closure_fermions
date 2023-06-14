@@ -60,7 +60,6 @@ let
         start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
     @assert filled_closure_range[end] == total_size
-    chain_edge_site = max(filled_closure_range..., empty_closure_range...)
 
     sites = siteinds("vS=1/2", total_size)
     initialsites = Dict(
@@ -74,37 +73,7 @@ let
     )
     psi0 = MPS(sites, [initialsites[i] for i in 1:total_size])
 
-    ℓ = OpSum()
-
-    ℓ += eps * gkslcommutator("N", system_site)
-
-    ℓ +=
-        empty_chain_coups[1] * exchange_interaction(
-                                                    SiteType("vS=1/2"), sites[system_site], sites[empty_chain_range[1]]
-        )
-    ℓ +=
-        filled_chain_coups[1] * exchange_interaction(
-                                                     SiteType("vS=1/2"), sites[system_site], sites[filled_chain_range[1]]
-        )
-
-    ℓ += spin_chain(
-        SiteType("vS=1/2"), empty_chain_freqs, empty_chain_coups, sites[empty_chain_range]
-    )
-    ℓ += spin_chain(
-        SiteType("vS=1/2"),
-        filled_chain_freqs,
-        filled_chain_coups,
-        sites[filled_chain_range],
-    )
-
-    ℓ += closure_op(
-        SiteType("vS=1/2"), emptymc, sites[empty_closure_range], chain_edge_site
-    )
-    ℓ += filled_closure_op(
-        SiteType("vS=1/2"), filledmc, sites[filled_closure_range], chain_edge_site
-    )
-
-    L = MPO(ℓ, sites)
+    L = MPO( eps * gkslcommutator("N", system_site) +empty_chain_coups[1] * exchange_interaction( sites[system_site], sites[empty_chain_range[1]]) +filled_chain_coups[1] * exchange_interaction( sites[system_site], sites[filled_chain_range[1]]) +spin_chain( empty_chain_freqs[1:chain_length],  empty_chain_coups[2:chain_length], sites[empty_chain_range]) +spin_chain(filled_chain_freqs[1:chain_length], filled_chain_coups[2:chain_length], sites[filled_chain_range]) +closure_op(        emptymc, sites[empty_closure_range], empty_chain_range[end]) +filled_closure_op( filledmc, sites[filled_closure_range], filled_chain_range[end]) , sites)
 
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]

@@ -2,7 +2,6 @@ using ITensors
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
-using IterTools
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
@@ -18,7 +17,7 @@ let
     # ------------------------
     system_initstate = parameters["sys_ini"]
     system_length = 1
-    eps = parameters["sys_en"]
+    ε = parameters["sys_en"]
 
     # Input: chain stub parameters
     # ----------------------------
@@ -42,165 +41,43 @@ let
     β = readdlm(parameters["MC_betas"])
     w = readdlm(parameters["MC_coups"])
 
-    empty_closure_ω = @. empty_Ω - 2empty_K * α[:, 2]
-    empty_closure_γ = @. -4empty_K * α[:, 1]
-    empty_closure_g = @. -2empty_K * β[:, 2]
-    empty_closure_ζ = @. empty_K * (w[:, 1] + im * w[:, 2])
-
-    filled_closure_ω = @. filled_Ω - 2filled_K * α[:, 2]
-    filled_closure_γ = @. -4filled_K * α[:, 1]
-    filled_closure_g = @. -2filled_K * β[:, 2]
-    filled_closure_ζ = @. filled_K * (w[:, 1] + im * w[:, 2])
-
-    closure_length = length(empty_closure_ω)
+    emptymc = closure(empty_Ω, empty_K, α, β, w)
+    filledmc = closure(filled_Ω, filled_K, α, β, w)
+    closure_length = length(emptymc)
 
     # Site ranges
-    system_site = chain_length + closure_length + 1
-    filled_chain = (system_site - 1):-1:(system_site - chain_length)
-    filled_closure = (system_site - chain_length - 1):-1:1
-    empty_chain = system_site .+ (1:chain_length)
-    empty_closure = empty_chain[end] .+ (1:closure_length)
+    system_site = 1
+    empty_chain_range = range(; start=2, step=2, length=chain_length)
+    empty_closure_range = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
+    filled_chain_range = range(; start=3, step=2, length=chain_length)
+    filled_closure_range = range(; start=filled_chain[end] + 2, step=2, length=closure_length)
 
-    sites = siteinds("vS=1/2", system_length + 2chain_length + 2closure_length)
-    initialstate = MPS(
-        sites,
+    total_size = system_length + 2chain_length + 2closure_length
+
+    sites = siteinds("vS=1/2", total_size)
+    initialstates = Dict(
         [
-            repeat(["Up"], length(filled_chain) + length(filled_closure))
-            system_initstate
-            repeat(["Dn"], length(empty_chain) + length(empty_closure))
+            system_site => parameters["sys_ini"]
+            [st => "Up" for st in filled_chain_range]
+            [st => "Up" for st in filled_closure_range]
+            [st => "Dn" for st in empty_chain_range]
+            [st => "Dn" for st in empty_closure_range]
         ],
     )
-    targetop0 = MPS(
-        ComplexF64,
-        sites,
+    initialops = Dict(
         [
-            repeat(["vId"], length(filled_chain) + length(filled_closure))
-            "vN"
-            repeat(["vId"], length(empty_chain) + length(empty_closure))
+            system_site => "v" * parameters["system_observable"]
+            [st => "vId" for st in filled_chain_range]
+            [st => "vId" for st in filled_closure_range]
+            [st => "vId" for st in empty_chain_range]
+            [st => "vId" for st in empty_closure_range]
         ],
     )
+    init_state = MPS(sites, [initialstates[i] for i in 1:total_size])
+    init_targetop = MPS(sites, [initialops[i] for i in 1:total_size])
     opgrade = "even"
 
-    # Unitary part of master equation
-    # -------------------------------
-    # Note that some two-site operators on the filled part of the system pick up an
-    # additional minus sign, due to the Jordan-Wigner transformation.
-    adjℓ = OpSum()
-
-    # System Hamiltonian
-    adjℓ += -eps * gkslcommutator("N", system_site)
-
-    if chain_length > 0
-        # System-chain interaction:
-        adjℓ +=
-            -empty_chain_coups[1] * gkslcommutator("σ+", system_site, "σ-", empty_chain[1])
-        adjℓ +=
-            -empty_chain_coups[1] * gkslcommutator("σ-", system_site, "σ+", empty_chain[1])
-        adjℓ +=
-            -filled_chain_coups[1] *
-            gkslcommutator("σ+", system_site, "σ-", filled_chain[1])
-        adjℓ +=
-            -filled_chain_coups[1] *
-            gkslcommutator("σ-", system_site, "σ+", filled_chain[1])
-
-        # Hamiltonian of the chain stubs:
-        for (j, site) in enumerate(empty_chain)
-            adjℓ += -empty_chain_freqs[j] * gkslcommutator("N", site)
-        end
-        for (j, (site1, site2)) in enumerate(partition(empty_chain, 2, 1))
-            adjℓ += -empty_chain_coups[j + 1] * gkslcommutator("σ+", site1, "σ-", site2)
-            adjℓ += -empty_chain_coups[j + 1] * gkslcommutator("σ-", site1, "σ+", site2)
-        end
-
-        for (j, site) in enumerate(filled_chain)
-            adjℓ += -filled_chain_freqs[j] * gkslcommutator("N", site)
-        end
-        for (j, (site1, site2)) in enumerate(partition(filled_chain, 2, 1))
-            adjℓ += -filled_chain_coups[j + 1] * gkslcommutator("σ+", site1, "σ-", site2)
-            adjℓ += -filled_chain_coups[j + 1] * gkslcommutator("σ-", site1, "σ+", site2)
-        end
-    end
-
-    # Hamiltonian of the closures:
-    for (j, site) in enumerate(empty_closure)
-        adjℓ += -empty_closure_ω[j] * gkslcommutator("N", site)
-    end
-    for (j, (site1, site2)) in enumerate(partition(empty_closure, 2, 1))
-        adjℓ += -empty_closure_g[j] * gkslcommutator("σ-", site1, "σ+", site2)
-        adjℓ += -empty_closure_g[j] * gkslcommutator("σ+", site1, "σ-", site2)
-    end
-    for (j, site) in enumerate(empty_closure)
-        chainedge = empty_chain[end]
-        ps_length = abs(site - chainedge) - 1
-        ps_range = chainedge > site ? (chainedge:-1:site) : (chainedge:site)
-
-        paulistring = ["σ+"; repeat(["σz"], ps_length); "σ-"]
-        adjℓ +=
-            -(-1)^ps_length *
-            empty_closure_ζ[j] *
-            gkslcommutator(zip(paulistring, ps_range)...)
-
-        paulistring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
-        adjℓ +=
-            -(-1)^ps_length *
-            conj(empty_closure_ζ[j]) *
-            gkslcommutator(zip(paulistring, ps_range)...)
-    end
-
-    for (j, site) in enumerate(filled_closure)
-        adjℓ += -filled_closure_ω[j] * gkslcommutator("N", site)
-    end
-    for (j, (site1, site2)) in enumerate(partition(filled_closure, 2, 1))
-        adjℓ += -filled_closure_g[j] * gkslcommutator("σ-", site1, "σ+", site2)
-        adjℓ += -filled_closure_g[j] * gkslcommutator("σ+", site1, "σ-", site2)
-    end
-    for (j, site) in enumerate(filled_closure)
-        chainedge = filled_chain[end]
-        ps_length = abs(site - chainedge) - 1
-        ps_range = chainedge > site ? (chainedge:-1:site) : (chainedge:site)
-
-        paulistring = ["σ+"; repeat(["σz"], ps_length); "σ-"]
-        adjℓ +=
-            -(-1)^ps_length *
-            filled_closure_ζ[j] *
-            gkslcommutator(zip(paulistring, ps_range)...)
-
-        paulistring = ["σ-"; repeat(["σz"], ps_length); "σ+"]
-        adjℓ +=
-            -(-1)^ps_length *
-            conj(filled_closure_ζ[j]) *
-            gkslcommutator(zip(paulistring, ps_range)...)
-    end
-
-    # Dissipative part of the master equation
-    # ---------------------------------------
-    # The ±a† X a term in the GKSL equation changes sign according to the grade (parity) of
-    # the operator to be evolved. The rest is as usual.
-    gradefactor = opgrade == "even" ? 1 : -1
-    for (j, site) in enumerate(empty_closure)
-        # a ρ a†
-        opstring = [repeat(["σz⋅ * ⋅σz"], site - 1); "σ+⋅ * ⋅σ-"]
-        adjℓ += (
-            gradefactor * empty_closure_γ[j],
-            collect(Iterators.flatten(zip(opstring, 1:site)))...,
-        )
-        # -0.5 (a† a ρ + ρ a† a)
-        adjℓ += -0.5empty_closure_γ[j], "N⋅", site
-        adjℓ += -0.5empty_closure_γ[j], "⋅N", site
-    end
-    for (j, site) in enumerate(filled_closure)
-        # a ρ a†
-        opstring = [repeat(["σz⋅ * ⋅σz"], site - 1); "σ-⋅ * ⋅σ+"]
-        adjℓ += (
-            gradefactor * filled_closure_γ[j],
-            collect(Iterators.flatten(zip(opstring, 1:site)))...,
-        )
-        # -0.5 (a† a ρ + ρ a† a)
-        adjℓ += 0.5filled_closure_γ[j], "N⋅", site
-        adjℓ += 0.5filled_closure_γ[j], "⋅N", site
-        adjℓ += -filled_closure_γ[j], "Id", site
-    end
-    adjL = MPO(adjℓ, sites)
+    adjL = MPO( -ε * gkslcommutator("N", system_site) +empty_chain_coups[1] * exchange_interaction′(sites[system_site], sites[empty_chain[1]]) +filled_chain_coups[1] * exchange_interaction′(sites[system_site], sites[filled_chain[1]]) +spin_chain′(empty_chain_freqs[1:chain_length], empty_chain_coups[2:chain_length], sites[empty_chain_range]) +spin_chain′(filled_chain_freqs[1:chain_length], filled_chain_coups[2:chain_length], sites[filled_chain_range]) +closure_op′( emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade) +filled_closure_op′( filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade) , sites)
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."

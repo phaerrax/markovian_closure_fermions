@@ -52,49 +52,14 @@ let
     # Hamiltonian of the system:
     h = OpSum()
 
-    # - system Hamiltonian
     h += eps, "n↓", systempos
     h += eps, "n↑", systempos
-
     h += U, "n↑ * n↓", systempos
 
-    # - system-chain interaction
-    h += filledcoups[1], "c†↑", systempos, "c↑", filledchain_sites[1]
-    h += filledcoups[1], "c†↑", filledchain_sites[1], "c↑", systempos
-
-    h += emptycoups[1], "c†↑", systempos, "c↑", emptychain_sites[1]
-    h += emptycoups[1], "c†↑", emptychain_sites[1], "c↑", systempos
-
-    h += filledcoups[1], "c†↓", systempos, "c↓", filledchain_sites[1]
-    h += filledcoups[1], "c†↓", filledchain_sites[1], "c↓", systempos
-
-    h += emptycoups[1], "c†↓", systempos, "c↓", emptychain_sites[1]
-    h += emptycoups[1], "c†↓", emptychain_sites[1], "c↓", systempos
-
-    # - chain terms
-    for (j, site) in enumerate(filledchain_sites)
-        h += filledfreqs[j], "n↓", site
-        h += filledfreqs[j], "n↑", site
-    end
-    for (j, (site1, site2)) in enumerate(partition(filledchain_sites, 2, 1))
-        h += filledcoups[j + 1], "c†↓", site1, "c↓", site2
-        h += filledcoups[j + 1], "c†↓", site2, "c↓", site1
-
-        h += filledcoups[j + 1], "c†↑", site1, "c↑", site2
-        h += filledcoups[j + 1], "c†↑", site2, "c↑", site1
-    end
-
-    for (j, site) in enumerate(emptychain_sites)
-        h += emptyfreqs[j], "n↓", site
-        h += emptyfreqs[j], "n↑", site
-    end
-    for (j, (site1, site2)) in enumerate(partition(emptychain_sites, 2, 1))
-        h += emptycoups[j + 1], "c†↓", site1, "c↓", site2
-        h += emptycoups[j + 1], "c†↓", site2, "c↓", site1
-
-        h += emptycoups[j + 1], "c†↑", site1, "c↑", site2
-        h += emptycoups[j + 1], "c†↑", site2, "c↑", site1
-    end
+    h += emptycoups[1] * exchange_interaction(sites[systempos], sites[emptychain_sites[1]])
+    h += filledcoups[1] * exchange_interaction(sites[systempos], sites[filledchain_sites[1]])
+    h += spin_chain(emptyfreqs, emptycoups, sites[emptychain_sites])
+    h += spin_chain(filledfreqs, filledcoups, sites[filledchain_sites])
 
     H = MPO(h, sites)
 
