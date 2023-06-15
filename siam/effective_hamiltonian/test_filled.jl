@@ -8,7 +8,6 @@ let
     parameters = load_pars(ARGS[1])
 
     # Input: system parameters
-    system_length = 1
     ε = parameters["sys_en"]
 
     # Input: chain parameters
@@ -38,7 +37,7 @@ let
         start=filled_chain_range[end] + 1, step=1, length=closure_length
     )
 
-    total_size = system_length + chain_length + closure_length
+    total_size = 1 + chain_length + closure_length
 
     sites = siteinds("Fermion", total_size)
     initialsites = Dict(
@@ -51,7 +50,9 @@ let
     ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
 
     h_chain = spin_chain(
-        [ε; filledfreqs[1:chain_length]], filledcoups[1:chain_length], sites
+        [ε; filledfreqs[1:chain_length]],
+        filledcoups[1:chain_length],
+        sites[1:filled_chain_range[end]],
     )
 
     h_effclosure = spin_chain(
@@ -59,10 +60,9 @@ let
     )
     for (i, site) in enumerate(filled_closure_range)
         h_effclosure += outercoup(filledmc, i), "c†", filled_chain_range[end], "c", site
-        h_effclosure += conj(outercoup(filledmc, i)),
-        "c†", site, "c",
-        filled_chain_range[end]
-        h_effclosure += -0.5im * damp(filledmc, i), "c * c†", site
+        h_effclosure += conj(outercoup(filledmc, i)), "c†", site, "c", filled_chain_range[end]
+        h_effclosure += -0.5im * damp(filledmc, i), "Id", site
+        h_effclosure += 0.5im * damp(filledmc, i), "n", site
     end
 
     H = MPO(h_chain + h_effclosure, sites)

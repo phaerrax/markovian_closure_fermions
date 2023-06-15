@@ -37,7 +37,7 @@ let
         start=empty_chain_range[end] + 1, step=1, length=closure_length
     )
 
-    total_size = system_length + chain_length + closure_length
+    total_size = 1 + chain_length + closure_length
 
     sites = siteinds("Fermion", total_size)
     initialsites = Dict(
@@ -49,7 +49,11 @@ let
     )
     ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
 
-    h_chain = spin_chain([ε; emptyfreqs[1:chain_length]], emptycoups[1:chain_length], sites)
+    h_chain = spin_chain(
+        [ε; emptyfreqs[1:chain_length]],
+        emptycoups[1:chain_length],
+        sites[1:empty_chain_range[end]],
+    )
 
     h_effclosure = spin_chain(
         freqs(emptymc), innercoups(emptymc), sites[empty_closure_range]
