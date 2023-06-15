@@ -276,7 +276,7 @@ function measure_localops!(
                 m = dot(wf, noprime(op(sites(cb), o.op, bond) * wf))
             end
 
-            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
 
             # NOTE Since we don't have an operator for each site, we have a single value
             # for each operator in cb, and operators associated to different sites have
@@ -409,7 +409,7 @@ function measure_localops!(
             end
             m = scalar(V)
 
-            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o")
+            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
 
             # NOTE Since we don't have an operator for each site, we have a single value
             # for each operator in cb, and operators associated to different sites have
