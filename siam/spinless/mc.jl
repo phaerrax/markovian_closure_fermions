@@ -1,8 +1,8 @@
 using ITensors
+using ITensors.HDF5
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
-using IterTools
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
@@ -54,26 +54,59 @@ let
     # Site ranges
     system_site = 1
     empty_chain_range = range(; start=2, step=2, length=chain_length)
-    empty_closure_range = range(; start=empty_chain_range[end] + 2, step=2, length=closure_length)
+    empty_closure_range = range(;
+        start=empty_chain_range[end] + 2, step=2, length=closure_length
+    )
     filled_chain_range = range(; start=3, step=2, length=chain_length)
     filled_closure_range = range(;
         start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
     @assert filled_closure_range[end] == total_size
 
-    sites = siteinds("vS=1/2", total_size)
-    initialsites = Dict(
-        [
-            system_site => parameters["sys_ini"]
-            [st => "Up" for st in filled_chain_range]
-            [st => "Up" for st in filled_closure_range]
-            [st => "Dn" for st in empty_chain_range]
-            [st => "Dn" for st in empty_closure_range]
-        ],
-    )
-    psi0 = MPS(sites, [initialsites[i] for i in 1:total_size])
+    initstate_file = get(parameters, "initial_state_file", nothing)
+    if isnothing(initstate_file)
+        sites = siteinds("vS=1/2", total_size)
+        initialsites = Dict(
+            [
+                system_site => parameters["sys_ini"]
+                [st => "Up" for st in filled_chain_range]
+                [st => "Up" for st in filled_closure_range]
+                [st => "Dn" for st in empty_chain_range]
+                [st => "Dn" for st in empty_closure_range]
+            ],
+        )
+        vecρₜ = MPS(sites, [initialsites[i] for i in 1:total_size])
+        start_from_file = false
+    else
+        vecρₜ = h5open(initstate_file, "r") do file
+            return read(file, parameters["initial_state_label"], MPS)
+        end
+        sites = siteinds(vecρₜ)
+        start_from_file = true
+        # We need to extract the site indices from vecρₜ or else, if we define them from
+        # scratch, they will have different IDs and they won't contract correctly.
+    end
 
-    L = MPO( eps * gkslcommutator("N", system_site) +empty_chain_coups[1] * exchange_interaction( sites[system_site], sites[empty_chain_range[1]]) +filled_chain_coups[1] * exchange_interaction( sites[system_site], sites[filled_chain_range[1]]) +spin_chain( empty_chain_freqs[1:chain_length],  empty_chain_coups[2:chain_length], sites[empty_chain_range]) +spin_chain(filled_chain_freqs[1:chain_length], filled_chain_coups[2:chain_length], sites[filled_chain_range]) +closure_op(        emptymc, sites[empty_closure_range], empty_chain_range[end]) +filled_closure_op( filledmc, sites[filled_closure_range], filled_chain_range[end]) , sites)
+    L = MPO(
+        eps * gkslcommutator("N", system_site) +
+        empty_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[empty_chain_range[1]]) +
+        filled_chain_coups[1] *
+        exchange_interaction(sites[system_site], sites[filled_chain_range[1]]) +
+        spin_chain(
+            empty_chain_freqs[1:chain_length],
+            empty_chain_coups[2:chain_length],
+            sites[empty_chain_range],
+        ) +
+        spin_chain(
+            filled_chain_freqs[1:chain_length],
+            filled_chain_coups[2:chain_length],
+            sites[filled_chain_range],
+        ) +
+        closure_op(emptymc, sites[empty_closure_range], empty_chain_range[end]) +
+        filled_closure_op(filledmc, sites[filled_closure_range], filled_chain_range[end]),
+        sites,
+    )
 
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
@@ -90,9 +123,11 @@ let
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
-        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+        if !start_from_file
+            growMPS!(vecρₜ, parameters["max_bond"])
+        end
         tdvp1vec!(
-            psi,
+            vecρₜ,
             L,
             timestep,
             tmax,
@@ -110,9 +145,11 @@ let
         )
     else
         @info "Using adaptive algorithm."
-        psi, _ = stretchBondDim(psi0, 2)
+        if !start_from_file
+            growMPS!(vecρₜ, 2)
+        end
         adaptivetdvp1vec!(
-            psi,
+            vecρₜ,
             L,
             timestep,
             tmax,
@@ -131,4 +168,8 @@ let
             max_bond=parameters["max_bond"],
         )
     end
+
+    f = h5open(parameters["state_file"], "w")
+    write(f, "final_state", vecρₜ)
+    close(f)
 end

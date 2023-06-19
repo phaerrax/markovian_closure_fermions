@@ -1,4 +1,5 @@
 using ITensors
+using ITensors.HDF5
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
@@ -50,20 +51,35 @@ let
     empty_chain_range = range(; start=2, step=2, length=chain_length)
     empty_closure_range = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
     filled_chain_range = range(; start=3, step=2, length=chain_length)
-    filled_closure_range = range(; start=filled_chain[end] + 2, step=2, length=closure_length)
+    filled_closure_range = range(;
+        start=filled_chain[end] + 2, step=2, length=closure_length
+    )
 
     total_size = system_length + 2chain_length + 2closure_length
 
-    sites = siteinds("vS=1/2", total_size)
-    initialstates = Dict(
-        [
-            system_site => parameters["sys_ini"]
-            [st => "Up" for st in filled_chain_range]
-            [st => "Up" for st in filled_closure_range]
-            [st => "Dn" for st in empty_chain_range]
-            [st => "Dn" for st in empty_closure_range]
-        ],
-    )
+    initstate_file = get(parameters, "initial_state_file", nothing)
+    if isnothing(initstate_file)
+        sites = siteinds("vS=1/2", total_size)
+        initialstates = Dict(
+            [
+                system_site => parameters["sys_ini"]
+                [st => "Up" for st in filled_chain_range]
+                [st => "Up" for st in filled_closure_range]
+                [st => "Dn" for st in empty_chain_range]
+                [st => "Dn" for st in empty_closure_range]
+            ],
+        )
+        vecρ₀ = MPS(sites, [initialstates[i] for i in 1:total_size])
+    else
+        vecρ₀ = h5open(initstate_file, "r") do file
+            return read(file, parameters["initial_state_label"], MPS)
+        end
+        sites = siteinds(vecρ₀)
+        start_from_file = true
+        # We need to extract the site indices from ψ or else, if we define them from
+        # scratch, they will have different IDs and they won't contract correctly.
+    end
+
     initialops = Dict(
         [
             system_site => "v" * parameters["system_observable"]
@@ -73,18 +89,40 @@ let
             [st => "vId" for st in empty_closure_range]
         ],
     )
-    init_state = MPS(sites, [initialstates[i] for i in 1:total_size])
-    init_targetop = MPS(sites, [initialops[i] for i in 1:total_size])
+    targetop = MPS(sites, [initialops[i] for i in 1:total_size])
     opgrade = "even"
 
-    adjL = MPO( -ε * gkslcommutator("N", system_site) +empty_chain_coups[1] * exchange_interaction′(sites[system_site], sites[empty_chain[1]]) +filled_chain_coups[1] * exchange_interaction′(sites[system_site], sites[filled_chain[1]]) +spin_chain′(empty_chain_freqs[1:chain_length], empty_chain_coups[2:chain_length], sites[empty_chain_range]) +spin_chain′(filled_chain_freqs[1:chain_length], filled_chain_coups[2:chain_length], sites[filled_chain_range]) +closure_op′( emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade) +filled_closure_op′( filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade) , sites)
+    adjL = MPO(
+        -ε * gkslcommutator("N", system_site) +
+        empty_chain_coups[1] *
+        exchange_interaction′(sites[system_site], sites[empty_chain[1]]) +
+        filled_chain_coups[1] *
+        exchange_interaction′(sites[system_site], sites[filled_chain[1]]) +
+        spin_chain′(
+            empty_chain_freqs[1:chain_length],
+            empty_chain_coups[2:chain_length],
+            sites[empty_chain_range],
+        ) +
+        spin_chain′(
+            filled_chain_freqs[1:chain_length],
+            filled_chain_coups[2:chain_length],
+            sites[filled_chain_range],
+        ) +
+        closure_op′(emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade) +
+        filled_closure_op′(
+            filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade
+        ),
+        sites,
+    )
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
-        targetop, _ = stretchBondDim(targetop0, parameters["max_bond"])
+        if !start_from_file
+            growMPS!(targetop, parameters["max_bond"])
+        end
         adjtdvp1vec!(
             targetop,
-            initialstate,
+            vecρ₀,
             adjL,
             parameters["tstep"],
             parameters["tmax"],
@@ -99,10 +137,12 @@ let
         )
     else
         @info "Using adaptive algorithm."
-        targetop, _ = stretchBondDim(targetop0, 2)
+        if !start_from_file
+            growMPS!(targetop, 4)
+        end
         adaptiveadjtdvp1vec!(
             targetop,
-            initialstate,
+            vecρ₀,
             adjL,
             parameters["tstep"],
             parameters["tmax"],

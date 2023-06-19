@@ -1,8 +1,8 @@
 using ITensors
+using ITensors.HDF5
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
-using IterTools
 
 # This script tries to emulate the simulation of the interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
@@ -54,20 +54,35 @@ let
     empty_chain_range = range(; start=2, step=2, length=chain_length)
     empty_closure_range = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
     filled_chain_range = range(; start=3, step=2, length=chain_length)
-    filled_closure_range = range(; start=filled_chain[end] + 2, step=2, length=closure_length)
+    filled_closure_range = range(;
+        start=filled_chain[end] + 2, step=2, length=closure_length
+    )
 
     total_size = system_length + 2chain_length + 2closure_length
 
-    sites = siteinds("vElectron", total_size)
-    initialstates = Dict(
-        [
-            system_site => parameters["sys_ini"]
-            [st => "UpDn" for st in filled_chain_range]
-            [st => "UpDn" for st in filled_closure_range]
-            [st => "Emp" for st in empty_chain_range]
-            [st => "Emp" for st in empty_closure_range]
-        ],
-    )
+    initstate_file = get(parameters, "initial_state_file", nothing)
+    if isnothing(initstate_file)
+        sites = siteinds("vElectron", total_size)
+        initialstates = Dict(
+            [
+                system_site => parameters["sys_ini"]
+                [st => "UpDn" for st in filled_chain_range]
+                [st => "UpDn" for st in filled_closure_range]
+                [st => "Emp" for st in empty_chain_range]
+                [st => "Emp" for st in empty_closure_range]
+            ],
+        )
+        vecρ₀ = MPS(sites, [initialstates[i] for i in 1:total_size])
+    else
+        vecρ₀ = h5open(initstate_file, "r") do file
+            return read(file, parameters["initial_state_label"], MPS)
+        end
+        sites = siteinds(vecρ₀)
+        start_from_file = true
+        # We need to extract the site indices from ψ or else, if we define them from
+        # scratch, they will have different IDs and they won't contract correctly.
+    end
+
     initialops = Dict(
         [
             system_site => "v" * parameters["system_observable"]
@@ -77,8 +92,7 @@ let
             [st => "vId" for st in empty_closure_range]
         ],
     )
-    init_state = MPS(sites, [initialstates[i] for i in 1:total_size])
-    init_targetop = MPS(sites, [initialops[i] for i in 1:total_size])
+    targetop = MPS(sites, [initialops[i] for i in 1:total_size])
     opgrade = "even"
 
     # Unitary part of master equation
@@ -89,7 +103,7 @@ let
     adjℓ += -U * gkslcommutator("NupNdn", system_site)
 
     adjℓ +=
-        empty_chain_coups[1] * 
+        empty_chain_coups[1] *
         exchange_interaction′(sites[system_site], sites[empty_chain[1]])
     adjℓ +=
         filled_chain_coups[1] *
@@ -116,10 +130,12 @@ let
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
-        targetop, _ = stretchBondDim(init_targetop, parameters["max_bond"])
+        if !start_from_file
+            growMPS!(targetop, parameters["max_bond"])
+        end
         adjtdvp1vec!(
             targetop,
-            init_state,
+            vecρ₀,
             adjL,
             parameters["tstep"],
             parameters["tmax"],
@@ -134,10 +150,12 @@ let
         )
     else
         @info "Using adaptive algorithm."
-        targetop, _ = stretchBondDim(init_targetop, 16)
+        if !start_from_file
+            growMPS!(targetop, 16)
+        end
         adaptiveadjtdvp1vec!(
             targetop,
-            init_state,
+            vecρ₀,
             adjL,
             parameters["tstep"],
             parameters["tmax"],

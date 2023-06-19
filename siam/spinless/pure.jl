@@ -1,5 +1,5 @@
 using ITensors
-using IterTools
+using ITensors.HDF5
 using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
@@ -38,15 +38,27 @@ let
     filledchain_sites = 3:2:total_size
     emptychain_sites = 2:2:total_size
 
-    sites = siteinds("Fermion", total_size)
-    initialsites = Dict(
-        [
-            systempos => parameters["sys_ini"]
-            [st => "Occ" for st in filledchain_sites]
-            [st => "Emp" for st in emptychain_sites]
-        ],
-    )
-    psi0 = MPS(sites, [initialsites[i] for i in 1:total_size])
+    initstate_file = get(parameters, "initial_state_file", nothing)
+    if isnothing(initstate_file)
+        sites = siteinds("Fermion", total_size)
+        initialsites = Dict(
+            [
+                systempos => parameters["sys_ini"]
+                [st => "Occ" for st in filledchain_sites]
+                [st => "Emp" for st in emptychain_sites]
+            ],
+        )
+        ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
+        start_from_file = false
+    else
+        ψ = h5open(initstate_file, "r") do file
+            return read(file, parameters["initial_state_label"], MPS)
+        end
+        sites = siteinds(ψ)
+        start_from_file = true
+        # We need to extract the site indices from ψ or else, if we define them from
+        # scratch, they will have different IDs and they won't contract correctly.
+    end
 
     h = OpSum()
     h += eps, "n", systempos
@@ -81,9 +93,11 @@ let
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
-        psi, _ = stretchBondDim(psi0, parameters["max_bond"])
+        if !start_from_file
+            growMPS!(ψ, parameters["max_bond"])
+        end
         tdvp1!(
-            psi,
+            ψ,
             H,
             timestep,
             tmax;
@@ -100,9 +114,11 @@ let
         )
     else
         @info "Using adaptive algorithm."
-        psi, _ = stretchBondDim(psi0, 2)
+        if !start_from_file
+            growMPS!(ψ, 2)
+        end
         adaptivetdvp1!(
-            psi,
+            ψ,
             H,
             timestep,
             tmax;
