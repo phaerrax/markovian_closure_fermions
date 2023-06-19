@@ -58,12 +58,14 @@ Return the new MPS and its overlap with the original one.
 """
 function growMPS(v::MPS, dims::Vector{<:Integer})
     @assert length(dims) == length(v)-1
+    currentdims = ITensors.linkdims(v)
     v_ext = copy(v)
-    for (n,d) in zip(1:(length(v)- 1), dims)
-        growbond!(v_ext, n; increment=d - 1)
+    for (n, new_d, d) in zip(1:(length(v)- 1), dims, currentdims)
+        growbond!(v_ext, n; increment=new_d - d)
     end
-    @debug "Overlap ⟨original|extended⟩: $(dot(v, v_ext))"
-    return v_ext, dot(v, v_ext)
+    v_overlap = dot(v, v_ext)
+    @debug "Overlap ⟨original|extended⟩: $v_overlap"
+    return v_ext, v_overlap
 end
 
 """
@@ -86,12 +88,14 @@ Return the overlap of the new MPS with the original one.
 """
 function growMPS!(v::MPS, dims::Vector{<:Integer})
     @assert length(dims) == length(v)-1
-    v_ext = copy(v)
-    for (n,d) in zip(1:(length(v)- 1), dims)
-        growbond!(v, n; increment=d - 1)
+    v_prev = copy(v)
+    currentdims = ITensors.linkdims(v)
+    for (n, new_d, d) in zip(1:(length(v)- 1), dims, currentdims)
+        growbond!(v, n; increment=new_d - d)
     end
-    @debug "Overlap ⟨original|extended⟩: $(dot(v, v_ext))"
-    return dot(v, v_ext)
+    v_overlap = dot(v, v_prev)
+    @debug "Overlap ⟨original|extended⟩: $v_overlap"
+    return v_overlap
 end
 
 """
