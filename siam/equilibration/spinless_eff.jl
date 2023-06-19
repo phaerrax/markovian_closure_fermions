@@ -170,6 +170,10 @@ let
     write(f, "intermediate_state", psi)
     close(f)
 
+    cb = LocalPosMeasurementCallback(
+        createObs(obs), sites, parameters["ms_stride"] * timestep
+    )
+
     tdvp1!(
         psi,
         H_lochyb + H_effcond,

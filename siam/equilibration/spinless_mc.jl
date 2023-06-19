@@ -166,6 +166,10 @@ let
     write(f, "intermediate_state", vecρ)
     close(f)
 
+    cb = LocalPosVecMeasurementCallback(
+        createObs(obs), sites, parameters["ms_stride"] * timestep
+    )
+
     tdvp1vec!(
         vecρ,
         L_lochyb + L_cond,
