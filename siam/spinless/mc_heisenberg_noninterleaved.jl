@@ -61,7 +61,7 @@ let
     empty_chain = system_site .+ (1:chain_length)
     empty_closure = empty_chain[end] .+ (1:closure_length)
 
-    sites = siteinds("vS=1/2", system_length + 2chain_length + 2closure_length)
+    sites = siteinds("vFermion", system_length + 2chain_length + 2closure_length)
     initialstate = MPS(
         sites,
         [

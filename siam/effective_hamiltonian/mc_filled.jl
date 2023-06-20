@@ -55,7 +55,7 @@ let
     )
     @assert filled_closure_range[end] == total_size
 
-    sites = siteinds("vS=1/2", total_size)
+    sites = siteinds("vFermion", total_size)
     initialsites = Dict(
         [
             system_site => parameters["sys_ini"]

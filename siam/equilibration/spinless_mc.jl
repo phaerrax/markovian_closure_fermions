@@ -54,7 +54,7 @@ let
 
     total_size = system_length + 2chain_length + 2closure_length
 
-    sites = siteinds("vS=1/2", total_size)
+    sites = siteinds("vFermion", total_size)
     initstate = MPS(
         sites,
         Dict(

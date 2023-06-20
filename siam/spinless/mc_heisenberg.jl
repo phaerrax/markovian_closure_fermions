@@ -59,7 +59,7 @@ let
 
     initstate_file = get(parameters, "initial_state_file", nothing)
     if isnothing(initstate_file)
-        sites = siteinds("vS=1/2", total_size)
+        sites = siteinds("vFermion", total_size)
         initialstates = Dict(
             [
                 system_site => parameters["sys_ini"]
