@@ -52,10 +52,12 @@ let
     # Site ranges
     system_site = 1
     empty_chain_range = range(; start=2, step=2, length=chain_length)
-    empty_closure_range = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
+    empty_closure_range = range(;
+        start=empty_chain_range[end] + 2, step=2, length=closure_length
+    )
     filled_chain_range = range(; start=3, step=2, length=chain_length)
     filled_closure_range = range(;
-        start=filled_chain[end] + 2, step=2, length=closure_length
+        start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
 
     total_size = system_length + 2chain_length + 2closure_length
@@ -73,6 +75,7 @@ let
             ],
         )
         vecρ₀ = MPS(sites, [initialstates[i] for i in 1:total_size])
+        start_from_file = false
     else
         vecρ₀ = h5open(initstate_file, "r") do file
             return read(file, parameters["initial_state_label"], MPS)
@@ -104,10 +107,10 @@ let
 
     adjℓ +=
         empty_chain_coups[1] *
-        exchange_interaction′(sites[system_site], sites[empty_chain[1]])
+        exchange_interaction′(sites[system_site], sites[empty_chain_range[1]])
     adjℓ +=
         filled_chain_coups[1] *
-        exchange_interaction′(sites[system_site], sites[filled_chain[1]])
+        exchange_interaction′(sites[system_site], sites[filled_chain_range[1]])
 
     adjℓ += spin_chain′(
         empty_chain_freqs[1:chain_length],
@@ -119,11 +122,12 @@ let
         filled_chain_coups[2:chain_length],
         sites[filled_chain_range],
     )
+    gradefactor = opgrade == "even" ? 1 : -1
     adjℓ += closure_op′(
-        emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade
+        emptymc, sites[empty_closure_range], empty_chain_range[end], gradefactor
     )
     adjℓ += filled_closure_op′(
-        filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade
+        filledmc, sites[filled_closure_range], filled_chain_range[end], gradefactor
     )
 
     adjL = MPO(adjℓ, sites)

@@ -71,8 +71,12 @@ let
     h += emptycoups[1] * exchange_interaction(sites[systempos], sites[emptychain_sites[1]])
     h +=
         filledcoups[1] * exchange_interaction(sites[systempos], sites[filledchain_sites[1]])
-    h += spin_chain(emptyfreqs, emptycoups, sites[emptychain_sites])
-    h += spin_chain(filledfreqs, filledcoups, sites[filledchain_sites])
+    h += spin_chain(
+        emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[emptychain_sites]
+    )
+    h += spin_chain(
+        filledfreqs[1:chain_length], filledcoups[2:chain_length], sites[filledchain_sites]
+    )
 
     H = MPO(h, sites)
 
@@ -134,4 +138,8 @@ let
             max_bond=parameters["max_bond"],
         )
     end
+
+    f = h5open(parameters["state_file"], "w")
+    write(f, "final_state", ψ)
+    close(f)
 end
