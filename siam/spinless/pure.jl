@@ -136,4 +136,8 @@ let
             max_bond=parameters["max_bond"],
         )
     end
+
+    f = h5open(parameters["state_file"], "w")
+    write(f, "final_state", ψ)
+    close(f)
 end
