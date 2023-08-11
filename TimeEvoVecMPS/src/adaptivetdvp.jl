@@ -1,6 +1,6 @@
 export adaptbonddimensions!
 
-using ITensors: AbstractProjMPO, position!, set_nsite!
+using ITensors: AbstractProjMPO, position!, set_nsite!, setleftlim!, setrightlim!
 
 """
     bondconvergencemeasure(PH::AbstractProjMPO, state::MPS, bond::Integer)
