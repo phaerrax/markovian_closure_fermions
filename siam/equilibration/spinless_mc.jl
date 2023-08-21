@@ -33,12 +33,16 @@ let
     filled_Ω = parameters["filled_asympt_frequency"]
     filled_K = parameters["filled_asympt_coupling"]
 
-    α = readdlm(parameters["MC_alphas"])
-    β = readdlm(parameters["MC_betas"])
-    w = readdlm(parameters["MC_coups"])
+    α_mat = readdlm(parameters["MC_alphas"])
+    β_mat = readdlm(parameters["MC_betas"])
+    w_mat = readdlm(parameters["MC_coups"])
+
+    α = α_mat[:, 1] .+ im .* α_mat[:, 2]
+    β = β_mat[:, 1] .+ im .* β_mat[:, 2]
+    w = w_mat[:, 1] .+ im .* w_mat[:, 2]
 
     emptymc = closure(empty_Ω, empty_K, α, β, w)
-    filledmc = closure(filled_Ω, filled_K, α, β, w)
+    filledmc = closure(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(emptymc)
 
     # Site ranges

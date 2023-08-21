@@ -38,11 +38,11 @@ let
     filled_Ω = parameters["filled_asympt_frequency"]
     filled_K = parameters["filled_asympt_coupling"]
 
-    α = readdlm(parameters["MC_alphas"])
-    β = readdlm(parameters["MC_betas"])
-    w = readdlm(parameters["MC_coups"])
+    α_mat = readdlm(parameters["MC_alphas"])
+    β_mat = readdlm(parameters["MC_betas"])
+    w_mat = readdlm(parameters["MC_coups"])
 
-    filledmc = closure(filled_Ω, filled_K, α, β, w)
+    filledmc = closure(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(filledmc)
 
     total_size = system_length + chain_length + closure_length

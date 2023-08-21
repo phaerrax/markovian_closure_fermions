@@ -47,9 +47,9 @@ let
     empty_closure_g = @. -2empty_K * β[:, 2]
     empty_closure_ζ = @. empty_K * (w[:, 1] + im * w[:, 2])
 
-    filled_closure_ω = @. filled_Ω - 2filled_K * α[:, 2]
+    filled_closure_ω = @. filled_Ω + 2filled_K * α[:, 2]
     filled_closure_γ = @. -4filled_K * α[:, 1]
-    filled_closure_g = @. -2filled_K * β[:, 2]
+    filled_closure_g = @. 2filled_K * β[:, 2]
     filled_closure_ζ = @. filled_K * (w[:, 1] + im * w[:, 2])
 
     closure_length = length(empty_closure_ω)
