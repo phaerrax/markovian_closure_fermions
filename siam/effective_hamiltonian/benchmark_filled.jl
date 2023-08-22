@@ -67,7 +67,9 @@ let
         io_times=parameters["times_file"],
     )
 
-    f = h5open(parameters["state_file"], "w")
-    write(f, "final_state", psi)
-    close(f)
+    if parameters["state_file"] != "/dev/null"
+        h5open(parameters["state_file"], "w") do f
+            write(f, "final_state", psi)
+        end
+    end
 end

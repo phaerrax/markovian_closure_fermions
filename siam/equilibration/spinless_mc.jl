@@ -191,7 +191,9 @@ let
         io_times=append_if_not_null(parameters["times_file"], "_relax"),
     )
 
-    f = h5open(parameters["state_file"], "w")
-    write(f, "final_state", vecρ)
-    close(f)
+    if parameters["state_file"] != "/dev/null"
+        h5open(parameters["state_file"], "w") do f
+            write(f, "final_state", vecρ)
+        end
+    end
 end
