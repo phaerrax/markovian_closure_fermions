@@ -21,12 +21,12 @@ let
     sdf = x -> tmp(sd_info["parameters"], x)
     T = sd_info["temperature"]
     μ = sd_info["chemical_potential"]
-    domain = sd_info["domain"]
-    ωmax = last(domain)
+    ωmax = last(sd_info["domain"])
 
     # Shift the spectral density function so that it is centred around zero.
-    sdf_shifted(x) = sdf(x + 0.5ωmax)
-    domain = sd_info["domain"] .- 0.5ωmax
+    sdf′(x) = sdf(x + 0.5ωmax)
+    domain′ = sd_info["domain"] .- 0.5ωmax
+    μ′ = μ - 0.5ωmax
 
     chain_length = sd_info["number_of_oscillators"]
 
@@ -43,16 +43,16 @@ let
         # Even though Julia is able to handle T = 0 in the formulae, we still need to
         # intervene to manually restrict the domain so that the part where the transformed
         # spectral densities are identically zero are removed.
-        domainempty = (0, filter(>(0), domain)...)
-        domainfilled = (filter(<(0), domain)..., 0)
+        domainempty = (μ′, filter(>(μ′), domain′)...)
+        domainfilled = (filter(<(μ′), domain′)..., μ′)
     else
-        domainempty = domain
-        domainfilled = domain
+        domainempty = domain′
+        domainfilled = domain′
     end
 
-    n(β,μ,ω) = (exp(β * (ω - μ)) + 1)^(-1)
-    sdfempty =  ω -> (1 - n(1/T,μ,ω)) * sdf_shifted(ω)
-    sdffilled = ω -> n(1/T,μ,ω) * sdf_shifted(ω)
+    n(β, μ, ω) = (exp(β * (ω - μ)) + 1)^(-1)
+    sdfempty = ω -> (1 - n(1 / T, μ′, ω)) * sdf′(ω)
+    sdffilled = ω -> n(1 / T, μ′, ω) * sdf′(ω)
 
     (freqempty, coupempty, sysintempty) = chainmapcoefficients(
         sdfempty, domainempty, chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
@@ -60,8 +60,10 @@ let
     (freqfilled, coupfilled, sysintfilled) = chainmapcoefficients(
         sdffilled, domainfilled, chain_length - 1; Nquad=sd_info["PolyChaos_nquad"]
     )
+    freqfilled .-= μ′
+    freqempty .-= μ′
 
-    open(replace(sd_info["filename"], ".json" => ".thermofield"), "w") do output
+    open(replace(sd_info["filename"], ".json" => ".thermofield0"), "w") do output
         writedlm(output, ["coupempty" "coupfilled" "freqempty" "freqfilled"], ',')
         writedlm(
             output,
