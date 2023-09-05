@@ -35,10 +35,22 @@ let
 
     # Input: closure parameters
     # -------------------------
-    empty_Ω = parameters["empty_asympt_frequency"]
-    empty_K = parameters["empty_asympt_coupling"]
-    filled_Ω = parameters["filled_asympt_frequency"]
-    filled_K = parameters["filled_asympt_coupling"]
+    empty_Ω = meanordefault(
+        empty_chain_freqs[(chain_length + 1):end],
+        get(parameters, "empty_asympt_frequency", nothing),
+    )
+    empty_K = meanordefault(
+        empty_chain_coups[(chain_length + 1):end],
+        get(parameters, "empty_asympt_coupling", nothing),
+    )
+    filled_Ω = meanordefault(
+        filled_chain_freqs[(chain_length + 1):end],
+        get(parameters, "filled_asympt_frequency", nothing),
+    )
+    filled_K = meanordefault(
+        filled_chain_coups[(chain_length + 1):end],
+        get(parameters, "filled_asympt_coupling", nothing),
+    )
 
     α_mat = readdlm(parameters["MC_alphas"])
     β_mat = readdlm(parameters["MC_betas"])
@@ -68,7 +80,7 @@ let
 
     initstate_file = get(parameters, "initial_state_file", nothing)
     if isnothing(initstate_file)
-    system_initstate = parameters["sys_ini"]
+        system_initstate = parameters["sys_ini"]
         sites = siteinds("vFermion", total_size)
         initialsites = Dict(
             [

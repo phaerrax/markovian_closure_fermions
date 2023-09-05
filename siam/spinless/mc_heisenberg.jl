@@ -33,10 +33,22 @@ let
 
     # Input: closure parameters
     # -------------------------
-    empty_Ω = parameters["empty_asympt_frequency"]
-    empty_K = parameters["empty_asympt_coupling"]
-    filled_Ω = parameters["filled_asympt_frequency"]
-    filled_K = parameters["filled_asympt_coupling"]
+    empty_Ω = meanordefault(
+        empty_chain_freqs[(chain_length + 1):end],
+        get(parameters, "empty_asympt_frequency", nothing),
+    )
+    empty_K = meanordefault(
+        empty_chain_coups[(chain_length + 1):end],
+        get(parameters, "empty_asympt_coupling", nothing),
+    )
+    filled_Ω = meanordefault(
+        filled_chain_freqs[(chain_length + 1):end],
+        get(parameters, "filled_asympt_frequency", nothing),
+    )
+    filled_K = meanordefault(
+        filled_chain_coups[(chain_length + 1):end],
+        get(parameters, "filled_asympt_coupling", nothing),
+    )
 
     α_mat = readdlm(parameters["MC_alphas"])
     β_mat = readdlm(parameters["MC_betas"])
@@ -53,10 +65,10 @@ let
     # Site ranges
     system_site = 1
     empty_chain_range = range(; start=2, step=2, length=chain_length)
-    empty_closure_range = range(; start=empty_chain[end] + 2, step=2, length=closure_length)
+    empty_closure_range = range(; start=empty_chain_range[end] + 2, step=2, length=closure_length)
     filled_chain_range = range(; start=3, step=2, length=chain_length)
     filled_closure_range = range(;
-        start=filled_chain[end] + 2, step=2, length=closure_length
+        start=filled_chain_range[end] + 2, step=2, length=closure_length
     )
 
     total_size = system_length + 2chain_length + 2closure_length
@@ -74,6 +86,7 @@ let
             ],
         )
         vecρ₀ = MPS(sites, [initialstates[i] for i in 1:total_size])
+        start_from_file = false
     else
         vecρ₀ = h5open(initstate_file, "r") do file
             return read(file, parameters["initial_state_label"], MPS)
@@ -94,14 +107,14 @@ let
         ],
     )
     targetop = MPS(sites, [initialops[i] for i in 1:total_size])
-    opgrade = "even"
+    opgrade = 1 # (even parity)
 
     adjL = MPO(
         -ε * gkslcommutator("N", system_site) +
         empty_chain_coups[1] *
-        exchange_interaction′(sites[system_site], sites[empty_chain[1]]) +
+        exchange_interaction′(sites[system_site], sites[empty_chain_range[1]]) +
         filled_chain_coups[1] *
-        exchange_interaction′(sites[system_site], sites[filled_chain[1]]) +
+        exchange_interaction′(sites[system_site], sites[filled_chain_range[1]]) +
         spin_chain′(
             empty_chain_freqs[1:chain_length],
             empty_chain_coups[2:chain_length],
