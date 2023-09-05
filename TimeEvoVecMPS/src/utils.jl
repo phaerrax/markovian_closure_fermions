@@ -1,4 +1,4 @@
-export append_if_not_null
+export append_if_not_null, meanordefault
 
 zerosite!(PH::ProjMPO) = (PH.nsite = 0)
 singlesite!(PH::ProjMPO) = (PH.nsite = 1)
@@ -6,6 +6,19 @@ twosite!(PH::ProjMPO) = (PH.nsite = 2)
 
 struct TDVP1 end
 struct TDVP2 end
+
+"""
+    meanordefault(v, default=nothing)
+
+Compute the mean of `v`, unless `default` is given, in which case return `default`.
+"""
+function meanordefault(v, default=nothing)
+    if isnothing(default)
+        return sum(v) / length(v)
+    else
+        return default
+    end
+end
 
 """
     writeheaders_data(io_file, cb; kwargs...)
