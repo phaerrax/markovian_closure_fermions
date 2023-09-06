@@ -115,7 +115,8 @@ function adjtdvp1vec!(
 
     io_handle = open(io_file, "w")
     @printf(io_handle, "%20s", "time")
-    @printf(io_handle, "%20s", "exp_val")
+    @printf(io_handle, "%20s", "exp_val_real")
+    @printf(io_handle, "%20s", "exp_val_imag")
     @printf(io_handle, "\n")
 
     ranks_handle = writeheaders_ranks(ranks_file, length(operator))
@@ -169,8 +170,10 @@ function adjtdvp1vec!(
         # We can then calculate the expectation values on the initial state.
         #if t - prev_t ≈ meas_stride... how does this work?
         if true # FIXME
-            @printf(io_handle, "%40.15f", current_time)
-            @printf(io_handle, "%40.15f", real(inner(initialstate, operator)))
+            expval = inner(initialstate, operator)
+            @printf(io_handle, "%20.15f", current_time)
+            @printf(io_handle, "%20.15f", real(expval))
+            @printf(io_handle, "%20.15f", imag(expval))
             @printf(io_handle, "\n")
             flush(io_handle)
 
@@ -321,7 +324,8 @@ function adaptiveadjtdvp1vec!(
 
     io_handle = open(io_file, "w")
     @printf(io_handle, "%20s", "time")
-    @printf(io_handle, "%20s", "exp_val")
+    @printf(io_handle, "%20s", "exp_val_real")
+    @printf(io_handle, "%20s", "exp_val_imag")
     @printf(io_handle, "\n")
 
     ranks_handle = writeheaders_ranks(ranks_file, length(operator))
@@ -377,8 +381,10 @@ function adaptiveadjtdvp1vec!(
         # We can then calculate the expectation values on the initial state.
         #if t - prev_t ≈ meas_stride... how does this work?
         if true
-            @printf(io_handle, "%40.15f", current_time)
-            @printf(io_handle, "%40.15f", real(inner(initialstate, operator)))
+            expval = inner(initialstate, operator)
+            @printf(io_handle, "%20.15f", current_time)
+            @printf(io_handle, "%20.15f", real(expval))
+            @printf(io_handle, "%20.15f", imag(expval))
             @printf(io_handle, "\n")
             flush(io_handle)
 
