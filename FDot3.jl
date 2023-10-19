@@ -117,7 +117,7 @@ function ITensors.op(::OpName"F", st::SiteType"FDot3")
 end
 
 function dot_hamiltonian(
-    ::SiteType"FDot3", energies::Vector{<:Real}, coulomb_repulsion::Real, sitenumber::Int
+    ::SiteType"FDot3", energies, coulomb_repulsion, sitenumber::Int
 )
     E = OpSum()
     for k in 1:3
