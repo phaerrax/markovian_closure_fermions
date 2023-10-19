@@ -1,4 +1,4 @@
-using ITensors, PseudomodesTTEDOPA
+using ITensors, PseudomodesTTEDOPA, LinearAlgebra
 
 """
     space(::SiteType"vvFDot3")
