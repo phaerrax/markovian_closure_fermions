@@ -103,6 +103,19 @@ function ITensors.op(::OpName"ntot^2", st::SiteType"FDot3")
     return (ITensors.op(OpName("ntot"), st))^2
 end
 
+function ITensors.op(::OpName"F1", st::SiteType"FDot3")
+    return kron(id, id, fs)
+end
+function ITensors.op(::OpName"F2", st::SiteType"FDot3")
+    return kron(id, fs, id)
+end
+function ITensors.op(::OpName"F3", st::SiteType"FDot3")
+    return kron(fs, id, id)
+end
+function ITensors.op(::OpName"F", st::SiteType"FDot3")
+    return kron(fs, fs, fs)
+end
+
 function dot_hamiltonian(
     ::SiteType"FDot3", energies::Vector{<:Real}, coulomb_repulsion::Real, sitenumber::Int
 )
