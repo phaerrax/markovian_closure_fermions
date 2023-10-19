@@ -1,7 +1,7 @@
 using ITensors, PseudomodesTTEDOPA, LinearAlgebra
 
 """
-    space(::SiteType"vvFDot3")
+    space(::SiteType"vFDot3")
 
 Create the Hilbert space for a site of type "vFDot3", i.e. a mixed state describing a
 site with a fermionic three-level quantum dot.
@@ -88,9 +88,7 @@ function ITensors.op(on::OpName, ::SiteType"vFDot3")
     end
 end
 
-function dot_hamiltonian(
-    ::SiteType"vFDot3", energies, coulomb_repulsion, sitenumber::Int
-)
+function dot_hamiltonian(::SiteType"vFDot3", energies, coulomb_repulsion, sitenumber::Int)
     E = OpSum()
     for k in 1:3
         E += energies[k] * gkslcommutator("n$k", sitenumber)
@@ -118,14 +116,8 @@ function exchange_interaction(::SiteType"vFDot3", s1::Index, s2::Index)
 end
 
 function exchange_interaction(::SiteType"vFDot3", dot_site::Int, other_site::Int)
-    h = OpSum()
-
-    for k in 1:3
-        h +=
-            energies[k] * (
-                gkslcommutator("c†$k", dot_site, "σ-", other_site) +
-                gkslcommutator("c$k", dot_site, "σ+", other_site)
-            )
-    end
-    return h
+    return sum([
+        gkslcommutator("c†$k", dot_site, "σ-", other_site) +
+        gkslcommutator("c$k", dot_site, "σ+", other_site) for k in 1:3
+    ])
 end

@@ -95,9 +95,7 @@ function ITensors.op(::OpName"n3", st::SiteType"FDot3")
     return ITensors.op(OpName("c†3"), st) * ITensors.op(OpName("c3"), st)
 end
 function ITensors.op(::OpName"ntot", st::SiteType"FDot3")
-    return ITensors.op(OpName("n1"), st) +
-           ITensors.op(OpName("n2"), st) +
-           ITensors.op(OpName("n3"), st)
+    return sum([ITensors.op(OpName("n$k"), st) for k in 1:3])
 end
 function ITensors.op(::OpName"ntot^2", st::SiteType"FDot3")
     return (ITensors.op(OpName("ntot"), st))^2
@@ -116,9 +114,7 @@ function ITensors.op(::OpName"F", st::SiteType"FDot3")
     return kron(fs, fs, fs)
 end
 
-function dot_hamiltonian(
-    ::SiteType"FDot3", energies, coulomb_repulsion, sitenumber::Int
-)
+function dot_hamiltonian(::SiteType"FDot3", energies, coulomb_repulsion, sitenumber::Int)
     E = OpSum()
     for k in 1:3
         E += (energies[k], "n$k", sitenumber)
