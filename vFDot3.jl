@@ -55,6 +55,13 @@ ITensors.state(::StateName"13", ::SiteType"vFDot3") = vstate("13")
 ITensors.state(::StateName"23", ::SiteType"vFDot3") = vstate("23")
 ITensors.state(::StateName"123", ::SiteType"vFDot3") = vstate("123")
 
+ITensors.state(::StateName"vId", ::SiteType"vFDot3") = vop("Id")
+ITensors.state(::StateName"vecId", ::SiteType"vFDot3") = vop("Id")
+ITensors.state(::StateName"vn1", ::SiteType"vFDot3") = vop("n1")
+ITensors.state(::StateName"vn2", ::SiteType"vFDot3") = vop("n2")
+ITensors.state(::StateName"vn3", ::SiteType"vFDot3") = vop("n3")
+ITensors.state(::StateName"vntot", ::SiteType"vFDot3") = vop("ntot")
+
 function ITensors.op(on::OpName, ::SiteType"vFDot3")
     name = strip(String(ITensors.name(on)))
     dotloc = findfirst("⋅", name)
