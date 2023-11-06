@@ -4,9 +4,6 @@ using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
-function ITensors.op(::OpName"Ntot^2", st::SiteType"Electron")
-    return ITensors.op(OpName("Ntot"), st)^2
-end
 function ITensors.op(::OpName"Ntot^2⋅", st::SiteType"vElectron")
     return PseudomodesTTEDOPA.premul(PseudomodesTTEDOPA.elop("Ntot^2"), st)
 end
@@ -28,44 +25,6 @@ function dot_hamiltonian(
     N = gkslcommutator("Ntot", dot_site)
 
     return E + 0.5dot_coulomb_repulsion * (N² - N)
-end
-
-function exchange_interaction(
-    st::SiteType"vElectron", coupling_constants, s1::Index, s2::Index
-)
-    stypes1 = PseudomodesTTEDOPA.sitetypes(s1)
-    stypes2 = PseudomodesTTEDOPA.sitetypes(s2)
-    if (SiteType("vElectron") in stypes1) && !(SiteType("vElectron") in stypes2)
-        return exchange_interaction(st, coupling_constants, sitenumber(s1), sitenumber(s2))
-    elseif (SiteType("vElectron") in stypes2) && !(SiteType("vElectron") in stypes1)
-        return exchange_interaction(st, coupling_constants, sitenumber(s2), sitenumber(s1))
-    else
-        # Return an error if no implementation is found for any type.
-        throw(
-            ArgumentError(
-                "No vElectron site type found in either $(tags(s1)) or $(tags(s2))."
-            ),
-        )
-    end
-end
-
-function exchange_interaction(
-    ::SiteType"vElectron", coupling_constants, dot_site, other_site
-)
-    # 1st level --> spin ↑
-    # 2nd level --> spin ↓
-    # (see how it's AupF on the first site and just Adn on the second one?)
-    jws = jwstring(; start=dot_site, stop=other_site)
-    return (
-        coupling_constants[1] * (
-            gkslcommutator("Aup†F", dot_site, jws..., "A", other_site) -
-            gkslcommutator("AupF", dot_site, jws..., "A†", other_site)
-        ) +
-        coupling_constants[2] * (
-            gkslcommutator("Adn†", dot_site, jws..., "A", other_site) -
-            gkslcommutator("Adn", dot_site, jws..., "A†", other_site)
-        )
-    )
 end
 
 let
@@ -161,16 +120,16 @@ let
             SiteType("vElectron"), dot_energies, dot_coulomb_repulsion, dot_site
         ) +
         exchange_interaction(
-            SiteType("vElectron"),
-            fill(empty_chain_coups[1], 2),
             sites[dot_site],
-            sites[empty_chain_range[1]],
+            sites[empty_chain_range[1]];
+            coupling_constant_up=empty_chain_coups[1],
+            coupling_constant_dn=empty_chain_coups[1]
         ) +
         exchange_interaction(
-            SiteType("vElectron"),
-            fill(filled_chain_coups[1], 2),
             sites[dot_site],
-            sites[filled_chain_range[1]],
+            sites[filled_chain_range[1]];
+            coupling_constant_up=filled_chain_coups[1],
+            coupling_constant_dn=filled_chain_coups[1]
         ) +
         spin_chain(
             empty_chain_freqs[1:chain_length],

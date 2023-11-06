@@ -4,33 +4,6 @@ using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
-function ITensors.op(::OpName"A", ::SiteType"Electron")
-  return [
-    0.0 1.0
-    0.0 0.0
-  ]
-end
-function ITensors.op(::OpName"a", st::SiteType"Fermion")
-  return op(OpName("A"), st)
-end
-
-function ITensors.op(::OpName"Adag", ::SiteType"Electron")
-  return [
-    0.0 0.0
-    1.0 0.0
-  ]
-end
-function ITensors.op(::OpName"adag", st::SiteType"Fermion")
-  return op(OpName("Adag"), st)
-end
-function ITensors.op(::OpName"a†", st::SiteType"Fermion")
-  return op(OpName("A†"), st)
-end
-
-function ITensors.op(::OpName"Ntot^2", st::SiteType"Electron")
-    return ITensors.op(OpName("Ntot"), st)^2
-end
-
 function dot_hamiltonian(
     ::SiteType"Electron", dot_energies, dot_coulomb_repulsion, dot_site
 )
@@ -43,40 +16,6 @@ function dot_hamiltonian(
 
     h += 0.5dot_coulomb_repulsion, "Ntot^2", dot_site
     h += -0.5dot_coulomb_repulsion, "Ntot", dot_site
-
-    return h
-end
-
-function exchange_interaction(
-    st::SiteType"Electron", coupling_constants, s1::Index, s2::Index
-)
-    stypes1 = PseudomodesTTEDOPA.sitetypes(s1)
-    stypes2 = PseudomodesTTEDOPA.sitetypes(s2)
-    if (SiteType("Electron") in stypes1) && !(SiteType("Electron") in stypes2)
-        return exchange_interaction(st, coupling_constants, sitenumber(s1), sitenumber(s2))
-    elseif (SiteType("Electron") in stypes2) && !(SiteType("Electron") in stypes1)
-        return exchange_interaction(st, coupling_constants, sitenumber(s2), sitenumber(s1))
-    else
-        # Return an error if no implementation is found for any type.
-        throw(
-            ArgumentError(
-                "No Electron site type found in either $(tags(s1)) or $(tags(s2))."
-            ),
-        )
-    end
-end
-
-function exchange_interaction(
-    ::SiteType"Electron", coupling_constants, dot_site, other_site
-)
-    # 1st level --> spin ↑
-    # 2nd level --> spin ↓
-    h = OpSum()
-    jws = jwstring(; start=dot_site, stop=other_site)
-    h += coupling_constants[1], "a†↑ * F↓", dot_site, jws..., "a", other_site
-    h += coupling_constants[1], "a↑ * F↓", dot_site, jws..., "a†", other_site
-    h += coupling_constants[2], "a†↓", dot_site, jws..., "a", other_site
-    h += coupling_constants[2], "a↓", dot_site, jws..., "a†", other_site
 
     return h
 end
@@ -135,16 +74,16 @@ let
             SiteType("Electron"), dot_energies, dot_coulomb_repulsion, dot_site
         ) +
         exchange_interaction(
-            SiteType("Electron"),
-            fill(empty_chain_coups[1], 2),
             sites[dot_site],
-            sites[empty_chain_range[1]],
+            sites[empty_chain_range[1]];
+            coupling_constant_up=empty_chain_coups[1],
+            coupling_constant_dn=empty_chain_coups[1]
         ) +
         exchange_interaction(
-            SiteType("Electron"),
-            fill(filled_chain_coups[1], 2),
             sites[dot_site],
-            sites[filled_chain_range[1]],
+            sites[filled_chain_range[1]];
+            coupling_constant_up=filled_chain_coups[1],
+            coupling_constant_dn=filled_chain_coups[1]
         ) +
         spin_chain(
             empty_chain_freqs[1:chain_length],
