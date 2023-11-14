@@ -4,13 +4,6 @@ using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
-function ITensors.op(::OpName"Ntot^2⋅", st::SiteType"vElectron")
-    return PseudomodesTTEDOPA.premul(PseudomodesTTEDOPA.elop("Ntot^2"), st)
-end
-function ITensors.op(::OpName"⋅Ntot^2", st::SiteType"vElectron")
-    return PseudomodesTTEDOPA.postmul(PseudomodesTTEDOPA.elop("Ntot^2"), st)
-end
-
 function dot_hamiltonian(
     ::SiteType"vElectron", dot_energies, dot_coulomb_repulsion, dot_site
 )
