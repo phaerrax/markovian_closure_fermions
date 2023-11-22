@@ -545,7 +545,7 @@ function apply!(
         if alg isa TDVP2
             wf = state[bond] * state[bond+1]
             measure_localops!(cb, wf, bond + 1, alg)
-        elseif alg isa TDVP1
+        elseif (alg isa TDVP1 || alg isa TDVP1vec)
             #wf = state[bond]
             #measure_localops!(cb, wf, bond, alg)
             measure_localops!(cb, state, bond, alg)
@@ -614,7 +614,7 @@ function apply!(
 
         if alg isa TDVP2
             measure_localops!(cb, state, bond + 1, alg)
-        elseif alg isa TDVP1
+        elseif (alg isa TDVP1 || alg isa TDVP1vec)
             measure_localops!(cb, state, bond, alg)
         elseif alg isa TEBDalg
             measure_localops!(cb, state, bond, alg)

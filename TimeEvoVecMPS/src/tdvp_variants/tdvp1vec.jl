@@ -168,7 +168,7 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
                 bond=site,
                 sweepend=true,
                 sweepdir="right", # This value doesn't matter.
-                alg=TDVP1(),
+                alg=TDVP1vec(),
             )
         end
 
@@ -334,7 +334,7 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
                 bond=site,
                 sweepend=true,
                 sweepdir="right", # This value doesn't matter.
-                alg=TDVP1(),
+                alg=TDVP1vec(),
             )
         end
 

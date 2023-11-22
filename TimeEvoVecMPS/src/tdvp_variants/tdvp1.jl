@@ -135,6 +135,9 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                     krylovdim=krylovdim,
                     maxiter=maxiter,
                 )
+                # At least with TDVP1, `tdvp_site_update!` updates the site at `site`, and
+                # leaves the MPS with orthocenter at `site+1` or `site-1` if it sweeping
+                # rightwards
                 apply!(
                     cb, state; t=current_time, bond=site, sweepend=(ha == 2), sweepdir=sweepdir, alg=TDVP1()
                 )

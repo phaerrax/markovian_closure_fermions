@@ -146,7 +146,7 @@ function apply!(
 
     # We perform measurements only at the end of a sweep and at measurement steps.
     # For TDVP we can perform measurements to the right of each bond when sweeping back left.
-    if !(alg isa TDVP1)
+    if !(alg isa TDVP1 or TDVP1vec)
         error("apply! function only implemented for TDVP1 algorithm.")
     end
 
