@@ -78,6 +78,10 @@ function Base.show(io::IO, cb::LocalOperatorCallback)
     end
 end
 
+function Base.isless(A::LocalOperator, B::LocalOperator)
+    return Base.isless(name(A), name(B))
+end
+
 """
     smart_contract(A::LocalOperator, ψ::MPS, sites)
 
