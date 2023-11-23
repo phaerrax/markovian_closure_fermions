@@ -1,3 +1,5 @@
+export LocalOperator, LocalOperatorCallback
+
 """
     LocalOperator(factors::Vector{AbstractString}, lind::Int)
 
@@ -14,7 +16,7 @@ struct LocalOperator
 end
 
 factors(op::LocalOperator) = op.factors
-length(op::LocalOperator) = length(op.factors)
+length(op::LocalOperator) = Base.length(op.factors)
 domain(op::LocalOperator) = (op.lind):(op.lind + length(op) - 1)
 name(op::LocalOperator) = *(["$f{$i}" for (i, f) in zip(domain(op), factors(op))]...)
 
@@ -28,24 +30,24 @@ onsite(op::LocalOperator, site::Int) = op.factors[site - op.lind + 1]
 struct LocalOperatorCallback <: TEvoCallback
     operators::Vector{LocalOperator}
     sites::Vector{<:Index}
-    measurements::Dict{AbstractString,Measurement}
+    measurements::Dict{LocalOperator,Measurement}
     times::Vector{Float64}
     measure_timestep::Float64
 end
 
 """
-    LocalOperatorCallback(ops::Vector{opPos},
+    LocalOperatorCallback(ops::Vector{LocalOperator},
                           sites::Vector{<:Index},
-                          dt_measure::Float64)
+                          measure_timestep::Float64)
 
-Construct a LocalOperatorCallback, providing an array `ops` of opPos objects which
+Construct a LocalOperatorCallback, providing an array `ops` of LocalOperator objects which
 represent operators associated to specific sites. Each of these operators will be measured
 on the given site during every step of the time evolution, and the results recorded inside
 the LocalOperatorCallback object as a Measurement for later analysis. The array
 `sites` is the basis of sites used to define the MPS and MPO for the calculations.
 """
 function LocalOperatorCallback(
-    operators::Vector{LocalOperator}sites::Vector{<:Index}, measure_timestep::Float64
+    operators::Vector{LocalOperator}, sites::Vector{<:Index}, measure_timestep::Float64
 )
     return LocalOperatorCallback(
         operators,
@@ -58,7 +60,7 @@ end
 
 measurement_ts(cb::LocalOperatorCallback) = cb.times
 measurements(cb::LocalOperatorCallback) = cb.measurements
-callback_dt(cb::LocalOperatorCallback) = cb.dt_measure
+callback_dt(cb::LocalOperatorCallback) = cb.measure_timestep
 ops(cb::LocalOperatorCallback) = cb.operators
 sites(cb::LocalOperatorCallback) = cb.sites
 
@@ -66,7 +68,7 @@ function Base.show(io::IO, cb::LocalOperatorCallback)
     println(io, "LocalOperatorCallback")
     # Print the list of operators
     println(io, "Operators: ", join(name.(ops(cb)), ", ", " and "))
-    if length(measurement_ts(cb)) > 0
+    if Base.length(measurement_ts(cb)) > 0
         println(
             io, "Measured times: ", callback_dt(cb):callback_dt(cb):measurement_ts(cb)[end]
         )
@@ -98,11 +100,11 @@ function smart_contract(A::LocalOperator, ψ::MPS, sites)
 end
 
 """
-    measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg)
+    measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
 
 Measure each operator defined inside the callback object `cb` on the state `ψ` at site `i`.
 """
-function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg)
+function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
     # Since the operators may be defined on more than one site, we need to check that
     # all the sites in their domain have been completely updated: this means that we must
     # wait until the final sweep of the evolution step has passed each site in the domain.
@@ -116,7 +118,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg)
         # We need to transform each `localop` into an ITensors operator.
         localops = [
             ITensors.op(opname, sites(cb), i) for
-            (i, opname) in zip(domain(localop), factors(op))
+            (i, opname) in zip(domain(localop), factors(localop))
         ]
         # Multiply all factors together, to create a single ITensor.
         op = *(localops...)
@@ -139,15 +141,47 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg)
     end
 end
 
+"""
+    fill(sites::Vector{<:Index}, lop::LocalOperator)
+
+Return an MPS with the factors in `lop` or `vId` if the site is not in the domain.
+"""
+function fill(sites::Vector{<:Index}, lop::LocalOperator)
+    return MPS(ComplexF64, sites, [i in domain(lop) ? onsite(lop, i) : "vId" for i in 1:Base.length(sites)])
+    # The MPS needs to be complex, in general, since
+end
+
+"""
+    measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1vec)
+
+Measure each operator defined inside the callback object `cb` on the state `ψ` at site `i`.
+"""
+function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1vec)
+    # With TDVP1vec algorithms the situation is much simpler than with simple TDVP1: since
+    # we need to contract any site which is not "occupied" (by the operator which is to be
+    # measured) anyway with vec(I), we don't need to care about the orthocenter, we just
+    # measure everything at the end of the sweep.
+
+    for localop in ops(cb)
+        # Transform each `localop` into an MPS, filling with `vId` states.
+        m = dot(fill(sites(cb), localop), ψ)
+        imag(m) > 1e-8 &&
+            (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
+        measurements(cb)[localop][end][1] = real(m)
+        # measurements(cb)[opname][end] is the last line in the measurements of opname,
+        # which we (must) have created in apply! before calling this function.
+    end
+end
+
 function apply!(
-    cb::LocalOperatorCallback, state; t, sweepend, sweepdir, bond, alg, kwargs...
+    cb::LocalOperatorCallback, state; t, sweepend, sweepdir, site, alg, kwargs...
 )
     prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
 
     # We perform measurements only at the end of a sweep and at measurement steps.
-    # For TDVP we can perform measurements to the right of each bond when sweeping back left.
-    if !(alg isa TDVP1 or TDVP1vec)
-        error("apply! function only implemented for TDVP1 algorithm.")
+    # For TDVP we can perform measurements to the right of each site when sweeping back left.
+    if !(alg isa TDVP1 || alg isa TDVP1vec)
+        error("apply! function only implemented for TDVP1 algorithms.")
     end
 
     if (t - prev_t ≈ callback_dt(cb) || t == prev_t) && sweepend
@@ -158,7 +192,7 @@ function apply!(
             # Create a new slot in which we will put the measurement result.
             foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
         end
-        measure_localops!(cb, state, bond, alg)
+        measure_localops!(cb, state, site, alg)
     end
 
     return nothing

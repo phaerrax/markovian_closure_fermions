@@ -4,7 +4,7 @@ zerosite!(PH::ProjMPO) = (PH.nsite = 0)
 singlesite!(PH::ProjMPO) = (PH.nsite = 1)
 twosite!(PH::ProjMPO) = (PH.nsite = 2)
 
-abstract type TDVP
+abstract type TDVP end
 struct TDVP1 <: TDVP end
 struct TDVP1vec <: TDVP end
 struct TDVP2 <: TDVP end
