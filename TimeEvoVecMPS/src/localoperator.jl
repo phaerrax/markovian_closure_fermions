@@ -27,6 +27,8 @@ Return, if it exists, the factor in `op` which acts on site `site`.
 """
 onsite(op::LocalOperator, site::Int) = op.factors[site - op.lind + 1]
 
+Base.show(io::IO, op::LocalOperator) = print(io, name(op))
+
 struct LocalOperatorCallback <: TEvoCallback
     operators::Vector{LocalOperator}
     sites::Vector{<:Index}
