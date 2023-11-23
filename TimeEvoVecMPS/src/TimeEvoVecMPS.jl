@@ -17,8 +17,8 @@ include("itensor.jl")
 include("bondgate.jl")
 include("bondop.jl")
 include("callback.jl")
-include("localoperator.jl")
 include("utils.jl")
+include("localoperator.jl")
 
 include("tebd.jl")
 
