@@ -89,7 +89,7 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
         results = measurements(cb)
         @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
         for o in sort(collect(keys(results)))
-            @printf(io_handle, "%40.15f", results[o][end][1])
+            @printf(io_handle, "%40.15f", results[o][end])
         end
 
         if get(kwargs, :store_psi0, false)
