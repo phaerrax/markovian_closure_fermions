@@ -16,7 +16,7 @@ struct LocalOperator
 end
 
 factors(op::LocalOperator) = op.factors
-length(op::LocalOperator) = Base.length(op.factors)
+Base.length(op::LocalOperator) = Base.length(op.factors)
 domain(op::LocalOperator) = (op.lind):(op.lind + length(op) - 1)
 name(op::LocalOperator) = *(["$f{$i}" for (i, f) in zip(domain(op), factors(op))]...)
 
@@ -149,11 +149,11 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
 end
 
 """
-    fill(sites::Vector{<:Index}, lop::LocalOperator)
+    embed(sites::Vector{<:Index}, lop::LocalOperator)
 
 Return an MPS with the factors in `lop` or `vId` if the site is not in the domain.
 """
-function fill(sites::Vector{<:Index}, lop::LocalOperator)
+function embed(sites::Vector{<:Index}, lop::LocalOperator)
     return MPS(ComplexF64, sites, [i in domain(lop) ? onsite(lop, i) : "vId" for i in 1:Base.length(sites)])
     # The MPS needs to be complex, in general, since
 end
@@ -171,7 +171,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
 
     for localop in ops(cb)
         # Transform each `localop` into an MPS, filling with `vId` states.
-        m = dot(fill(sites(cb), localop), ψ)
+        m = dot(embed(sites(cb), localop), ψ)
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
