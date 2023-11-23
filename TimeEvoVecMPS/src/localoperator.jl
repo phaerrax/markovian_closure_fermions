@@ -52,7 +52,8 @@ function LocalOperatorCallback(
     return LocalOperatorCallback(
         operators,
         sites,
-        Dict(op => Measurement[] for op in operators),
+        Dict(op => Measurement() for op in operators),
+        # A single Measurement for each operator in the list.
         Vector{Float64}(),
         measure_timestep,
     )
@@ -135,7 +136,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         m = smart_contract(op, ψ, site_range)
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
-        measurements(cb)[localop][end][1] = real(m)
+        measurements(cb)[localop][end] = real(m)
         # measurements(cb)[opname][end] is the last line in the measurements of opname,
         # which we (must) have created in apply! before calling this function.
     end
@@ -167,8 +168,8 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         m = dot(fill(sites(cb), localop), ψ)
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
-        measurements(cb)[localop][end][1] = real(m)
-        # measurements(cb)[opname][end] is the last line in the measurements of opname,
+        measurements(cb)[localop][end] = real(m)
+        # measurements(cb)[opname][end] is the last element in the measurements of opname,
         # which we (must) have created in apply! before calling this function.
     end
 end
@@ -190,7 +191,7 @@ function apply!(
             # something.
             push!(measurement_ts(cb), t)
             # Create a new slot in which we will put the measurement result.
-            foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
+            foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
         end
         measure_localops!(cb, state, site, alg)
     end

@@ -35,13 +35,12 @@ checkdone!(cb::NoTEvoCallback, args...; kwargs...) = false
 callback_dt(cb::NoTEvoCallback) = 0
 
 """
-    A Measurement object is an alias for `Vector{Vector{Float64}}`, in other words an
-    array of arrays of real numbers.
+    A Measurement object is an alias for `Vector{Float64}`, in other words an
+    array of real numbers.
 
-    Given a Measurement `M`, the result for the measurement at step `n` and site `i` is
-    `M[n][i]`.
+    Given a Measurement `M`, the result for the measurement at step `n` is `M[n]`.
 """
-const Measurement = Vector{Vector{Float64}}
+const Measurement = Vector{Float64}
 
 struct LocalMeasurementCallback <: TEvoCallback
     "An array of operators that must be measured at each time step"
@@ -49,7 +48,7 @@ struct LocalMeasurementCallback <: TEvoCallback
     "The basis of sites used to define the MPS and MPO for the calculations"
     sites::Vector{<:Index}
     "A dictionary containing the measured values of the observables at each time step"
-    measurements::Dict{String,Measurement}
+    measurements::Dict{String,Vector{Measurement}}
     "The array of times"
     ts::Vector{Float64}
     # Measurement time-step
@@ -76,6 +75,8 @@ function LocalMeasurementCallback(
         ops,
         sites,
         Dict(o => Measurement[] for o in ops),
+        # Here we associate to each operator a vector of Measurements, since each operator
+        # will be measured on all sites of the state.
         Vector{Float64}(),
         dt_measure,
     )
@@ -133,7 +134,11 @@ function LocalPosMeasurementCallback(
     return LocalPosMeasurementCallback(
         ops,
         sites,
-        Dict(o.op * "_" * string(o.pos) => Measurement[] for o in ops),
+        Dict(o.op * "_" * string(o.pos) => Measurement() for o in ops),
+        # Here we associate to each operator a single Measurement, in contrast to the
+        # LocalMeasurementCallback structs, since each operator will be measured only
+        # once (per time step). If an operator has to be measured on multiple sites, then
+        # there will be an opPos for each site.
         Vector{Float64}(),
         dt_measure,
     )
@@ -167,7 +172,7 @@ function LocalPosVecMeasurementCallback(
     return LocalPosVecMeasurementCallback(
         ops,
         sites,
-        Dict(o.op * "_" * string(o.pos) => Measurement[] for o in ops),
+        Dict(o.op * "_" * string(o.pos) => Measurement() for o in ops),
         Vector{Float64}(),
         dt_measure,
     )
@@ -287,7 +292,7 @@ function measure_localops!(
             # With this method, instead, if we have different operators Aᵢ for each
             # site, they are not bunched up in a single line, but there will be a
             # different dictionary entry for each one of them.
-            measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(m)
+            measurements(cb)[o.op * "_" * string(o.pos)][end] = real(m)
         end
     end
 
@@ -364,7 +369,7 @@ function measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, site::Int,
         # With this method, instead, if we have different operators Aᵢ for each
         # site, they are not bunched up in a single line, but there will be a
         # different dictionary entry for each one of them.
-        measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(x)
+        measurements(cb)[o.op * "_" * string(o.pos)][end] = real(x)
     end
 
     return nothing
@@ -420,7 +425,7 @@ function measure_localops!(
             # With this method, instead, if we have different operators Aᵢ for each
             # site, they are not bunched up in a single line, but there will be a
             # different dictionary entry for each one of them.
-            measurements(cb)[o.op * "_" * string(o.pos)][end][1] = real(m)
+            measurements(cb)[o.op * "_" * string(o.pos)][end] = real(m)
         end
     end
 
@@ -539,7 +544,7 @@ function apply!(
        (bond % 2 == 1 || !(alg isa TEBDalg))
         if (t != prev_t || t == 0)
             push!(measurement_ts(cb), t)
-            foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
+            foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
         end
 
         if alg isa TDVP2
@@ -609,7 +614,7 @@ function apply!(
        (bond % 2 == 1 || !(alg isa TEBDalg))
         if (t != prev_t || t == 0)
             push!(measurement_ts(cb), t)
-            foreach(x -> push!(x, zeros(1)), values(measurements(cb)))
+            foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
         end
 
         if alg isa TDVP2
