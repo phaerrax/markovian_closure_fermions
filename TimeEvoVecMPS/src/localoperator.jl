@@ -84,6 +84,8 @@ function Base.isless(A::LocalOperator, B::LocalOperator)
     return Base.isless(name(A), name(B))
 end
 
+checkdone!(cb::LocalOperatorCallback, args...) = false
+
 """
     smart_contract(A::LocalOperator, ψ::MPS, sites)
 
