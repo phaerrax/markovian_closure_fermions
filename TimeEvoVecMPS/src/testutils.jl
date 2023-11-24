@@ -1,6 +1,5 @@
 # a bunch of convenience functions that are currently helpful for testing
-export load_pars, tfi_mpo, complex!,TFIgs, tfi_bondop
-
+export load_pars, tfi_mpo, complex!, TFIgs, tfi_bondop
 
 """
     load_pars(file_name::String)
@@ -15,14 +14,14 @@ function load_pars(file_name::String)
     return p
 end
 
-function tfi_mpo(J,h,sites)
+function tfi_mpo(J, h, sites)
     ampo = AutoMPO()
-    for j=1:length(sites)-1
-        add!(ampo,-J,"Sz",j,"Sz",j+1)
-        add!(ampo,-h,"Sx",j)
+    for j in 1:(length(sites) - 1)
+        add!(ampo, -J, "Sz", j, "Sz", j + 1)
+        add!(ampo, -h, "Sx", j)
     end
-    add!(ampo,-h,"Sx",length(sites))
-    return MPO(ampo,sites)
+    add!(ampo, -h, "Sx", length(sites))
+    return MPO(ampo, sites)
 end
 
 function complex!(psi::MPS)
@@ -36,39 +35,38 @@ function complex!(psi::MPS)
 end
 
 "get ground state of transverse-field Ising model"
-function TFIgs(sites,h)
+function TFIgs(sites, h)
     ampo = AutoMPO()
-    for j=1:length(sites)-1
-        add!(ampo,-1.,"Sz",j,"Sz",j+1)
-        add!(ampo,-h,"Sx",j)
+    for j in 1:(length(sites) - 1)
+        add!(ampo, -1.0, "Sz", j, "Sz", j + 1)
+        add!(ampo, -h, "Sx", j)
     end
-    add!(ampo,-h,"Sx",length(sites))
-    H = MPO(ampo,sites)
+    add!(ampo, -h, "Sx", length(sites))
+    H = MPO(ampo, sites)
 
     psi0 = randomMPS(sites)
     sweeps = Sweeps(15)
-    maxdim!(sweeps, 10,20,100,100,200)
+    maxdim!(sweeps, 10, 20, 100, 100, 200)
     cutoff!(sweeps, 1E-10)
-    energy, psi = dmrg(H,psi0,sweeps,quiet=true)
-    return psi,energy
+    energy, psi = dmrg(H, psi0, sweeps; quiet=true)
+    return psi, energy
 end
 
 "create a BondOperator for the transverse-field ising model"
-function tfi_bondop(sites,J,h)
+function tfi_bondop(sites, J, h)
     N = length(sites)
     H = BondOperator(sites)
-    for b in 1:N-1
-        add!(H,-J,"Sz","Sz",b)
-        add!(H,-h,"Sx",b)
+    for b in 1:(N - 1)
+        add!(H, -J, "Sz", "Sz", b)
+        add!(H, -h, "Sx", b)
     end
-    add!(H,-h,"Sx",N)
+    add!(H, -h, "Sx", N)
     return H
 end
 
-function measure!(psi::MPS,opname::String,i::Int)
-    orthogonalize!(psi,i)
-    return scalar(dag(psi[i])*noprime(op(siteindex(psi,i), opname)*psi[i]))
+function measure!(psi::MPS, opname::String, i::Int)
+    orthogonalize!(psi, i)
+    return scalar(dag(psi[i]) * noprime(op(siteindex(psi, i), opname) * psi[i]))
 end
 
-measure!(psi::MPS,opname::String) = map(x->measure!(psi,opname,x), 1:length(psi))
-
+measure!(psi::MPS, opname::String) = map(x -> measure!(psi, opname, x), 1:length(psi))

@@ -1,7 +1,7 @@
 name = "TimeEvoVecMPS"
 uuid = "386e0f54-b56d-4c26-8648-19598745e6c2"
 authors = ["kindaguy <dario.tamascelli@unimi.it>", "Davide Ferracin <davide.ferracin@protonmail.com>"]
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"

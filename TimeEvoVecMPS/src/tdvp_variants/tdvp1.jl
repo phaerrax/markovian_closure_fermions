@@ -127,7 +127,9 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                     state,
                     site,
                     -0.5Δt; # forward by -im*timestep/2, backwards by im*timestep/2.
-                    current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
+                    current_time=(
+                        ha == 1 ? current_time + 0.5timestep : current_time + timestep
+                    ),
                     sweepdir=sweepdir,
                     which_decomp=decomp,
                     hermitian=hermitian,
@@ -139,7 +141,13 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                 # leaves the MPS with orthocenter at `site+1` or `site-1` if it sweeping
                 # rightwards
                 apply!(
-                    cb, state; t=current_time, site=site, sweepend=(ha == 2), sweepdir=sweepdir, alg=TDVP1()
+                    cb,
+                    state;
+                    t=current_time,
+                    site=site,
+                    sweepend=(ha == 2),
+                    sweepdir=sweepdir,
+                    alg=TDVP1(),
                 )
             end
         end
@@ -278,7 +286,9 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
                     state,
                     site,
                     -0.5Δt;
-                    current_time=(ha == 1 ? current_time + 0.5timestep : current_time + timestep),
+                    current_time=(
+                        ha == 1 ? current_time + 0.5timestep : current_time + timestep
+                    ),
                     sweepdir=sweepdir,
                     which_decomp=decomp,
                     hermitian=hermitian,

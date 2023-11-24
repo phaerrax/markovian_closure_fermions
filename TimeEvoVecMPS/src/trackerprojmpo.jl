@@ -154,7 +154,7 @@ function _remakeR!(
     # to max(newbonds) are invalid, since they contain information on the
     # now old state, and must be recomputed.
     # [ Remember that k = pos+nsite ]
-    rnewbonds = filter(≥(k-ITensors.nsite(P)), newbonds)
+    rnewbonds = filter(≥(k - ITensors.nsite(P)), newbonds)
     @debug "Bonds to be changed on the right part: $rnewbonds"
     if P.rpos ≤ k && isempty(rnewbonds)
         P.rpos = k

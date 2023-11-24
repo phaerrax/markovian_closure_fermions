@@ -6,8 +6,8 @@ let
     system_length = 1
 
     chain_length = 10
-    coups = [0.25/n for n in 1:10]
-    freqs = [0.5/n for n in 1:10]
+    coups = [0.25 / n for n in 1:10]
+    freqs = [0.5 / n for n in 1:10]
     chain_range = system_length .+ (1:chain_length)
 
     n_sites = chain_length + system_length
@@ -18,12 +18,12 @@ let
     h = OpSum()
     h += "N", 1
     h += coups[1], "Asum", 1, "Asum", 2
-    for i in 1:(chain_length-1)
+    for i in 1:(chain_length - 1)
         h += freqs[i], "N", chain_range[i]
-        h += coups[i+1], "A", chain_range[i], "Adag", chain_range[i+1]
-        h += coups[i+1], "Adag", chain_range[i], "A", chain_range[i+1]
-        end
-        h += freqs[chain_length], "N", chain_range[chain_length]
+        h += coups[i + 1], "A", chain_range[i], "Adag", chain_range[i + 1]
+        h += coups[i + 1], "Adag", chain_range[i], "A", chain_range[i + 1]
+    end
+    h += freqs[chain_length], "N", chain_range[chain_length]
 
     H = MPO(h, sites)
 

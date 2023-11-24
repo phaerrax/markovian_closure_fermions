@@ -19,7 +19,7 @@ end
 
 factors(op::LocalOperator) = values(op.terms)
 Base.length(op::LocalOperator) = Base.length(op.terms)
-domain(op::LocalOperator) = op.terms |> keys |> collect
+domain(op::LocalOperator) = collect(keys(op.terms))
 connecteddomain(op::LocalOperator) = first(domain(op)):last(domain(op))
 # Since LocalOperator structs are dictionaries sorted by their keys, `domain` and
 # `connecteddomain` are guaranteed to return sorted lists of numbers.
@@ -146,7 +146,7 @@ end
 
 @memoize function mpo(sites::Vector{<:Index}, lop::LocalOperator)
     return MPO(sites, [i in domain(lop) ? lop[i] : "Id" for i in 1:length(sites)])
-    end
+end
 
 """
     measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
@@ -169,7 +169,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         # This works, but calculating the MPO from scratch every time might take too much
         # time, especially when it has to be repeated thousands of times. For example,
         # executing TimeEvoVecMPS.mpo(s, o) with
-        #   s = siteinds("Osc", 400; dim=4)
+        #   s = siteinds("Osc", 400; dim=16)
         #   o = LocalOperator(Dict(20 => "A", 19 => "Adag"))
         # takes 177.951 ms (2313338 allocations: 329.80 MiB).
         # Memoizing this function allows us to cut the time (after the first call, which is
@@ -189,7 +189,9 @@ end
 Return an MPS with the factors in `lop` or `vId` if the site is not in the domain.
 """
 @memoize function mps(sites::Vector{<:Index}, lop::LocalOperator)
-    return MPS(ComplexF64, sites, [i in domain(lop) ? lop[i] : "vId" for i in 1:Base.length(sites)])
+    return MPS(
+        ComplexF64, sites, [i in domain(lop) ? lop[i] : "vId" for i in 1:Base.length(sites)]
+    )
     # The MPS needs to be complex, in general, since we can have the vectorized form of
     # non-Hermitian operator such as A or Adag. The coefficients on the Gell-Mann basis
     # of non-Hermitian operator are complex, in general.
@@ -228,10 +230,10 @@ function apply!(
     cb::LocalOperatorCallback, state; t, sweepend, sweepdir, site, alg, kwargs...
 )
     if isempty(measurement_ts(cb))
-    prev_t = 0
-else
-prev_t = measurement_ts(cb)[end]
-end
+        prev_t = 0
+    else
+        prev_t = measurement_ts(cb)[end]
+    end
 
     # We perform measurements only at the end of a sweep and at measurement steps.
     # For TDVP we can perform measurements to the right of each site when sweeping back left.

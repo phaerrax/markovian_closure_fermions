@@ -4,34 +4,34 @@
 export growbond!, recompute!, maxlinkdims, stretchBondDim, growMPS, growMPS!
 
 function findprimeinds(is::IndexSet, plevel::Int=-1)
-    if plevel>=0
-        return filter(x->plev(x)==plevel, is)
+    if plevel >= 0
+        return filter(x -> plev(x) == plevel, is)
     else
-        return filter(x->plev(x)>0, is)
+        return filter(x -> plev(x) > 0, is)
     end
 end
 
-findprimeinds(A::ITensor,args...) = findprimeinds(A.inds,args...)
+findprimeinds(A::ITensor, args...) = findprimeinds(A.inds, args...)
 
-function isleftortho(M,i)
-    i==length(M) && return true
-    L = M[i]*prime(dag(M[i]), i==1 ? "Link" : commonindex(M[i],M[i+1]))
-    l = linkindex(M,i)
-    return norm(L-delta(l,l')) < 1E-12
+function isleftortho(M, i)
+    i == length(M) && return true
+    L = M[i] * prime(dag(M[i]), i == 1 ? "Link" : commonindex(M[i], M[i + 1]))
+    l = linkindex(M, i)
+    return norm(L - delta(l, l')) < 1E-12
 end
 
-function isrightortho(M,i)
-    i==1 && return true
-    R = M[i]*prime(dag(M[i]),i==length(M) ? "Link" : commonindex(M[i],M[i-1]))
-    r = linkindex(M,i-1)
-    return norm(R-delta(r,r')) < 1E-12
+function isrightortho(M, i)
+    i == 1 && return true
+    R = M[i] * prime(dag(M[i]), i == length(M) ? "Link" : commonindex(M[i], M[i - 1]))
+    r = linkindex(M, i - 1)
+    return norm(R - delta(r, r')) < 1E-12
 end
 
 function reorthogonalize!(psi::MPS)
-    ITensors.setleftlim!(psi,-1)
-    ITensors.setrightlim!(psi,length(psi)+2)
-    orthogonalize!(psi,1)
-    psi[1] /= sqrt(inner(psi,psi))
+    ITensors.setleftlim!(psi, -1)
+    ITensors.setrightlim!(psi, length(psi) + 2)
+    orthogonalize!(psi, 1)
+    return psi[1] /= sqrt(inner(psi, psi))
 end
 
 """
@@ -57,10 +57,10 @@ Grow the dimension of `v`'s bond indices so that the result has a bond dimension
 Return the new MPS and its overlap with the original one.
 """
 function growMPS(v::MPS, dims::Vector{<:Integer})
-    @assert length(dims) == length(v)-1
+    @assert length(dims) == length(v) - 1
     currentdims = ITensors.linkdims(v)
     v_ext = copy(v)
-    for (n, new_d, d) in zip(1:(length(v)- 1), dims, currentdims)
+    for (n, new_d, d) in zip(1:(length(v) - 1), dims, currentdims)
         growbond!(v_ext, n; increment=new_d - d)
     end
     v_overlap = dot(v, v_ext)
@@ -75,7 +75,7 @@ Grow the dimension of `v`'s bond indices so that the result has a bond dimension
 `d` on each of its bonds.
 Return the new MPS and its overlap with the original one.
 """
-growMPS(v::MPS, d::Integer) = growMPS(v, fill(d, length(v)-1))
+growMPS(v::MPS, d::Integer) = growMPS(v, fill(d, length(v) - 1))
 
 const stretchBondDim = growMPS
 
@@ -87,10 +87,10 @@ of `dims[n]` on bond (`n`, `n+1`).
 Return the overlap of the new MPS with the original one.
 """
 function growMPS!(v::MPS, dims::Vector{<:Integer})
-    @assert length(dims) == length(v)-1
+    @assert length(dims) == length(v) - 1
     v_prev = copy(v)
     currentdims = ITensors.linkdims(v)
-    for (n, new_d, d) in zip(1:(length(v)- 1), dims, currentdims)
+    for (n, new_d, d) in zip(1:(length(v) - 1), dims, currentdims)
         growbond!(v, n; increment=new_d - d)
     end
     v_overlap = dot(v, v_prev)
@@ -105,7 +105,7 @@ Grow the dimension of `v`'s bond indices (in place) so that the result has a bon
 of `d` on each of its bonds.
 Return the overlap of the new MPS with the original one.
 """
-growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v)-1))
+growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v) - 1))
 
 """
     recompute!(P::AbstractProjMPO, psi::MPS, n::Int)

@@ -156,6 +156,6 @@ let
         io_ranks=parameters["ranks_file"],
         io_times=parameters["times_file"],
         convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
-        max_bond=parameters["max_bond"]
+        max_bond=parameters["max_bond"],
     )
 end

@@ -242,7 +242,9 @@ a certain convergence criterium is met.
 
 See [`tdvp1vec!`](@ref).
 """
-function adaptivetdvp1vec!(solver, state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
+function adaptivetdvp1vec!(
+    solver, state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...
+)
     return adaptivetdvp1vec!(solver, state, ProjMPO(L), Δt, tf, sites; kwargs...)
 end
 
@@ -308,7 +310,7 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
                 # it equals 1, then we perform a sweep on each single site.
                 sweepdir = (ha == 1 ? "right" : "left")
                 tdvp_site_update!(
-                                  solver,
+                    solver,
                     PH,
                     state,
                     site,

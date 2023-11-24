@@ -67,9 +67,7 @@ a Measurement for later analysis. The array `sites` is the basis of sites used t
 the MPS and MPO for the calculations.
 """
 function LocalMeasurementCallback(
-    ops::Vector{String},
-    sites::Vector{<:Index},
-    dt_measure::Float64,
+    ops::Vector{String}, sites::Vector{<:Index}, dt_measure::Float64
 )
     return LocalMeasurementCallback(
         ops,
@@ -127,9 +125,7 @@ the LocalPosMeasurementCallback object as a Measurement for later analysis. The 
 `sites` is the basis of sites used to define the MPS and MPO for the calculations.
 """
 function LocalPosMeasurementCallback(
-    ops::Vector{opPos},
-    sites::Vector{<:Index},
-    dt_measure::Float64,
+    ops::Vector{opPos}, sites::Vector{<:Index}, dt_measure::Float64
 )
     return LocalPosMeasurementCallback(
         ops,
@@ -191,9 +187,7 @@ function Base.show(io::IO, cb::Union{LocalMeasurementCallback,LocalPosMeasuremen
     println(io, "Operators: ", ops(cb))
     if length(measurement_ts(cb)) > 0
         println(
-            io,
-            "Measured times: ",
-            callback_dt(cb):callback_dt(cb):measurement_ts(cb)[end],
+            io, "Measured times: ", callback_dt(cb):callback_dt(cb):measurement_ts(cb)[end]
         )
     else
         println(io, "No measurements performed")
@@ -264,12 +258,7 @@ end
 Measure each operator defined inside the callback object `cb` on the given tensor `wf`
 at the selected bond or site `i` (depending on the algorithm `alg`).
 """
-function measure_localops!(
-    cb::LocalPosMeasurementCallback,
-    wf::ITensor,
-    bond::Int,
-    alg,
-)
+function measure_localops!(cb::LocalPosMeasurementCallback, wf::ITensor, bond::Int, alg)
     operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
 
     if !isempty(operators_thisbond)
@@ -281,7 +270,8 @@ function measure_localops!(
                 m = dot(wf, noprime(op(sites(cb), o.op, bond) * wf))
             end
 
-            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
+            imag(m) > 1e-5 &&
+                (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
 
             # NOTE Since we don't have an operator for each site, we have a single value
             # for each operator in cb, and operators associated to different sites have
@@ -358,7 +348,8 @@ function measure_localops!(cb::LocalPosMeasurementCallback, psi::MPS, site::Int,
     sites = siteinds(psi)
     for o in operators_thisbond
         x = smart_contract(o, psi, site_range)
-        imag(x) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(x))")
+        imag(x) > 1e-5 &&
+            (@warn "encountered finite imaginary part when measuring $o: $(imag(x))")
 
         # NOTE Since we don't have an operator for each site, we have a single value
         # for each operator in cb, and operators associated to different sites have
@@ -388,12 +379,7 @@ selected bond or site `i` (depending on the algorithm `alg`).
 
 Use this version with vectorized operators.
 """
-function measure_localops!(
-    cb::LocalPosVecMeasurementCallback,
-    ψ::MPS,
-    bond::Int,
-    alg,
-)
+function measure_localops!(cb::LocalPosVecMeasurementCallback, ψ::MPS, bond::Int, alg)
     operators_thisbond = filter(op -> isoncurrentbond(op, bond, alg), ops(cb))
 
     if !isempty(operators_thisbond)
@@ -414,7 +400,8 @@ function measure_localops!(
             end
             m = scalar(V)
 
-            imag(m) > 1e-5 && (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
+            imag(m) > 1e-5 &&
+                (@warn "encountered finite imaginary part when measuring $o: $(imag(m))")
 
             # NOTE Since we don't have an operator for each site, we have a single value
             # for each operator in cb, and operators associated to different sites have
@@ -439,14 +426,7 @@ Calculates the expectation values of the operators stored in `cb` on `state`, if
 conditions appropriate to the evolution algorithm are met.
 """
 function apply!(
-    cb::LocalMeasurementCallback,
-    psi;
-    t,
-    sweepend,
-    sweepdir,
-    bond,
-    alg,
-    kwargs...,
+    cb::LocalMeasurementCallback, psi; t, sweepend, sweepdir, bond, alg, kwargs...
 )
     if !isempty(measurement_ts(cb))
         # If there's already one element in the measurement_ts list, then this is not
@@ -459,8 +439,8 @@ function apply!(
     end
 
     if (t - prev_t ≈ callback_dt(cb) || t == prev_t) &&
-       sweepend &&
-       (bond % 2 == 1 || !(alg isa TEBDalg))
+        sweepend &&
+        (bond % 2 == 1 || !(alg isa TEBDalg))
         # If the following hold:
         # 1) t-prev_t = callback_dt(cb) or t-prev_t = 0
         # 2) we are at the end of a sweep
@@ -490,21 +470,21 @@ function apply!(
             # during the right-to-left sweep.
             wf = psi[bond]
             measure_localops!(cb, wf, bond)
-        elseif (alg isa TDVP2 && bond == length(sites(cb))-1)
+        elseif (alg isa TDVP2 && bond == length(sites(cb)) - 1)
             # The first step in the right-to-left sweep involves the (N-1, N) bond,
             # then (N-2, N-1), until (1, 2).
             # If bond is the first index of the pair, then we need to treat the first
             # step of the right-to-left sweep explicitly, so that we actually measure
             # the observables on the last site too.
-            wf = psi[bond] * psi[bond+1]
+            wf = psi[bond] * psi[bond + 1]
             measure_localops!(cb, wf, bond + 1)
             measure_localops!(cb, wf, bond)
         elseif alg isa TDVP2
             # Now we surely have bond != length(sites(cb))-1)
-            wf = psi[bond] * psi[bond+1]
+            wf = psi[bond] * psi[bond + 1]
             measure_localops!(cb, wf, bond)
         elseif alg isa TEBDalg
-            wf = psi[bond] * psi[bond+1]
+            wf = psi[bond] * psi[bond + 1]
             measure_localops!(cb, wf, bond)
         elseif bond == 1 # ???
             measure_localops!(cb, wf, bond)
@@ -521,14 +501,7 @@ Calculates the expectation values of the operators stored in `cb` on `state`, if
 conditions appropriate to the evolution algorithm are met.
 """
 function apply!(
-    cb::LocalPosMeasurementCallback,
-    state;
-    t,
-    sweepend,
-    sweepdir,
-    bond,
-    alg,
-    kwargs...,
+    cb::LocalPosMeasurementCallback, state; t, sweepend, sweepdir, bond, alg, kwargs...
 )
     prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
 
@@ -540,15 +513,15 @@ function apply!(
     # each bond when sweeping back left.
 
     if (t - prev_t ≈ callback_dt(cb) || t == prev_t) &&
-       sweepend &&
-       (bond % 2 == 1 || !(alg isa TEBDalg))
+        sweepend &&
+        (bond % 2 == 1 || !(alg isa TEBDalg))
         if (t != prev_t || t == 0)
             push!(measurement_ts(cb), t)
             foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
         end
 
         if alg isa TDVP2
-            wf = state[bond] * state[bond+1]
+            wf = state[bond] * state[bond + 1]
             measure_localops!(cb, wf, bond + 1, alg)
         elseif (alg isa TDVP1 || alg isa TDVP1vec)
             #wf = state[bond]
@@ -591,14 +564,7 @@ Calculates the expectation values of the operators stored in `cb` on `state`, if
 conditions appropriate to the evolution algorithm are met.
 """
 function apply!(
-    cb::LocalPosVecMeasurementCallback,
-    state;
-    t,
-    sweepend,
-    sweepdir,
-    bond,
-    alg,
-    kwargs...,
+    cb::LocalPosVecMeasurementCallback, state; t, sweepend, sweepdir, bond, alg, kwargs...
 )
     prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
 
@@ -610,8 +576,8 @@ function apply!(
     # each bond when sweeping back left.
 
     if (t - prev_t ≈ callback_dt(cb) || t == prev_t) &&
-       sweepend &&
-       (bond % 2 == 1 || !(alg isa TEBDalg))
+        sweepend &&
+        (bond % 2 == 1 || !(alg isa TEBDalg))
         if (t != prev_t || t == 0)
             push!(measurement_ts(cb), t)
             foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
@@ -661,7 +627,7 @@ struct SpecCallback <: TEvoCallback
     dt_measure::Float64
 end
 
-function SpecCallback(dt, psi::MPS, bonds::Vector{Int64} = collect(1:(length(psi)-1)))
+function SpecCallback(dt, psi::MPS, bonds::Vector{Int64}=collect(1:(length(psi) - 1)))
     bonds = sort(unique(bonds))
     if maximum(bonds) > length(psi) - 1 || minimum(bonds) < 1
         throw("bonds must be between 1 and $(length(psi)-1)")
@@ -681,9 +647,7 @@ measurement_ts(cb::SpecCallback) = cb.ts
 
 function ITensors.measurements(cb::SpecCallback)
     return Dict(
-        "entropy" => cb.entropies,
-        "bonddim" => cb.bonddims,
-        "truncerrs" => cb.truncerrs,
+        "entropy" => cb.entropies, "bonddim" => cb.bonddims, "truncerrs" => cb.truncerrs
     )
 end
 
@@ -694,9 +658,7 @@ function Base.show(io::IO, cb::SpecCallback)
     println(io, "SpecCallback")
     if length(measurement_ts(cb)) > 0
         println(
-            io,
-            "Measured times: ",
-            callback_dt(cb):callback_dt(cb):measurement_ts(cb)[end],
+            io, "Measured times: ", callback_dt(cb):callback_dt(cb):measurement_ts(cb)[end]
         )
     else
         println(io, "No measurements performed")
