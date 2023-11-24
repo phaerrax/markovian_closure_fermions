@@ -171,12 +171,10 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         # executing TimeEvoVecMPS.mpo(s, o) with
         #   s = siteinds("Osc", 400; dim=4)
         #   o = LocalOperator(Dict(20 => "A", 19 => "Adag"))
-        # takes
-        #   0.128045 seconds (1.69 M allocations: 199.967 MiB, 17.43% gc time).
+        # takes 177.951 ms (2313338 allocations: 329.80 MiB).
         # Memoizing this function allows us to cut the time (after the first call, which is
-        # expensive anyway since Julia needs to compile the function) to
-        #   0.000007 seconds (1 allocation: 32 bytes)
-        # for each call.
+        # expensive anyway since Julia needs to compile the function) to 45.368 ns
+        # (1 allocation: 32 bytes) for each call.
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
@@ -186,14 +184,22 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
 end
 
 """
-    embed(sites::Vector{<:Index}, lop::LocalOperator)
+    mps(sites::Vector{<:Index}, lop::LocalOperator)
 
 Return an MPS with the factors in `lop` or `vId` if the site is not in the domain.
 """
-function embed(sites::Vector{<:Index}, lop::LocalOperator)
+@memoize function mps(sites::Vector{<:Index}, lop::LocalOperator)
     return MPS(ComplexF64, sites, [i in domain(lop) ? lop[i] : "vId" for i in 1:Base.length(sites)])
     # The MPS needs to be complex, in general, since we can have the vectorized form of
-    # non-Hermitian operator such as A or Adag.
+    # non-Hermitian operator such as A or Adag. The coefficients on the Gell-Mann basis
+    # of non-Hermitian operator are complex, in general.
+    #
+    # Since we are using Memoize for the `mpo` function we might as well memoize this
+    # method too. With
+    #   s = siteinds("vOsc", 400; dim=4)
+    #   o = LocalOperator(Dict(20 => "vA", 19 => "vAdag"))
+    # the non-memoized function takes 6.710 ms (97932 allocations: 30.36 MiB), while the
+    # memoized one takes only 45.232 ns (1 allocation: 32 bytes).
 end
 
 """
@@ -209,7 +215,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
 
     for localop in ops(cb)
         # Transform each `localop` into an MPS, filling with `vId` states.
-        m = dot(embed(sites(cb), localop), ψ)
+        m = dot(mps(sites(cb), localop), ψ)
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
