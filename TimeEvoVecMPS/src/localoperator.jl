@@ -26,13 +26,6 @@ connecteddomain(op::LocalOperator) = first(domain(op)):last(domain(op))
 name(op::LocalOperator) = *(["$val{$key}" for (key, val) in op.terms]...)
 
 Base.getindex(op::LocalOperator, key) = Base.getindex(op.terms, key)
-"""
-    onsite(op::LocalOperator, site::Int)
-
-Return, if it exists, the factor in `op` which acts on site `site`, otherwise return
-nothing.
-"""
-onsite(op::LocalOperator, site::Int) = get(op.terms, site, nothing)
 
 Base.show(io::IO, op::LocalOperator) = print(io, name(op))
 
