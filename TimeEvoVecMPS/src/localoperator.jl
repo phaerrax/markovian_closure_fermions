@@ -87,27 +87,27 @@ end
 checkdone!(cb::LocalOperatorCallback, args...) = false
 
 """
-    smart_contract(A::LocalOperator, ψ::MPS, sites)
+    smart_contract(A::LocalOperator, state::MPS, sites)
 
-Return the expectation value ``⟨ψ|A|ψ⟩`` contracting only sites in `A`'s domain.
-It is assumed that `ψ`'s orthocentre lies within `sites`.
+Return the expectation value ``⟨state|A|state⟩`` contracting only sites in `A`'s domain.
+It is assumed that `state`'s orthocentre lies within `sites`.
 """
-function smart_contract(A::LocalOperator, ψ::MPS, sites)
-    a = ITensors.OneITensor()
-    v = ITensors.OneITensor()
-    s = siteinds(ψ)
+function smart_contract(a::LocalOperator, state::MPS, sites)
+    res = ITensors.OneITensor()
+    s = siteinds(state)
+    dagstate = dag(prime(state; tags="Site"))
     for n in sites
-        if n in domain(A)
-            a *= op(A[n], s, n)
+        if n in domain(a)
+            res *= dagstate[n] * ITensors.op(a[n], s, n) * state[n]
         else
-            a *= delta(s[n], s[n]')
+            res *= dagstate[n] * delta(s[n]', s[n]) * state[n]
         end
-        v *= ψ[n]
     end
-    x = dag(prime(v; tags="Site")) * a * v
-    return scalar(x)
+    return scalar(res)
 end
 
+#=  Disabled until I figure out what's wrong with this function...
+    See the alternative method below.
 """
     measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
 
@@ -124,11 +124,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
     # site `max(1, site-1)`, and all `ψ[n]` with `n >= site` are correctly updated.
     measurable_operators = filter(op -> site <= first(domain(op)), ops(cb))
     for localop in measurable_operators
-        # We need to transform each `localop` into an ITensors operator.
-        localops = [ITensors.op(opname, sites(cb), index) for (index, opname) in localop.terms]
-        # Multiply all factors together, to create a single ITensor.
-        op = *(localops...)
-        oc = Tensors.orthocenter(ψ)
+        oc = ITensors.orthocenter(ψ)
         if oc in connecteddomain(localop)
             site_range = connecteddomain(localop)
         elseif oc < first(connecteddomain(localop))
@@ -138,7 +134,49 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         end
         # `site_range` should be the smallest range containing both the state's orthocenter
         # and the domain of the operator.
-        m = smart_contract(op, ψ, site_range)
+        m = smart_contract(localop, ψ, site_range)
+        imag(m) > 1e-8 &&
+            (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
+        measurements(cb)[localop][end] = real(m)
+        # measurements(cb)[localop][end] is the last line in the measurements of localop,
+        # which we (must) have created in apply! before calling this function.
+    end
+end
+=#
+
+@memoize function mpo(sites::Vector{<:Index}, lop::LocalOperator)
+    return MPO(sites, [i in domain(lop) ? lop[i] : "Id" for i in 1:length(sites)])
+    end
+
+"""
+    measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
+
+Measure each operator defined inside the callback object `cb` on the state `ψ` at site `i`.
+"""
+function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::TDVP1)
+    # Since the operators may be defined on more than one site, we need to check that
+    # all the sites in their domain have been completely updated: this means that we must
+    # wait until the final sweep of the evolution step has passed each site in the domain.
+    # Note that this function gets called (or should be called) only if the current sweep
+    # is the final sweep in the step.
+
+    # When `ψ[site]` has been updated during the leftwards sweep, the orthocentre lies on
+    # site `max(1, site-1)`, and all `ψ[n]` with `n >= site` are correctly updated.
+    measurable_operators = filter(op -> site <= first(domain(op)), ops(cb))
+    s = siteinds(ψ)
+    for localop in measurable_operators
+        m = dot(ψ', mpo(s, localop), ψ)
+        # This works, but calculating the MPO from scratch every time might take too much
+        # time, especially when it has to be repeated thousands of times. For example,
+        # executing TimeEvoVecMPS.mpo(s, o) with
+        #   s = siteinds("Osc", 400; dim=4)
+        #   o = LocalOperator(Dict(20 => "A", 19 => "Adag"))
+        # takes
+        #   0.128045 seconds (1.69 M allocations: 199.967 MiB, 17.43% gc time).
+        # Memoizing this function allows us to cut the time (after the first call, which is
+        # expensive anyway since Julia needs to compile the function) to
+        #   0.000007 seconds (1 allocation: 32 bytes)
+        # for each call.
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
@@ -183,7 +221,11 @@ end
 function apply!(
     cb::LocalOperatorCallback, state; t, sweepend, sweepdir, site, alg, kwargs...
 )
-    prev_t = !isempty(measurement_ts(cb)) ? measurement_ts(cb)[end] : 0
+    if isempty(measurement_ts(cb))
+    prev_t = 0
+else
+prev_t = measurement_ts(cb)[end]
+end
 
     # We perform measurements only at the end of a sweep and at measurement steps.
     # For TDVP we can perform measurements to the right of each site when sweeping back left.

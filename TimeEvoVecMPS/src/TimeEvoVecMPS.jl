@@ -5,6 +5,7 @@ using IterTools
 using LinearAlgebra
 #using MKL
 using OrderedCollections
+using Memoize
 using Printf
 using KrylovKit: exponentiate
 using ProgressMeter
