@@ -1,31 +1,38 @@
 export LocalOperator, LocalOperatorCallback
 
 """
-    LocalOperator(factors::Vector{AbstractString}, lind::Int)
+    LocalOperator(terms::OrderedDict{Int,AbstractString})
 
 A LocalOperator represents a product of local operators, whose names (strings, as recognized
-by ITensors) are specified by `factors` and acting on consecutive sites, starting from
-`lind`. For example, the operator ``I ⊗ A ⊗ B ⊗ C`` would be represented as
-``julia
-    LocalOperator(["A", "B", "C"], 2)
-``
+by ITensors) are specified by `factors` and acting on sites which are not necessarily
+consecutive. For example, the operator ``id ⊗ A ⊗ id ⊗ C`` would be represented as
+`{2 => "A", 4 => "C"}`.
 """
 struct LocalOperator
-    factors::Vector{AbstractString}
-    lind::Int
+    terms::OrderedDict{Int,AbstractString}
+    # OrderedDict{Int,AbstractString} and _not_ OrderedDict{AbstractString,Int}: the
+    # integers are unique, there can be at most one operator per site, but the same
+    # operator (i.e. the same string) can be repeated on more sites.
+    # The dictionary is sorted for later convenience.
+    LocalOperator(d) = new(sort(d))
 end
 
-factors(op::LocalOperator) = op.factors
-Base.length(op::LocalOperator) = Base.length(op.factors)
-domain(op::LocalOperator) = (op.lind):(op.lind + length(op) - 1)
-name(op::LocalOperator) = *(["$f{$i}" for (i, f) in zip(domain(op), factors(op))]...)
+factors(op::LocalOperator) = values(op.terms)
+Base.length(op::LocalOperator) = Base.length(op.terms)
+domain(op::LocalOperator) = op.terms |> keys |> collect
+connecteddomain(op::LocalOperator) = first(domain(op)):last(domain(op))
+# Since LocalOperator structs are dictionaries sorted by their keys, `domain` and
+# `connecteddomain` are guaranteed to return sorted lists of numbers.
+name(op::LocalOperator) = *(["$val{$key}" for (key, val) in op.terms]...)
 
+Base.getindex(op::LocalOperator, key) = Base.getindex(op.terms, key)
 """
     onsite(op::LocalOperator, site::Int)
 
-Return, if it exists, the factor in `op` which acts on site `site`.
+Return, if it exists, the factor in `op` which acts on site `site`, otherwise return
+nothing.
 """
-onsite(op::LocalOperator, site::Int) = op.factors[site - op.lind + 1]
+onsite(op::LocalOperator, site::Int) = get(op.terms, site, nothing)
 
 Base.show(io::IO, op::LocalOperator) = print(io, name(op))
 
@@ -98,7 +105,7 @@ function smart_contract(A::LocalOperator, ψ::MPS, sites)
     s = siteinds(ψ)
     for n in sites
         if n in domain(A)
-            a *= op(onsite(A, n), s, n)
+            a *= op(A[n], s, n)
         else
             a *= delta(s[n], s[n]')
         end
@@ -125,19 +132,16 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
     measurable_operators = filter(op -> site <= first(domain(op)), ops(cb))
     for localop in measurable_operators
         # We need to transform each `localop` into an ITensors operator.
-        localops = [
-            ITensors.op(opname, sites(cb), i) for
-            (i, opname) in zip(domain(localop), factors(localop))
-        ]
+        localops = [ITensors.op(opname, sites(cb), index) for (index, opname) in localop.terms]
         # Multiply all factors together, to create a single ITensor.
         op = *(localops...)
         oc = Tensors.orthocenter(ψ)
-        if oc in domain(op)
-            site_range = domain(op)
-        elseif oc < first(domain(op))
-            site_range = oc:last(domain(op))
-        else  # oc > last(domain(op))
-            site_range = first(domain(op)):oc
+        if oc in connecteddomain(localop)
+            site_range = connecteddomain(localop)
+        elseif oc < first(connecteddomain(localop))
+            site_range = oc:last(connecteddomain(localop))
+        else  # oc > last(connecteddomain(localop))
+            site_range = first(connecteddomain(localop)):oc
         end
         # `site_range` should be the smallest range containing both the state's orthocenter
         # and the domain of the operator.
@@ -145,7 +149,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
-        # measurements(cb)[opname][end] is the last line in the measurements of opname,
+        # measurements(cb)[localop][end] is the last line in the measurements of localop,
         # which we (must) have created in apply! before calling this function.
     end
 end
@@ -156,8 +160,9 @@ end
 Return an MPS with the factors in `lop` or `vId` if the site is not in the domain.
 """
 function embed(sites::Vector{<:Index}, lop::LocalOperator)
-    return MPS(ComplexF64, sites, [i in domain(lop) ? onsite(lop, i) : "vId" for i in 1:Base.length(sites)])
-    # The MPS needs to be complex, in general, since
+    return MPS(ComplexF64, sites, [i in domain(lop) ? lop[i] : "vId" for i in 1:Base.length(sites)])
+    # The MPS needs to be complex, in general, since we can have the vectorized form of
+    # non-Hermitian operator such as A or Adag.
 end
 
 """
@@ -177,7 +182,7 @@ function measure_localops!(cb::LocalOperatorCallback, ψ::MPS, site::Int, alg::T
         imag(m) > 1e-8 &&
             (@warn "Imaginary part when measuring $(name(localop)): $(imag(m))")
         measurements(cb)[localop][end] = real(m)
-        # measurements(cb)[opname][end] is the last element in the measurements of opname,
+        # measurements(cb)[localop][end] is the last element in the measurements of localop,
         # which we (must) have created in apply! before calling this function.
     end
 end

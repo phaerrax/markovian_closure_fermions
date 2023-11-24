@@ -4,6 +4,7 @@ using ITensors
 using IterTools
 using LinearAlgebra
 #using MKL
+using OrderedCollections
 using Printf
 using KrylovKit: exponentiate
 using ProgressMeter

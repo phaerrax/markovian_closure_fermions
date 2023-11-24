@@ -30,9 +30,10 @@ let
     tmax = 1
 
     operators = [
-        LocalOperator(["vAdag", "vA"], 1),
-        LocalOperator(["vA", "vAdag"], 2),
-        LocalOperator(["vN"], 1),
+        LocalOperator(Dict(1 => "vAdag", 2 => "vA")),
+        LocalOperator(Dict(2 => "vAdag", 1 => "vA")),
+        LocalOperator(Dict(2 => "vA", 5 => "vAdag")),
+        LocalOperator(Dict(1 => "vN")),
     ]
     cb = LocalOperatorCallback(operators, sites, 5 * timestep)
 
