@@ -34,11 +34,11 @@ function writeheaders_data(io_file, cb; kwargs...)
         io_handle = open(io_file, "w")
         @printf(io_handle, "%20s", "time")
         res = measurements(cb)
-        for o in sort(collect(keys(res)))
-            @printf(io_handle, "%40s", o)
+        for op in sort(collect(keys(res)))
+            @printf(io_handle, "%40s%40s", name(op) * "_re", name(op) *  "_im")
         end
         if get(kwargs, :store_psi0, false)
-            @printf(io_handle, "%40s%40s", "re_over", "im_over")
+            @printf(io_handle, "%40s%40s", "overlap_re", "overlap_im")
         end
         @printf(io_handle, "%40s", "Norm")
         @printf(io_handle, "\n")
@@ -88,8 +88,8 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
     if !isnothing(io_handle)
         results = measurements(cb)
         @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
-        for o in sort(collect(keys(results)))
-            @printf(io_handle, "%40.15f", results[o][end])
+        for opname in sort(collect(keys(results)))
+            @printf(io_handle, "%40.15f%40.15f", real(results[opname][end]), imag(results[opname][end]))
         end
 
         if get(kwargs, :store_psi0, false)
@@ -102,6 +102,7 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
         # a pure state or a vectorized density matrix.
         isvectorized = get(kwargs, :vectorized, false)
         if isvectorized
+            # TODO Use built-in trace function, do not create an MPS from scratch each time!
             @printf(io_handle, "%40.15f", real(inner(MPS(kwargs[:sites], "vecId"), psi)))
         else
             @printf(io_handle, "%40.15f", norm(psi))

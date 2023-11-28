@@ -41,6 +41,7 @@ callback_dt(cb::NoTEvoCallback) = 0
     Given a Measurement `M`, the result for the measurement at step `n` is `M[n]`.
 """
 const Measurement = Vector{Float64}
+const ExpValue = Vector{Float64}
 
 struct LocalMeasurementCallback <: TEvoCallback
     "An array of operators that must be measured at each time step"

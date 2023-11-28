@@ -37,7 +37,7 @@ let
         LocalOperator(Dict(3 => "vA", 5 => "vAdag")),
         LocalOperator(Dict(4 => "vN")),
     ]
-    cb = LocalOperatorCallback(operators, sites, 5 * timestep)
+    cb = ExpValueCallback(operators, sites, 5 * timestep)
 
     tmpfile = tempname()
     tdvp1vec!(
@@ -49,7 +49,7 @@ let
         hermitian=false,
         normalize=false,
         callback=cb,
-        progress=false,
+        progress=true,
         store_psi0=false,
         io_file=tmpfile,
         io_ranks="/dev/null",
