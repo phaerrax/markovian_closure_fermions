@@ -14,6 +14,8 @@ using TimeEvoVecMPS
 # for now; maybe sometime I'll find a way to calculate the Jordan-Wigner operators in
 # an automatic way...
 
+ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = PseudomodesTTEDOPA.vop(sn, st)
+
 let
     parameters = load_pars(ARGS[1])
 
@@ -127,15 +129,23 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-    obs = []
-    oblist = parameters["observables"]
-    for key in keys(oblist)
-        foreach(i -> push!(obs, [key, i]), oblist[key])
+
+    d = LocalOperator[]
+    for (k, v) in parameters["observables"]
+        for n in v
+            push!(d, LocalOperator(Dict(n => k)))
+        end
     end
 
-    cb = LocalPosVecMeasurementCallback(
-        createObs(obs), sites, parameters["ms_stride"] * timestep
-    )
+    operators = [
+        LocalOperator(Dict(1 => "vAdag", 2 => "vA"))
+        LocalOperator(Dict(1 => "vA", 2 => "vAdag"))
+        LocalOperator(Dict(1 => "vAdag", 2 => "vF",  3 => "vA"))
+        LocalOperator(Dict(1 => "vA",    2 => "vF",  3 => "vAdag"))
+        d...
+    ]
+    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
+
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."

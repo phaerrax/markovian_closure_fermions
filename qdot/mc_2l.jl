@@ -4,6 +4,45 @@ using DelimitedFiles
 using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
+function ITensors.state(sn::StateName"vAup", st::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vop(sn, st)
+end
+function ITensors.state(sn::StateName"vAdagup", st::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vop(sn, st)
+end
+function ITensors.state(sn::StateName"vAdn", st::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vop(sn, st)
+end
+function ITensors.state(sn::StateName"vAdagdn", st::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vop(sn, st)
+end
+
+function ITensors.state(::StateName"vAupF", ::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vec(
+        ITensors.op(OpName("Aup"), SiteType("Electron")) *
+        ITensors.op(OpName("F"), SiteType("Electron")),
+        gellmannbasis(4),
+    )
+end
+function ITensors.state(::StateName"vAdagupF", ::SiteType"vElectron")
+    return PseudomodesTTEDOPA.vec(
+        ITensors.op(OpName("Adagup"), SiteType("Electron")) *
+        ITensors.op(OpName("F"), SiteType("Electron")),
+        gellmannbasis(4),
+    )
+end
+
+ITensors.state(sn::StateName"vF", st::SiteType"vElectron") = PseudomodesTTEDOPA.vop(sn, st)
+ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = PseudomodesTTEDOPA.vop(sn, st)
+
+function ITensors.state(::StateName"vA", st::SiteType"vElectron")
+    return ITensors.state(StateName("vAupF"), st) + ITensors.state(StateName("vAdn"), st)
+end
+function ITensors.state(::StateName"vAdag", st::SiteType"vElectron")
+    return ITensors.state(StateName("vAdagupF"), st) +
+           ITensors.state(StateName("vAdagdn"), st)
+end
+
 function dot_hamiltonian(
     ::SiteType"vElectron", dot_energies, dot_coulomb_repulsion, dot_site
 )
@@ -116,13 +155,13 @@ let
             sites[dot_site],
             sites[empty_chain_range[1]];
             coupling_constant_up=empty_chain_coups[1],
-            coupling_constant_dn=empty_chain_coups[1]
+            coupling_constant_dn=empty_chain_coups[1],
         ) +
         exchange_interaction(
             sites[dot_site],
             sites[filled_chain_range[1]];
             coupling_constant_up=filled_chain_coups[1],
-            coupling_constant_dn=filled_chain_coups[1]
+            coupling_constant_dn=filled_chain_coups[1],
         ) +
         spin_chain(
             empty_chain_freqs[1:chain_length],
@@ -142,15 +181,21 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-    obs = []
-    oblist = parameters["observables"]
-    for key in keys(oblist)
-        foreach(i -> push!(obs, [key, i]), oblist[key])
+    d = LocalOperator[]
+    for (k, v) in parameters["observables"]
+        for n in v
+            push!(d, LocalOperator(Dict(n => k)))
+        end
     end
 
-    cb = LocalPosVecMeasurementCallback(
-        createObs(obs), sites, parameters["ms_stride"] * timestep
-    )
+    operators = [
+        LocalOperator(Dict(1 => "vAdag", 2 => "vA"))
+        LocalOperator(Dict(1 => "vA", 2 => "vAdag"))
+        LocalOperator(Dict(1 => "vAdag", 2 => "vF",  3 => "vA"))
+        LocalOperator(Dict(1 => "vA",    2 => "vF",  3 => "vAdag"))
+        d...
+    ]
+    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
