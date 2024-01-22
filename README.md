@@ -1,4 +1,6 @@
 # Fermionic Markovian closure
+
+## Description of the repository
 In this repository you will find, amongst other things:
 
 * some Julia scripts which perform the simulation of some physical models such as the SIAM (`siam`) or a quantum dot impurity; (`qdot`), either using a standard TEDOPA method (`pure….jl`) or the Markovian closure (`mc….jl`);
@@ -10,9 +12,25 @@ Please note that the [`PseudomodesTTEDOPA` Julia package](https://github.com/pha
 
 Each simulation script accepts a JSON file listing the parameters of the physical system. In order to run a simulation script, run *from the base folder*
 ```bash
-julia --project=markovian_closure <script.jl> <parameter_file.jl>
+julia --project=markovian_closure <script.jl> <parameter_file.json>
 ```
 using the full relative paths of the files, e.g.
 ```bash
 julia --project=markovian_closure siam/spinless/mc.jl test/siam/spinless/mu1/NE8/mc60_NC6.json
 ```
+
+## Example
+Here is an example of a complete workflow, starting from scratch.
+We want to simulate a spinless SIAM with some given parameter files: `test/spectral_densities_semicircle_T4_mu0.5.json` representing a semicircle spectral density, and `examples/siam_mc.jl` with the parameters for the physical simulation of the model with a Markovian closure.
+1. Generate the thermofield coefficients from the spectral density, with
+```bash
+julia --project=markovian_closure chainmapping_thermofield.jl test/spectral_densities/semicircle_T4_mu0.5.json
+```
+The outputs a file called `test/spectral_densities/semicircle_T4_mu0.5.thermofield` which will be called later in `examples/siam_mc.json` as the `thermofield_coefficients` entry.
+It it not necessary to generate the coefficient each time, if they already exist.
+2. Run the simulation script with
+```bash
+julia --project=markovian_closure siam/spinless/mc.jl examples/siam_mc.json
+```
+The observables given in the parameter file must be existing `ITensors` operator names. 
+Note that the parameter file `examples/siam_mc.json` also specifies some output files which will contain the expectation values of the given observables, an HDF5 file containing the final state, and so on. If one does not need such results, `/dev/null` or an equivalent destination may be given to avoid creating unnecessary output files.
