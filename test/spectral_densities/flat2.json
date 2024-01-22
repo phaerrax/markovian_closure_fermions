@@ -1,0 +1,20 @@
+{
+    "environments": [
+        {
+            "parameters": [],
+            "spectral_density": "1/(pi*200)",
+            "domain": [-100, 100],
+            "temperature": 0,
+            "chemical_potential": 0.01
+        },
+        {
+            "parameters": [],
+            "spectral_density": "1/(pi*200)",
+            "domain": [-100, 100],
+            "temperature": 0,
+            "chemical_potential": -0.01
+        }
+    ],
+    "number_of_oscillators": 200,
+    "PolyChaos_nquad": 5000
+}
