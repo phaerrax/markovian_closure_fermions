@@ -34,3 +34,10 @@ julia --project=markovian_closure siam/spinless/mc.jl examples/siam_mc.json
 ```
 The observables given in the parameter file must be existing `ITensors` operator names. 
 Note that the parameter file `examples/siam_mc.json` also specifies some output files which will contain the expectation values of the given observables, an HDF5 file containing the final state, and so on. If one does not need such results, `/dev/null` or an equivalent destination may be given to avoid creating unnecessary output files.
+
+## Documentation
+The `TimeEvoVecMPS` package has its own documentation (still a work in progress), which is
+not yes hosted and must be generated manually.
+From the `docs` directory, run `julia --project make.jl` and wait for the command to end.
+You will be able to access the documentation from `docs/builds/index.html`, by opening it
+from any Web browser.
