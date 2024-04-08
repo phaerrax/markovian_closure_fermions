@@ -1,5 +1,5 @@
 using ITensors
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
 using TimeEvoVecMPS
 
 let

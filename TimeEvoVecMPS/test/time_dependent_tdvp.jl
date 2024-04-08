@@ -1,6 +1,6 @@
 using ITensors
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
 using TimeEvoVecMPS
 using KrylovKit
 

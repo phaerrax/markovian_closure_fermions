@@ -12,7 +12,6 @@ using ProgressMeter
 using JSON
 using DelimitedFiles
 using Permutations
-using PseudomodesTTEDOPA
 
 include("trackerprojmpo.jl")
 include("itensor.jl")
