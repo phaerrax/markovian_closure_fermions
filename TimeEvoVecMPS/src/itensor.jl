@@ -113,7 +113,7 @@ growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v) - 1))
 Recompute `P`'s projection operators assuming that `psi` has changed on sites
 (`n`, `n+1`). The position of the projection is not changed.
 """
-function recompute!(P::ITensors.AbstractProjMPO, v::MPS, n::Int)
+function recompute!(P::ITensors.ITensorMPS.AbstractProjMPO, v::MPS, n::Int)
     N = length(P.H)
     @assert n ≤ N - 1
     # Since v[n] and v[n+1] have changed, we assume that all projection operators

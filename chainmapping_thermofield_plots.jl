@@ -1,8 +1,7 @@
 #!/usr/bin/julia
 
 using DelimitedFiles, JSON
-using PseudomodesTTEDOPA
-using Plots
+using Plots, TEDOPA
 
 let
     # Load information on the spectral density from file.

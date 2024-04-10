@@ -111,7 +111,7 @@ function tdvp_site_update!(
     maxiter,
 )
     N = length(psi)
-    ITensors.set_nsite!(PH, 1)
+    ITensors.ITensorMPS.set_nsite!(PH, 1)
     ITensors.position!(PH, psi, site)
 
     # Forward evolution half-step.
@@ -151,7 +151,7 @@ function tdvp_site_update!(
         end
 
         # Prepare the zero-site projection.
-        ITensors.set_nsite!(PH, 0)
+        ITensors.ITensorMPS.set_nsite!(PH, 0)
         ITensors.position!(PH, psi, new_proj_base_site)
 
         C, info = solver(PH, -time_step, C; current_time)
@@ -170,7 +170,7 @@ function tdvp_site_update!(
         end
 
         # Reset the one-site projection… and we're done!
-        ITensors.set_nsite!(PH, 1)
+        ITensors.ITensorMPS.set_nsite!(PH, 1)
     else
         # There's nothing to do if the half-sweep is at the last site.
         psi[site] = phi

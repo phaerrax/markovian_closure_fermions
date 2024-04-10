@@ -21,7 +21,7 @@ used to compute the projections by recording the IDs of its bond indices; this w
 state is changed in a way that affects the bond indices, the projections are recomputed
 accordingly.
 """
-mutable struct TrackerProjMPO <: ITensors.AbstractProjMPO
+mutable struct TrackerProjMPO <: ITensors.ITensorMPS.AbstractProjMPO
     lpos::Int
     rpos::Int
     nsite::Int
@@ -45,7 +45,7 @@ function Base.copy(P::TrackerProjMPO)
     return TrackerProjMPO(P.lpos, P.rpos, P.nsite, copy(P.ids), copy(P.H), copy(P.LR))
 end
 
-function ITensors.set_nsite!(P::TrackerProjMPO, nsite)
+function ITensors.ITensorMPS.set_nsite!(P::TrackerProjMPO, nsite)
     P.nsite = nsite
     return P
 end
@@ -116,7 +116,7 @@ function ITensors.position!(P::TrackerProjMPO, psi::MPS, pos::Int)
 end
 
 function _remakeL!(
-    P::ITensors.AbstractProjMPO, psi::MPS, k::Int, newbonds::Vector{Int}
+    P::ITensors.ITensorMPS.AbstractProjMPO, psi::MPS, k::Int, newbonds::Vector{Int}
 )::Union{ITensor,Nothing}
     # As already said: all projection terms on sites from min(newbonds) to the
     # current positions are invalid, since they contain information on the
@@ -148,7 +148,7 @@ function _remakeL!(
 end
 
 function _remakeR!(
-    P::ITensors.AbstractProjMPO, psi::MPS, k::Int, newbonds::Vector{Int}
+    P::ITensors.ITensorMPS.AbstractProjMPO, psi::MPS, k::Int, newbonds::Vector{Int}
 )::Union{ITensor,Nothing}
     # As already said: all projection terms on sites from the current position
     # to max(newbonds) are invalid, since they contain information on the

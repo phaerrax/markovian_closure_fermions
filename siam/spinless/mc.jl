@@ -1,7 +1,8 @@
 using ITensors
 using ITensors.HDF5
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
+using MarkovianClosure
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
@@ -14,7 +15,7 @@ using TimeEvoVecMPS
 # for now; maybe sometime I'll find a way to calculate the Jordan-Wigner operators in
 # an automatic way...
 
-ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = PseudomodesTTEDOPA.vop(sn, st)
+ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = LindbladVectorizedTensors.vop(sn, st)
 
 let
     parameters = load_pars(ARGS[1])

@@ -1,6 +1,7 @@
 export adaptbonddimensions!
 
-using ITensors: AbstractProjMPO, position!, set_nsite!, setleftlim!, setrightlim!
+using ITensors: position!
+using ITensors.ITensorMPS: AbstractProjMPO, set_nsite!, setleftlim!, setrightlim!
 
 """
     bondconvergencemeasure(PH::AbstractProjMPO, state::MPS, bond::Integer)
@@ -15,7 +16,7 @@ Time-Dependent-Variational-Principle method for Matrix Product States: Towards e
 simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
-function bondconvergencemeasure(PH::ITensors.AbstractProjMPO, v::MPS, bond::Integer)::Real
+function bondconvergencemeasure(PH::AbstractProjMPO, v::MPS, bond::Integer)::Real
     #orthogonalize!(v, bond) # this causes trouble
 
     set_nsite!(PH, 1)
@@ -58,7 +59,7 @@ simulation of non-equilibrium open quantum dynamics”
 https://doi.org/10.48550/arXiv.2007.13528
 """
 function adaptbonddimensions!(
-    v::MPS, PH::ITensors.AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
+    v::MPS, PH::AbstractProjMPO, max_bond::Int, convergence_factor_bonddims::Real
 )
     maxbonddimensions = maxlinkdims(v, max_bond)
     for bond in 1:(length(v) - 1)

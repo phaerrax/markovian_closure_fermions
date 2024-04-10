@@ -2,9 +2,8 @@
 
 using DelimitedFiles, JSON
 using SpecialFunctions
-using PseudomodesTTEDOPA
+using TEDOPA
 
-disablegrifqtech()
 
 function tedopaTμtransform(J::Function, ω::Real, ωmax::Real, T::Real, μ::Real)::Real
     thermalfactor = 0.5(1 + tanh(0.5ω / T))

@@ -1,7 +1,7 @@
 using ITensors
 using IterTools
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model

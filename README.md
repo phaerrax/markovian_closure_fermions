@@ -8,7 +8,7 @@ In this repository you will find, amongst other things:
 * a `mc_standard_parameters` which contains the parameters needed for the implementation of the Markovian closure technique in several simulation scripts;
 * some Julia scripts that calculate the chain coefficients, in several ways, starting from the data of a spectral density (`chainmapping_….jl`);
 * a folder `TimeEvoVecMPS`, a self-contained Julia package (imported by every script) which defines functions for the various flavours of the TDVP algorithm and some other utilities for the simulations.
-Please note that the [`PseudomodesTTEDOPA` Julia package](https://github.com/phaerrax/PseudomodesTTEDOPA.jl) is required to run the simulation scripts. Please install it if it does not get installed automatically.
+Please note that the [`LindbladVectorizedTensors` Julia package](https://github.com/phaerrax/LindbladVectorizedTensors.jl) is required to run the simulation scripts. Please install it if it does not get installed automatically.
 
 Each simulation script accepts a JSON file listing the parameters of the physical system. In order to run a simulation script, run *from the base folder*
 ```bash

@@ -1,6 +1,7 @@
 export adjtdvp1vec!, adaptiveadjtdvp1vec!
 
-using ITensors: position!, set_nsite!, linkdims
+using ITensors: position!
+using ITensors.ITensorMPS: set_nsite!, linkdims
 
 """
     adjtdvp1vec!(

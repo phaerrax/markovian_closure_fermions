@@ -1,7 +1,8 @@
 using ITensors
 using ITensors.HDF5
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
+using MarkovianClosure
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the interacting SIAM model

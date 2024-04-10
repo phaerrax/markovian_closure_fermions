@@ -2,7 +2,7 @@ using ITensors
 using ITensors.HDF5
 using IterTools
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
 using TimeEvoVecMPS
 import KrylovKit: exponentiate
 

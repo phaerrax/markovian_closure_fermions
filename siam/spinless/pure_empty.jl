@@ -1,7 +1,6 @@
 using ITensors
 using ITensors.HDF5
 using DelimitedFiles
-using PseudomodesTTEDOPA
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model

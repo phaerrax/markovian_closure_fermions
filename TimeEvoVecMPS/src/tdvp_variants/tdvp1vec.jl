@@ -1,6 +1,7 @@
 export tdvp1vec!, adaptivetdvp1vec!
 
-using ITensors: position!, set_nsite!
+using ITensors: position!
+using ITensors.ITensorMPS: set_nsite!
 
 """
     tdvp1vec!(solver, ρ::MPS, L::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)

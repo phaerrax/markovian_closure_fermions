@@ -1,7 +1,7 @@
 using ITensors
 using ITensors.HDF5
 using DelimitedFiles
-using PseudomodesTTEDOPA
+using LindbladVectorizedTensors
 using TimeEvoVecMPS
 
 function dot_hamiltonian(
