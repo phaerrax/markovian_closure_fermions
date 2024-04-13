@@ -62,8 +62,8 @@ let
     β = β_mat[:, 1] .+ im .* β_mat[:, 2]
     w = w_mat[:, 1] .+ im .* w_mat[:, 2]
 
-    emptymc = closure(empty_Ω, empty_K, α, β, w)
-    filledmc = closure(filled_Ω, filled_K, conj.(α), conj.(β), w)
+    emptymc = markovianclosure_parameters(empty_Ω, empty_K, α, β, w)
+    filledmc = markovianclosure_parameters(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(emptymc)
 
     # Site ranges
@@ -140,10 +140,10 @@ let
         sites[filled_chain_range],
     )
     gradefactor = opgrade == "even" ? 1 : -1
-    adjℓ += closure_op′(
+    adjℓ += markovianclosure′(
         emptymc, sites[empty_closure_range], empty_chain_range[end], gradefactor
     )
-    adjℓ += filled_closure_op′(
+    adjℓ += filled_markovianclosure′(
         filledmc, sites[filled_closure_range], filled_chain_range[end], gradefactor
     )
 

@@ -36,15 +36,13 @@ let
         sites,
     )
 
-    obs = []
-    oblist = parameters["observables"]
-    for key in keys(oblist)
-        foreach(i -> push!(obs, [key, i]), oblist[key])
+    operators = LocalOperator[]
+    for (k, v) in parameters["observables"]
+        for n in v
+            push!(operators, LocalOperator(Dict(n => k)))
+        end
     end
-
-    cb = LocalPosMeasurementCallback(
-        createObs(obs), sites, parameters["ms_stride"] * parameters["tstep"]
-    )
+    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
 
     growMPS!(psi, parameters["max_bond"])
 

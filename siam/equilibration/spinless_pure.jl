@@ -87,15 +87,13 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-    obs = []
-    oblist = parameters["observables"]
-    for key in keys(oblist)
-        foreach(i -> push!(obs, [key, i]), oblist[key])
+    operators = LocalOperator[]
+    for (k, v) in parameters["observables"]
+        for n in v
+            push!(operators, LocalOperator(Dict(n => k)))
+        end
     end
-
-    cb = LocalPosMeasurementCallback(
-        createObs(obs), sites, parameters["ms_stride"] * timestep
-    )
+    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
 
     psi, _ = stretchBondDim(psi0, parameters["max_bond"])
     intermediate_state_file = append_if_not_null(parameters["state_file"], "_intermediate")
@@ -122,9 +120,8 @@ let
     write(f, "intermediate_state", psi)
     close(f)
 
-    cb = LocalPosMeasurementCallback(
-        createObs(obs), sites, parameters["ms_stride"] * timestep
-    )
+    # Reset callback object
+    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
 
     tdvp1!(
         psi,
