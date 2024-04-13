@@ -3,6 +3,9 @@
 
 export growbond!, recompute!, maxlinkdims, stretchBondDim, growMPS, growMPS!
 
+using ITensors.ITensorMPS: setleftlim!, setrightlim!, AbstractProjMPO
+using ITensors: linkdims
+
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel >= 0
         return filter(x -> plev(x) == plevel, is)
@@ -28,8 +31,8 @@ function isrightortho(M, i)
 end
 
 function reorthogonalize!(psi::MPS)
-    ITensors.setleftlim!(psi, -1)
-    ITensors.setrightlim!(psi, length(psi) + 2)
+    setleftlim!(psi, -1)
+    setrightlim!(psi, length(psi) + 2)
     orthogonalize!(psi, 1)
     return psi[1] /= sqrt(inner(psi, psi))
 end
@@ -58,7 +61,7 @@ Return the new MPS and its overlap with the original one.
 """
 function growMPS(v::MPS, dims::Vector{<:Integer})
     @assert length(dims) == length(v) - 1
-    currentdims = ITensors.linkdims(v)
+    currentdims = linkdims(v)
     v_ext = copy(v)
     for (n, new_d, d) in zip(1:(length(v) - 1), dims, currentdims)
         growbond!(v_ext, n; increment=new_d - d)
@@ -89,7 +92,7 @@ Return the overlap of the new MPS with the original one.
 function growMPS!(v::MPS, dims::Vector{<:Integer})
     @assert length(dims) == length(v) - 1
     v_prev = copy(v)
-    currentdims = ITensors.linkdims(v)
+    currentdims = linkdims(v)
     for (n, new_d, d) in zip(1:(length(v) - 1), dims, currentdims)
         growbond!(v, n; increment=new_d - d)
     end
@@ -113,7 +116,7 @@ growMPS!(v::MPS, d::Integer) = growMPS!(v, fill(d, length(v) - 1))
 Recompute `P`'s projection operators assuming that `psi` has changed on sites
 (`n`, `n+1`). The position of the projection is not changed.
 """
-function recompute!(P::ITensors.ITensorMPS.AbstractProjMPO, v::MPS, n::Int)
+function recompute!(P::AbstractProjMPO, v::MPS, n::Int)
     N = length(P.H)
     @assert n ≤ N - 1
     # Since v[n] and v[n+1] have changed, we assume that all projection operators

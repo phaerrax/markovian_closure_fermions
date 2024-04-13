@@ -1,3 +1,6 @@
+using ITensors: position!
+using ITensors.ITensorMPS: set_nsite!, setleftlim!, setrightlim!
+
 function exponentiate_solver(; kwargs...)
     # Default solver that we provide if no solver is given by the user.
     function solver(H, time_step, ψ₀; kws...)
@@ -111,8 +114,8 @@ function tdvp_site_update!(
     maxiter,
 )
     N = length(psi)
-    ITensors.ITensorMPS.set_nsite!(PH, 1)
-    ITensors.position!(PH, psi, site)
+    set_nsite!(PH, 1)
+    position!(PH, psi, site)
 
     # Forward evolution half-step.
     phi, info = solver(PH, time_step, psi[site]; current_time)
@@ -145,14 +148,14 @@ function tdvp_site_update!(
         end
 
         if sweepdir == "right"
-            ITensors.setleftlim!(psi, site)
+            setleftlim!(psi, site)
         elseif sweepdir == "left"
-            ITensors.setrightlim!(psi, site)
+            setrightlim!(psi, site)
         end
 
         # Prepare the zero-site projection.
-        ITensors.ITensorMPS.set_nsite!(PH, 0)
-        ITensors.position!(PH, psi, new_proj_base_site)
+        set_nsite!(PH, 0)
+        position!(PH, psi, new_proj_base_site)
 
         C, info = solver(PH, -time_step, C; current_time)
 
@@ -162,15 +165,15 @@ function tdvp_site_update!(
         # Now the orthocenter is on `next_site`.
         # Set the new orthogonality limits of the MPS.
         if sweepdir == "right"
-            ITensors.setrightlim!(psi, next_site + 1)
+            setrightlim!(psi, next_site + 1)
         elseif sweepdir == "left"
-            ITensors.setleftlim!(psi, next_site - 1)
+            setleftlim!(psi, next_site - 1)
         else
             throw("Unrecognized sweepdir: $sweepdir")
         end
 
         # Reset the one-site projection… and we're done!
-        ITensors.ITensorMPS.set_nsite!(PH, 1)
+        set_nsite!(PH, 1)
     else
         # There's nothing to do if the half-sweep is at the last site.
         psi[site] = phi
