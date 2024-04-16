@@ -98,6 +98,7 @@ let
     # Creation/annihilation operators aren't Hermitian so we need a complex vector to
     # represent them.
     targetop = MPS(ComplexF64, sites, opstrings)
+    growMPS!(targetop, parameters["max_bond"])
     opgrade = -1  # (odd parity)
 
     adjL = MPO(
