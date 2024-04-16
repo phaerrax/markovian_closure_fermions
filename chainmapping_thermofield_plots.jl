@@ -76,8 +76,12 @@ let
     # To merge the domains: concatenate, sort, then remove duplicates
     # TODO: check if there are gaps in the resulting merged domains.
     merge_domains(domains) = unique(sort(vcat(domains...)))
-    merged_filled_domains = exclude_almost_zero(merge_domains(domains_filled), merged_sdffilled)
-    merged_empty_domains = exclude_almost_zero(merge_domains(domains_empty), merged_sdfempty)
+    merged_filled_domains = exclude_almost_zero(
+        merge_domains(domains_filled), merged_sdffilled
+    )
+    merged_empty_domains = exclude_almost_zero(
+        merge_domains(domains_empty), merged_sdfempty
+    )
 
     function issingleton(domain)
         if !issorted(domain)
@@ -104,8 +108,16 @@ let
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
         )
-        plot!(sdf_plot, xstep(merged_filled_domains), merged_sdffilled.(xstep(merged_filled_domains)))
-        plot!(sdf_plot, xstep(merged_empty_domains), merged_sdfempty.(xstep(merged_empty_domains)))
+        plot!(
+            sdf_plot,
+            xstep(merged_filled_domains),
+            merged_sdffilled.(xstep(merged_filled_domains)),
+        )
+        plot!(
+            sdf_plot,
+            xstep(merged_empty_domains),
+            merged_sdfempty.(xstep(merged_empty_domains)),
+        )
 
         open(output_filename, "w") do output
             writedlm(output, ["coupempty" "coupfilled" "freqempty" "freqfilled"], ',')
@@ -122,7 +134,11 @@ let
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
         )
-        plot!(sdf_plot, xstep(merged_filled_domains), merged_sdffilled.(xstep(merged_filled_domains)))
+        plot!(
+            sdf_plot,
+            xstep(merged_filled_domains),
+            merged_sdffilled.(xstep(merged_filled_domains)),
+        )
 
         open(output_filename, "w") do output
             writedlm(output, ["coupfilled" "freqfilled"], ',')
@@ -135,7 +151,11 @@ let
             chain_length - 1;
             Nquad=sd_info["PolyChaos_nquad"],
         )
-        plot!(sdf_plot, xstep(merged_empty_domains), merged_sdfempty.(xstep(merged_empty_domains)))
+        plot!(
+            sdf_plot,
+            xstep(merged_empty_domains),
+            merged_sdfempty.(xstep(merged_empty_domains)),
+        )
 
         open(output_filename, "w") do output
             writedlm(output, ["coupempty" "freqempty"], ',')
@@ -144,7 +164,7 @@ let
     else  # Both merged domains are singletons. There is no output.
         error("Both merged domains are empty. Please check the input spectral densities.")
     end
-    
+
     savefig(sdf_plot, plotfig_filename)
 
     return nothing

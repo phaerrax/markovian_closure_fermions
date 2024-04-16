@@ -30,7 +30,7 @@ let
     emptyfreqs = thermofield_coefficients[:, 3]
 
     chain_length = parameters["chain_length"]
-    total_size =  chain_length + 1
+    total_size = chain_length + 1
     systempos = 1
     emptychain_sites = 2:1:total_size
 
@@ -41,7 +41,7 @@ let
             [
                 systempos => parameters["sys_ini"]
                 [st => "Emp" for st in emptychain_sites]
-            ],
+            ]
         )
         ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
         start_from_file = false
@@ -61,8 +61,8 @@ let
     h += emptycoups[1] * exchange_interaction(sites[systempos], sites[emptychain_sites[1]])
 
     h += spin_chain(
-            emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[emptychain_sites]
-        ) 
+        emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[emptychain_sites]
+    )
     H = MPO(h, sites)
 
     timestep = parameters["tstep"]

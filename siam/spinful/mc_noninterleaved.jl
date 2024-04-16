@@ -274,7 +274,6 @@ let
     end
     cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
 
-
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."
         psi, _ = stretchBondDim(psi0, parameters["max_bond"])

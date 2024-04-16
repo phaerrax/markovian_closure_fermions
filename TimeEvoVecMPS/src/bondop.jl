@@ -87,15 +87,13 @@ function bondgate(bo::BondOperator, b::Int)
     end
     for i in [b, b + 1]
         fac = i == length(bo) || i == 1 ? 1 : 1 / 2
-        f =
-            (i, o) ->
-                fac * (
-                    if i == b
-                        op(sites, o) * op(sites, "Id", b + 1)
-                    else
-                        op(sites, "Id", b) * op(sites, o)
-                    end
-                )
+        f = (i, o) -> fac * (
+            if i == b
+                op(sites, o) * op(sites, "Id", b + 1)
+            else
+                op(sites, "Id", b) * op(sites, o)
+            end
+        )
         for st in siteterms(bo, i)
             gate += f(i, st)
         end

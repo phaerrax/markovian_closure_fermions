@@ -42,7 +42,7 @@ let
             [
                 systempos => parameters["sys_ini"]
                 [st => "Occ" for st in filledchain_sites]
-            ],
+            ]
         )
         ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
         start_from_file = false
@@ -63,10 +63,8 @@ let
         filledcoups[1] * exchange_interaction(sites[systempos], sites[filledchain_sites[1]])
 
     h += spin_chain(
-            filledfreqs[1:chain_length],
-            filledcoups[2:chain_length],
-            sites[filledchain_sites],
-        )
+        filledfreqs[1:chain_length], filledcoups[2:chain_length], sites[filledchain_sites]
+    )
 
     H = MPO(h, sites)
 

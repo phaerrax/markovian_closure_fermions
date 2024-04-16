@@ -69,8 +69,10 @@ let
     h += eps, "n", system_site
 
     h +=
-        emptycoups[1] * exchange_interaction(sites[system_site], sites[emptychain_sites[1]]) +
-        filledcoups[1] * exchange_interaction(sites[system_site], sites[filledchain_sites[1]])
+        emptycoups[1] *
+        exchange_interaction(sites[system_site], sites[emptychain_sites[1]]) +
+        filledcoups[1] *
+        exchange_interaction(sites[system_site], sites[filledchain_sites[1]])
 
     h +=
         spin_chain(

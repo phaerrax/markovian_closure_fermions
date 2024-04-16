@@ -37,9 +37,7 @@ let
     closure_length = length(mcω)
 
     sites = siteinds("vS=1/2", system_length + chain_length + closure_length)
-    psi0 = MPS(
-               sites, [system_initstate; repeat(["Dn"], chain_length + closure_length)]
-    )
+    psi0 = MPS(sites, [system_initstate; repeat(["Dn"], chain_length + closure_length)])
 
     # Unitary part of master equation
     # -------------------------------
@@ -55,8 +53,8 @@ let
         #if lowercase(parameters["interaction_type"]) == "xx"
         #    ℓ += -coups[1] * gkslcommutator("σy", 1, "σx", 2)
         #elseif lowercase(parameters["interaction_type"]) == "exchange"
-            ℓ += coups[1] * gkslcommutator("σ+", 1, "σ-", 2)
-            ℓ += coups[1] * gkslcommutator("σ-", 1, "σ+", 2)
+        ℓ += coups[1] * gkslcommutator("σ+", 1, "σ-", 2)
+        ℓ += coups[1] * gkslcommutator("σ-", 1, "σ+", 2)
         #else
         #    throw(
         #        error("Unrecognized interaction type. Please use \"xx\" or \"exchange\".")

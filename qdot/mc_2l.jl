@@ -33,8 +33,12 @@ function ITensors.state(::StateName"vAdagupF", ::SiteType"vElectron")
     )
 end
 
-ITensors.state(sn::StateName"vF", st::SiteType"vElectron") = LindbladVectorizedTensors.vop(sn, st)
-ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = LindbladVectorizedTensors.vop(sn, st)
+function ITensors.state(sn::StateName"vF", st::SiteType"vElectron")
+    return LindbladVectorizedTensors.vop(sn, st)
+end
+function ITensors.state(sn::StateName"vF", st::SiteType"vFermion")
+    return LindbladVectorizedTensors.vop(sn, st)
+end
 
 function ITensors.state(::StateName"vA", st::SiteType"vElectron")
     return ITensors.state(StateName("vAupF"), st) + ITensors.state(StateName("vAdn"), st)
@@ -192,8 +196,8 @@ let
     operators = [
         LocalOperator(Dict(1 => "vAdag", 2 => "vA"))
         LocalOperator(Dict(1 => "vA", 2 => "vAdag"))
-        LocalOperator(Dict(1 => "vAdag", 2 => "vF",  3 => "vA"))
-        LocalOperator(Dict(1 => "vA",    2 => "vF",  3 => "vAdag"))
+        LocalOperator(Dict(1 => "vAdag", 2 => "vF", 3 => "vA"))
+        LocalOperator(Dict(1 => "vA", 2 => "vF", 3 => "vAdag"))
         d...
     ]
     cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)

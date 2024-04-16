@@ -87,7 +87,6 @@ function measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1)
     end
 end
 
-
 """
     measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1vec)
 
@@ -107,9 +106,7 @@ function measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1v
     end
 end
 
-function apply!(
-    cb::ExpValueCallback, state; t, sweepend, sweepdir, site, alg, kwargs...
-)
+function apply!(cb::ExpValueCallback, state; t, sweepend, sweepdir, site, alg, kwargs...)
     if isempty(measurement_ts(cb))
         prev_t = 0
     else

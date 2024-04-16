@@ -35,7 +35,7 @@ function writeheaders_data(io_file, cb; kwargs...)
         @printf(io_handle, "%20s", "time")
         res = measurements(cb)
         for op in sort(collect(keys(res)))
-            @printf(io_handle, "%40s%40s", name(op) * "_re", name(op) *  "_im")
+            @printf(io_handle, "%40s%40s", name(op) * "_re", name(op) * "_im")
         end
         if get(kwargs, :store_psi0, false)
             @printf(io_handle, "%40s%40s", "overlap_re", "overlap_im")
@@ -89,7 +89,12 @@ function printoutput_data(io_handle, cb, psi; kwargs...)
         results = measurements(cb)
         @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
         for opname in sort(collect(keys(results)))
-            @printf(io_handle, "%40.15f%40.15f", real(results[opname][end]), imag(results[opname][end]))
+            @printf(
+                io_handle,
+                "%40.15f%40.15f",
+                real(results[opname][end]),
+                imag(results[opname][end])
+            )
         end
 
         if get(kwargs, :store_psi0, false)

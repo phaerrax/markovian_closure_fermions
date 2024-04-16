@@ -66,7 +66,9 @@ let
     # Site ranges
     system_site = 1
     empty_chain_range = range(; start=2, step=2, length=chain_length)
-    empty_closure_range = range(; start=empty_chain_range[end] + 2, step=2, length=closure_length)
+    empty_closure_range = range(;
+        start=empty_chain_range[end] + 2, step=2, length=closure_length
+    )
     filled_chain_range = range(; start=3, step=2, length=chain_length)
     filled_closure_range = range(;
         start=filled_chain_range[end] + 2, step=2, length=closure_length

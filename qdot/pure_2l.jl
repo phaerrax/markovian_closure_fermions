@@ -77,13 +77,13 @@ let
             sites[dot_site],
             sites[empty_chain_range[1]];
             coupling_constant_up=empty_chain_coups[1],
-            coupling_constant_dn=empty_chain_coups[1]
+            coupling_constant_dn=empty_chain_coups[1],
         ) +
         exchange_interaction(
             sites[dot_site],
             sites[filled_chain_range[1]];
             coupling_constant_up=filled_chain_coups[1],
-            coupling_constant_dn=filled_chain_coups[1]
+            coupling_constant_dn=filled_chain_coups[1],
         ) +
         spin_chain(
             empty_chain_freqs[1:chain_length],
@@ -95,7 +95,7 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ),
-        sites
+        sites,
     )
 
     timestep = parameters["tstep"]

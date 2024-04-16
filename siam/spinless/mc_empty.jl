@@ -66,7 +66,7 @@ let
 
     initstate_file = get(parameters, "initial_state_file", nothing)
     if isnothing(initstate_file)
-    system_initstate = parameters["sys_ini"]
+        system_initstate = parameters["sys_ini"]
         sites = siteinds("vFermion", total_size)
         initialsites = Dict(
             [

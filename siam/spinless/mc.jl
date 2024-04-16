@@ -15,7 +15,9 @@ using TimeEvoVecMPS
 # for now; maybe sometime I'll find a way to calculate the Jordan-Wigner operators in
 # an automatic way...
 
-ITensors.state(sn::StateName"vF", st::SiteType"vFermion") = LindbladVectorizedTensors.vop(sn, st)
+function ITensors.state(sn::StateName"vF", st::SiteType"vFermion")
+    return LindbladVectorizedTensors.vop(sn, st)
+end
 
 let
     parameters = load_pars(ARGS[1])
@@ -130,7 +132,6 @@ let
     timestep = parameters["tstep"]
     tmax = parameters["tmax"]
 
-
     d = LocalOperator[]
     for (k, v) in parameters["observables"]
         for n in v
@@ -141,12 +142,11 @@ let
     operators = [
         LocalOperator(Dict(1 => "vAdag", 2 => "vA"))
         LocalOperator(Dict(1 => "vA", 2 => "vAdag"))
-        LocalOperator(Dict(1 => "vAdag", 2 => "vF",  3 => "vA"))
-        LocalOperator(Dict(1 => "vA",    2 => "vF",  3 => "vAdag"))
+        LocalOperator(Dict(1 => "vAdag", 2 => "vF", 3 => "vA"))
+        LocalOperator(Dict(1 => "vA", 2 => "vF", 3 => "vAdag"))
         d...
     ]
     cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
-
 
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
         @info "Using standard algorithm."

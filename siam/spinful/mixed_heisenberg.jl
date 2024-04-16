@@ -67,7 +67,7 @@ let
     adjℓ += -U * gkslcommutator("NupNdn", system_site)
 
     adjℓ +=
-        empty_chain_coups[1] * 
+        empty_chain_coups[1] *
         exchange_interaction′(sites[system_site], sites[empty_chain[1]])
 
     adjℓ +=

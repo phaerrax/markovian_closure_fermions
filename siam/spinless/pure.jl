@@ -91,8 +91,8 @@ let
     operators = [
         LocalOperator(Dict(1 => "Adag", 2 => "A"))
         LocalOperator(Dict(1 => "A", 2 => "Adag"))
-        LocalOperator(Dict(1 => "Adag", 2 => "F",  3 => "A"))
-        LocalOperator(Dict(1 => "A",    2 => "F",  3 => "Adag"))
+        LocalOperator(Dict(1 => "Adag", 2 => "F", 3 => "A"))
+        LocalOperator(Dict(1 => "A", 2 => "F", 3 => "Adag"))
         d...
     ]
     cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)

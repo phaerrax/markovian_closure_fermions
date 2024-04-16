@@ -60,7 +60,9 @@ let
     )
     for (i, site) in enumerate(filled_closure_range)
         h_effclosure += outercoup(filledmc, i), "c†", filled_chain_range[end], "c", site
-        h_effclosure += conj(outercoup(filledmc, i)), "c†", site, "c", filled_chain_range[end]
+        h_effclosure += conj(outercoup(filledmc, i)),
+        "c†", site, "c",
+        filled_chain_range[end]
         h_effclosure += -0.5im * damp(filledmc, i), "Id", site
         h_effclosure += 0.5im * damp(filledmc, i), "n", site
     end
