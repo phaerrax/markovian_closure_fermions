@@ -51,7 +51,7 @@ let
     β = β_mat[:, 1] .+ im .* β_mat[:, 2]
     w = w_mat[:, 1] .+ im .* w_mat[:, 2]
 
-    emptymc = closure(empty_Ω, empty_K, α, β, w)
+    emptymc = markovianclosure_parameters(empty_Ω, empty_K, α, β, w)
     closure_length = length(emptymc)
 
     total_size = system_length + chain_length + closure_length
@@ -96,7 +96,7 @@ let
             empty_chain_coups[2:chain_length],
             sites[empty_chain_range],
         ) +
-        closure_op(emptymc, sites[empty_closure_range], empty_chain_range[end]),
+        markovianclosure(emptymc, sites[empty_closure_range], empty_chain_range[end]),
         sites,
     )
 

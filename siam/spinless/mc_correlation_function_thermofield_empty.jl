@@ -46,8 +46,8 @@ let
     β = β_mat[:, 1] .+ im .* β_mat[:, 2]
     w = w_mat[:, 1] .+ im .* w_mat[:, 2]
 
-    emptymc = closure(empty_Ω, empty_K, α, β, w)
-    filledmc = closure(filled_Ω, filled_K, conj.(α), conj.(β), w)
+    emptymc = markovianclosure_parameters(empty_Ω, empty_K, α, β, w)
+    filledmc = markovianclosure_parameters(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(emptymc)
 
     total_size = 2chain_length + 2closure_length
@@ -110,8 +110,10 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        closure_op′(emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade) +
-        filled_closure_op′(
+        markovianclosure′(
+            emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade
+        ) +
+        filled_markovianclosure′(
             filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade
         ),
         sites,

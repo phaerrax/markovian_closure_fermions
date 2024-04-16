@@ -49,7 +49,7 @@ let
     β_mat = readdlm(parameters["MC_betas"])
     w_mat = readdlm(parameters["MC_coups"])
 
-    filledmc = closure(filled_Ω, filled_K, conj.(α), conj.(β), w)
+    filledmc = markovianclosure_parameters(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(filledmc)
 
     total_size = system_length + chain_length + closure_length
@@ -81,7 +81,9 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        filled_closure_op(filledmc, sites[filled_closure_range], filled_chain_range[end]),
+        filled_markovianclosure(
+            filledmc, sites[filled_closure_range], filled_chain_range[end]
+        ),
         sites,
     )
 
