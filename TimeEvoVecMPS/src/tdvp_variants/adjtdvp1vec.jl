@@ -1,7 +1,7 @@
 export adjtdvp1vec!, adaptiveadjtdvp1vec!
 
-using ITensors: position!
-using ITensors.ITensorMPS: set_nsite!, linkdims
+using ITensors: position!, permute
+using ITensors.ITensorMPS: set_nsite!, linkdims, check_hascommoninds
 
 """
     adjtdvp1vec!(
@@ -228,10 +228,10 @@ function adaptiveadjtdvp1vec!(
     kwargs...,
 )
     for L in Ls
-        ITensors.check_hascommoninds(siteinds, L, operator)
-        ITensors.check_hascommoninds(siteinds, L, operator')
+        check_hascommoninds(siteinds, L, operator)
+        check_hascommoninds(siteinds, L, operator')
     end
-    Ls .= ITensors.permute.(Ls, Ref((linkind, siteinds, linkind)))
+    Ls .= permute.(Ls, Ref((linkind, siteinds, linkind)))
     PLs = ProjMPOSum(Ls)
     return adaptiveadjtdvp1vec!(
         solver, operator, initialstate, PLs, Δt, tf, meas_stride, sites; kwargs...

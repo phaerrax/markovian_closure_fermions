@@ -1,7 +1,7 @@
 export jointtdvp1!
 
-using ITensors: position!
-using ITensors.ITensorMPS: set_nsite!
+using ITensors: position!, permute
+using ITensors.ITensorMPS: set_nsite!, check_hascommoninds
 
 """
     jointtdvp1!(solver, states::Tuple{MPS, MPS}, Hs::Vector{MPO}, dt::Number, tf::Number; kwargs...)
@@ -33,11 +33,11 @@ function jointtdvp1!(
     # (Copied from ITensorsTDVP)
     for H in Hs
         for psi in states
-            ITensors.check_hascommoninds(siteinds, H, psi)
-            ITensors.check_hascommoninds(siteinds, H, psi')
+            check_hascommoninds(siteinds, H, psi)
+            check_hascommoninds(siteinds, H, psi')
         end
     end
-    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    Hs .= permute.(Hs, Ref((linkind, siteinds, linkind)))
     PHs = ProjMPOSum(Hs)
     return jointtdvp1!(solver, states, PHs, time_step, tf; kwargs...)
 end

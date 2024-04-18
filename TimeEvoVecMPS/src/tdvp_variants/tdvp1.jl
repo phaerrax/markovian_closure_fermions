@@ -1,7 +1,7 @@
 export tdvp1!, adaptivetdvp1!
 
-using ITensors: position!
-using ITensors.ITensorMPS: set_nsite!
+using ITensors: position!, permute
+using ITensors.ITensorMPS: set_nsite!, check_hascommoninds
 
 """
     tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
@@ -24,10 +24,10 @@ function tdvp1!(
 )
     # (Copied from ITensorsTDVP)
     for H in Hs
-        ITensors.check_hascommoninds(siteinds, H, psi0)
-        ITensors.check_hascommoninds(siteinds, H, psi0')
+        check_hascommoninds(siteinds, H, psi0)
+        check_hascommoninds(siteinds, H, psi0')
     end
-    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    Hs .= permute.(Hs, Ref((linkind, siteinds, linkind)))
     PHs = ProjMPOSum(Hs)
     return tdvp1!(solver, psi0, PHs, time_step, tf; kwargs...)
 end
@@ -197,10 +197,10 @@ function adaptivetdvp1!(
 )
     # (Copied from ITensorsTDVP)
     for H in Hs
-        ITensors.check_hascommoninds(siteinds, H, psi0)
-        ITensors.check_hascommoninds(siteinds, H, psi0')
+        check_hascommoninds(siteinds, H, psi0)
+        check_hascommoninds(siteinds, H, psi0')
     end
-    Hs .= ITensors.permute.(Hs, Ref((linkind, siteinds, linkind)))
+    Hs .= permute.(Hs, Ref((linkind, siteinds, linkind)))
     PHs = ProjMPOSum(Hs)
     return adaptivetdvp1!(solver, psi0, PHs, time_step, tf; kwargs...)
 end
