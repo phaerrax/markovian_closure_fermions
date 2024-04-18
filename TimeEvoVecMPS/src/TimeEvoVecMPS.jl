@@ -34,6 +34,7 @@ include("tdvp_variants/tdvp1.jl")
 include("tdvp_variants/tdvp1vec.jl")
 include("tdvp_variants/adjtdvp1vec.jl")
 include("tdvp_variants/tdvp_other.jl")
+include("tdvp_variants/jointtdvp1.jl")
 
 include("testutils.jl")
 

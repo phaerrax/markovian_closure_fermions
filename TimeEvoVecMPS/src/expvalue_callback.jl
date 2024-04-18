@@ -88,6 +88,43 @@ function measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1)
 end
 
 """
+    measure_localops!(cb::ExpValueCallback, ψ₁::MPS, ψ₂::MPS, site::Int, alg::TDVP1)
+
+Compute the inner product ``⟨ψ₁, Aψ₂⟩`` for each operator ``A``, on site ``site``, defined
+in the callback obkect ``cb``.
+"""
+function measure_localops!(
+    cb::ExpValueCallback, psiL::MPS, psiR::MPS, site::Int, alg::TDVP1
+)
+    # Since the operators may be defined on more than one site, we need to check that
+    # all the sites in their domain have been completely updated: this means that we must
+    # wait until the final sweep of the evolution step has passed each site in the domain.
+    # Note that this function gets called (or should be called) only if the current sweep
+    # is the final sweep in the step.
+
+    # When `ψ[site]` has been updated during the leftwards sweep, the orthocentre lies on
+    # site `max(1, site-1)`, and all `ψ[n]` with `n >= site` are correctly updated.
+    measurable_operators = filter(op -> site <= first(domain(op)), ops(cb))
+    sL = siteinds(psiL)
+    sR = siteinds(psiR)
+    sL != sR && error("The site indices of the given MPSs do not match!")
+    for localop in measurable_operators
+        # This works, but calculating the MPO from scratch every time might take too much
+        # time, especially when it has to be repeated thousands of times. For example,
+        # executing TimeEvoVecMPS.mpo(s, o) with
+        #   s = siteinds("Osc", 400; dim=16)
+        #   o = LocalOperator(Dict(20 => "A", 19 => "Adag"))
+        # takes 177.951 ms (2313338 allocations: 329.80 MiB).
+        # Memoizing this function allows us to cut the time (after the first call, which is
+        # expensive anyway since Julia needs to compile the function) to 45.368 ns
+        # (1 allocation: 32 bytes) for each call.
+        measurements(cb)[localop][end] = dot(psiL', mpo(sL, localop), psiR)
+        # measurements(cb)[localop][end] is the last line in the measurements of localop,
+        # which we (must) have created in apply! before calling this function.
+    end
+end
+
+"""
     measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1vec)
 
 Measure each operator defined inside the callback object `cb` on the state `ψ` at site `i`.
@@ -106,7 +143,9 @@ function measure_localops!(cb::ExpValueCallback, ψ::MPS, site::Int, alg::TDVP1v
     end
 end
 
-function apply!(cb::ExpValueCallback, state; t, sweepend, sweepdir, site, alg, kwargs...)
+function apply!(
+    cb::ExpValueCallback, state::MPS; t, sweepend, sweepdir, site, alg, kwargs...
+)
     if isempty(measurement_ts(cb))
         prev_t = 0
     else
@@ -128,6 +167,43 @@ function apply!(cb::ExpValueCallback, state; t, sweepend, sweepdir, site, alg, k
             foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
         end
         measure_localops!(cb, state, site, alg)
+    end
+
+    return nothing
+end
+
+function apply!(
+    cb::ExpValueCallback,
+    state1::MPS,
+    state2::MPS;
+    t,
+    sweepend,
+    sweepdir,
+    site,
+    alg,
+    kwargs...,
+)
+    if isempty(measurement_ts(cb))
+        prev_t = 0
+    else
+        prev_t = measurement_ts(cb)[end]
+    end
+
+    # We perform measurements only at the end of a sweep and at measurement steps.
+    # For TDVP we can perform measurements to the right of each site when sweeping back left.
+    if !(alg isa TDVP1)
+        error("apply! function with two states only implemented for the TDVP1 algorithm.")
+    end
+
+    if (t - prev_t ≈ callback_dt(cb) || t == prev_t) && sweepend
+        if (t != prev_t || t == 0)
+            # Add the current time to the list of time instants at which we measured
+            # something.
+            push!(measurement_ts(cb), t)
+            # Create a new slot in which we will put the measurement result.
+            foreach(x -> push!(x, zero(eltype(x))), values(measurements(cb)))
+        end
+        measure_localops!(cb, state1, state2, site, alg)
     end
 
     return nothing

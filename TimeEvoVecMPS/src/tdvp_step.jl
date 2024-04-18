@@ -37,6 +37,11 @@ end
 function adaptivetdvp1!(state::MPS, H::MPO, timestep::Number, tf::Number; kwargs...)
     return adaptivetdvp1!(tdvp_solver(; kwargs...), state, H, timestep, tf; kwargs...)
 end
+function jointtdvp1!(
+    states::Tuple{MPS,MPS}, H::MPO, timestep::Number, tf::Number; kwargs...
+)
+    return jointtdvp1!(tdvp_solver(; kwargs...), states, H, timestep, tf; kwargs...)
+end
 
 function tdvp1vec!(state::MPS, L::MPO, Δt::Number, tf::Number, sites; kwargs...)
     return tdvp1vec!(tdvp_solver(; kwargs...), state, L, Δt, tf, sites; kwargs...)
