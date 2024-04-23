@@ -15,6 +15,12 @@ let
     end
     sites = siteinds(vecstate_0)
 
+    # Rescale the initial state so that its trace is 1. It should already be 1, ideally,
+    # but if it comes from a previous TDVP evolution it might have deviated a little from
+    # this value. As long as it is _a little_ different from 1, rescaling is fine.
+    trvecstate_0 = real(dot(MPS(sites, "vId"), vecstate_0))
+    vecstate_0 /= trvecstate_0
+
     # Input: system parameters
     # ------------------------
     system_length = 1
@@ -91,7 +97,7 @@ let
     # the "exp_val_imag" column.
 
     # Creation/annihilation operators aren't Hermitian so we need a complex vector to
-    # represent them.
+    # represent them.g
     targetop = MPS(ComplexF64, sites, opstrings)
     growMPS!(targetop, parameters["max_bond"])
     opgrade = -1  # (odd parity)
