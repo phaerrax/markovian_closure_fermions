@@ -5,14 +5,6 @@ using LindbladVectorizedTensors
 using MarkovianClosure
 using TimeEvoVecMPS
 
-function ITensors.state(::StateName"green_sys", st::SiteType"vFermion")
-    # This is just a nice way to output the results: by using this operator,
-    # the real part of the expectation value output by the tdvp1vec! function below will
-    # already be the retarded Green's function we are looking for.
-    # Of course, we could as well evolve just "vA" and then take the imaginary part of
-    # the expectation value.
-    return -im * ITensors.state(StateName("vA"), st)
-end
 let
     parameters = load_pars(ARGS[1])
 
@@ -88,13 +80,16 @@ let
 
     opstrings = Dict(
         [
-            system_site => "green_sys"
+            system_site => "vAdag"
             [st => "vId" for st in filled_chain_range]
             [st => "vId" for st in filled_closure_range]
             [st => "vId" for st in empty_chain_range]
             [st => "vId" for st in empty_closure_range]
         ],
     )
+    # The Green's function G(t) = -i tr(d(t) d† ρ) can be found in the output file under
+    # the "exp_val_imag" column.
+
     # Creation/annihilation operators aren't Hermitian so we need a complex vector to
     # represent them.
     targetop = MPS(ComplexF64, sites, opstrings)
@@ -128,6 +123,7 @@ let
 
     # Apply creation operator (on the left) to the initial state
     vecstate_0 = apply(op("A†⋅", sites, system_site), vecstate_0)
+    @show dot(targetop, vecstate_0)
 
     # Begin evolution
     if get(parameters, "convergence_factor_bondadapt", 0) == 0
