@@ -131,6 +131,7 @@ function adjtdvp1vec!(
     position!(PH, operator, 1)
 
     current_time = zero(Δt)
+    prev_t = zero(Δt)
     for s in 1:nsteps
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -157,6 +158,8 @@ function adjtdvp1vec!(
                 )
             end
         end
+        # The sweep has ended, so we update the current time.
+        current_time += Δt
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -167,29 +170,31 @@ function adjtdvp1vec!(
             ],
         )
 
-        # Now the backwards sweep has ended, so the whole MPS of the operator is up-to-date.
-        # We can then calculate the expectation values on the initial state.
-        #if t - prev_t ≈ meas_stride... how does this work?
-        if true # FIXME
-            expval = inner(initialstate, operator)
-            @printf(io_handle, "%20.15f", current_time)
-            @printf(io_handle, "%20.15f", real(expval))
-            @printf(io_handle, "%20.15f", imag(expval))
-            @printf(io_handle, "\n")
-            flush(io_handle)
+        # We actually want to measure (i.e. contract the MPS) not at each time step, but
+        # on each k-th one where k = meas_stride/time_step.
+        # We save the previous time at which we computed measurements in prev_t, and each
+        # time a sweep and we check if current_time - prev_t = meas_stride.
+        # If it is so, then we go on and compute the expectation value (and update prev_t).
+        if (current_time - prev_t ≈ meas_stride || current_time == 0)
+                expval = inner(initialstate, operator)
+                @printf(io_handle, "%20.15f", current_time)
+                @printf(io_handle, "%20.15f", real(expval))
+                @printf(io_handle, "%20.15f", imag(expval))
+                @printf(io_handle, "\n")
+                flush(io_handle)
 
-            @printf(ranks_handle, "%40.15f", current_time)
-            for bonddim in linkdims(operator)
-                @printf(ranks_handle, "%10d", bonddim)
-            end
-            @printf(ranks_handle, "\n")
-            flush(ranks_handle)
+                @printf(ranks_handle, "%40.15f", current_time)
+                for bonddim in linkdims(operator)
+                    @printf(ranks_handle, "%10d", bonddim)
+                end
+                @printf(ranks_handle, "\n")
+                flush(ranks_handle)
 
-            printoutput_stime(times_handle, stime)
+                printoutput_stime(times_handle, stime)
+
+            prev_t = current_time
         end
-
-        current_time += Δt
-    end
+    end  # of the time evolution.
 
     !isnothing(io_file) && close(io_handle)
     !isnothing(ranks_file) && close(ranks_handle)
@@ -335,6 +340,7 @@ function adaptiveadjtdvp1vec!(
     N = length(operator)
 
     current_time = zero(Δt)
+    prev_t = zero(Δt)
     for s in 1:nsteps
         orthogonalize!(operator, 1)
         set_nsite!(PH, 1)
@@ -368,6 +374,7 @@ function adaptiveadjtdvp1vec!(
                 )
             end
         end
+        current_time += Δt
 
         !isnothing(pbar) && ProgressMeter.next!(
             pbar;
@@ -378,29 +385,31 @@ function adaptiveadjtdvp1vec!(
             ],
         )
 
-        # Now the backwards sweep has ended, so the whole MPS of the operator is up-to-date.
-        # We can then calculate the expectation values on the initial state.
-        #if t - prev_t ≈ meas_stride... how does this work?
-        if true
-            expval = inner(initialstate, operator)
-            @printf(io_handle, "%20.15f", current_time)
-            @printf(io_handle, "%20.15f", real(expval))
-            @printf(io_handle, "%20.15f", imag(expval))
-            @printf(io_handle, "\n")
-            flush(io_handle)
+        # We actually want to measure (i.e. contract the MPS) not at each time step, but
+        # on each k-th one where k = meas_stride/time_step.
+        # We save the previous time at which we computed measurements in prev_t, and each
+        # time a sweep and we check if current_time - prev_t = meas_stride.
+        # If it is so, then we go on and compute the expectation value (and update prev_t).
+        if (current_time - prev_t ≈ meas_stride || current_time == 0)
+                expval = inner(initialstate, operator)
+                @printf(io_handle, "%20.15f", current_time)
+                @printf(io_handle, "%20.15f", real(expval))
+                @printf(io_handle, "%20.15f", imag(expval))
+                @printf(io_handle, "\n")
+                flush(io_handle)
 
-            @printf(ranks_handle, "%40.15f", t)
-            for bonddim in linkdims(operator)
-                @printf(ranks_handle, "%10d", bonddim)
-            end
-            @printf(ranks_handle, "\n")
-            flush(ranks_handle)
+                @printf(ranks_handle, "%40.15f", current_time)
+                for bonddim in linkdims(operator)
+                    @printf(ranks_handle, "%10d", bonddim)
+                end
+                @printf(ranks_handle, "\n")
+                flush(ranks_handle)
 
-            printoutput_stime(times_handle, stime)
+                printoutput_stime(times_handle, stime)
+
+            prev_t = current_time
         end
-
-        current_time += Δt
-    end
+    end  # of the time evolution.
 
     !isnothing(io_file) && close(io_handle)
     !isnothing(ranks_file) && close(ranks_handle)
