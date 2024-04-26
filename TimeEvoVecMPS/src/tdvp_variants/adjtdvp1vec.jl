@@ -176,21 +176,21 @@ function adjtdvp1vec!(
         # time a sweep and we check if current_time - prev_t = meas_stride.
         # If it is so, then we go on and compute the expectation value (and update prev_t).
         if (current_time - prev_t ≈ meas_stride || current_time == 0)
-                expval = inner(initialstate, operator)
-                @printf(io_handle, "%20.15f", current_time)
-                @printf(io_handle, "%20.15f", real(expval))
-                @printf(io_handle, "%20.15f", imag(expval))
-                @printf(io_handle, "\n")
-                flush(io_handle)
+            expval = inner(initialstate, operator)
+            @printf(io_handle, "%20.15f", current_time)
+            @printf(io_handle, "%20.15f", real(expval))
+            @printf(io_handle, "%20.15f", imag(expval))
+            @printf(io_handle, "\n")
+            flush(io_handle)
 
-                @printf(ranks_handle, "%40.15f", current_time)
-                for bonddim in linkdims(operator)
-                    @printf(ranks_handle, "%10d", bonddim)
-                end
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
+            @printf(ranks_handle, "%40.15f", current_time)
+            for bonddim in linkdims(operator)
+                @printf(ranks_handle, "%10d", bonddim)
+            end
+            @printf(ranks_handle, "\n")
+            flush(ranks_handle)
 
-                printoutput_stime(times_handle, stime)
+            printoutput_stime(times_handle, stime)
 
             prev_t = current_time
         end
@@ -391,21 +391,21 @@ function adaptiveadjtdvp1vec!(
         # time a sweep and we check if current_time - prev_t = meas_stride.
         # If it is so, then we go on and compute the expectation value (and update prev_t).
         if (current_time - prev_t ≈ meas_stride || current_time == 0)
-                expval = inner(initialstate, operator)
-                @printf(io_handle, "%20.15f", current_time)
-                @printf(io_handle, "%20.15f", real(expval))
-                @printf(io_handle, "%20.15f", imag(expval))
-                @printf(io_handle, "\n")
-                flush(io_handle)
+            expval = inner(initialstate, operator)
+            @printf(io_handle, "%20.15f", current_time)
+            @printf(io_handle, "%20.15f", real(expval))
+            @printf(io_handle, "%20.15f", imag(expval))
+            @printf(io_handle, "\n")
+            flush(io_handle)
 
-                @printf(ranks_handle, "%40.15f", current_time)
-                for bonddim in linkdims(operator)
-                    @printf(ranks_handle, "%10d", bonddim)
-                end
-                @printf(ranks_handle, "\n")
-                flush(ranks_handle)
+            @printf(ranks_handle, "%40.15f", current_time)
+            for bonddim in linkdims(operator)
+                @printf(ranks_handle, "%10d", bonddim)
+            end
+            @printf(ranks_handle, "\n")
+            flush(ranks_handle)
 
-                printoutput_stime(times_handle, stime)
+            printoutput_stime(times_handle, stime)
 
             prev_t = current_time
         end
