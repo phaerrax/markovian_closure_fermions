@@ -16,7 +16,7 @@ let
     vsites = siteinds("vFermion", length(sites))
 
     # Construct the operator a_1†|ψ⟩⟨ψ| from the initial pure state ψ
-    rho_0 = outer(apply(op("a", sites, 1), psi_0), psi_0')
+    rho_0 = outer(psi_0', psi_0)
     # Vectorize it and convert it into an MPS. The "combiner" index merges the
     # two matrix indices in a single one, effectively transforming the matrix
     # into a vector. Our vectorized fermion site type works in the Gell-Mann
@@ -48,9 +48,9 @@ let
     # so we need to multiply each blocks of the MPS by U on the _left_.
     # We achieve this by defining the tensor with a specific order of the indices.
     # TODO Write down out how this works, once and for all...
-    rho_0_vec = convert(MPS, rho_0)
+    rho_0_vec = MPS(length(rho_0))
     for i in 1:length(rho_0_vec)
-        rho_0_vec[i] *= combiner(sites[i], sites[i]')
+        rho_0_vec[i] = rho_0[i] * combiner(sites[i]', sites[i])
     end
     u_mat = 1 / sqrt(2) .* [
         1 0 0 1
@@ -65,6 +65,7 @@ let
     for i in 1:length(rho_0_vec)
         rho_0_vec[i] *= u[i]
     end
+    rho_0_vec = apply(op("a†⋅", vsites, 1), rho_0_vec)
     # Now we have a vectorized density matrix which we can use, with our
     # machinery, as an initial state.
 
