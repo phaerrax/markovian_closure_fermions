@@ -93,11 +93,11 @@ let
             [st => "vId" for st in empty_closure_range]
         ],
     )
-    # The greater retarded Green's function G>(t) = -i tr(d(t) d* ρ) can be found in the
-    # output file under the "exp_val_imag" column.
+    # The lesser retarded Green's function G(t) = -i tr(d* d(t) ρ) = -i tr(d(t) ρ d*) can
+    # be found in the output file under the "exp_val_imag" column.
 
     # Creation/annihilation operators aren't Hermitian so we need a complex vector to
-    # represent them.g
+    # represent them.
     targetop = MPS(ComplexF64, sites, opstrings)
     growMPS!(targetop, parameters["max_bond"])
     opgrade = -1  # (odd parity)
@@ -128,7 +128,7 @@ let
     )
 
     # Apply creation operator (on the left) to the initial state
-    vecstate_0 = apply(op("A†⋅", sites, system_site), vecstate_0)
+    vecstate_0 = apply(op("⋅A†", sites, system_site), vecstate_0)
 
     # Begin evolution
     if get(parameters, "convergence_factor_bondadapt", 0) == 0

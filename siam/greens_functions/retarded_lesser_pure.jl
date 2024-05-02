@@ -59,16 +59,16 @@ let
 
     d = LocalOperator[LocalOperator(Dict(1 => "a"))]
     cb = ExpValueCallback(d, sites, parameters["ms_stride"] * timestep)
+
     # G_R(t) = -i ⟨ψ| {d(t), d*(0)} |ψ⟩ =
     #        = -i ⟨ψ| d(t) d* |ψ⟩ -i ⟨ψ| d* d(t) |ψ⟩ =
-    #        = -i ⟨ψ| U*(t) d U(t) d* |ψ⟩ -i ⟨ψ| d* U*(t) d U(t) |ψ⟩
-    # We compute the first term -i ⟨ψ| U*(t) d U(t) d* |ψ⟩
-    #                              +-------+   +---------+
-    #                                psiL_t       psiR_t
+    #        = -i ⟨ψ| U*(t) d U(t) d† |ψ⟩ -i ⟨ψ| d* U*(t) d U(t) |ψ⟩
+    # We compute the second term -i ⟨ψ| d* U*(t) d U(t) |ψ⟩
+    #                               +----------+   +------+
+    #                                  psiL_t       psiR_t
     # that can be later obtained by looking at the "a{1}_im" column of the output file.
-
-    psiL_t = psi_0
-    psiR_t = apply(op("a†", sites, systempos), psi_0)
+    psiL_t = apply(op("a", sites, systempos), psi_0)
+    psiR_t = psi_0
 
     jointtdvp1!(
         (psiL_t, psiR_t),

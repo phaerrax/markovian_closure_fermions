@@ -117,7 +117,7 @@ let
     targetop = MPS(ComplexF64, vsites, opstrings)
     growMPS!(targetop, parameters["max_bond"])
 
-    # The greater retarded Green's function G>(t) = -i ⟨ψ, d(t) d* ψ⟩ can be obtained by
+    # The lesser retarded Green's function G<(t) = -i ⟨ψ, d* d(t) ψ⟩ can be obtained by
     # looking at the "exp_val_im" column of the output file.
 
     adjtdvp1vec!(
