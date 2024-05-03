@@ -52,7 +52,7 @@ end
 
 function adjtdvp1vec!(
     operator::MPS,
-    initialstate::MPS,
+    initialstate::Union{MPS,Vector{MPS}},
     H::MPO,
     Δt::Number,
     tf::Number,
