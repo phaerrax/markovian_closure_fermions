@@ -32,16 +32,21 @@ function writeheaders_data(io_file, cb; kwargs...)
     io_handle = nothing
     if !isnothing(io_file)
         io_handle = open(io_file, "w")
-        @printf(io_handle, "%20s", "time")
+
+        columnheaders = ["time"]
+
         res = measurements(cb)
         for op in sort(collect(keys(res)))
-            @printf(io_handle, "%40s%40s", name(op) * "_re", name(op) * "_im")
+            push!(columnheaders, name(op) * "_re", name(op) * "_im")
         end
+
         if get(kwargs, :store_psi0, false)
-            @printf(io_handle, "%40s%40s", "overlap_re", "overlap_im")
+            push!(columnheaders, "overlap_re", "overlap_im")
         end
-        @printf(io_handle, "%40s", "Norm")
-        @printf(io_handle, "\n")
+
+        push!(columnheaders, "Norm")
+
+        println(io_handle, join(columnheaders, ","))
     end
 
     return io_handle
@@ -51,19 +56,28 @@ function writeheaders_data_double(io_file, cb; kwargs...)
     io_handle = nothing
     if !isnothing(io_file)
         io_handle = open(io_file, "w")
-        @printf(io_handle, "%20s", "time")
+
+        columnheaders = ["time"]
+
         res = measurements(cb)
         for op in sort(collect(keys(res)))
-            @printf(io_handle, "%40s%40s", name(op) * "_re", name(op) * "_im")
+            push!(columnheaders, name(op) * "_re", name(op) * "_im")
         end
-        @printf(io_handle, "%40s%40s", "overlap12_re", "overlap12_im")
+
+        push!(columnheaders, "overlap12_re", "overlap12_im")
         if get(kwargs, :store_psi0, false)
-            @printf(io_handle, "%40s%40s", "overlap1init_re", "overlap1init_im")
-            @printf(io_handle, "%40s%40s", "overlap2init_re", "overlap2init_im")
+            push!(
+                columnheaders,
+                "overlap1init_re",
+                "overlap1init_im",
+                "overlap2init_re",
+                "overlap2init_im",
+            )
         end
-        @printf(io_handle, "%40s", "Norm1")
-        @printf(io_handle, "%40s", "Norm2")
-        @printf(io_handle, "\n")
+
+        push!(columnheaders, "Norm1", "Norm2")
+
+        println(io_handle, join(columnheaders, ","))
     end
 
     return io_handle
@@ -79,13 +93,14 @@ function writeheaders_ranks(ranks_file, Ns::Int...)
     ranks_handle = nothing
     if !isnothing(ranks_file)
         ranks_handle = open(ranks_file, "w")
-        @printf(ranks_handle, "%20s", "time")
+
+        columnheaders = ["time"]
+
         for N in Ns
-            for r in 1:(N - 1)
-                @printf(ranks_handle, "%10d", r)
-            end
+            append!(columnheaders, string.(1:(N - 1)))
         end
-        @printf(ranks_handle, "\n")
+
+        println(ranks_handle, join(columnheaders, ","))
     end
 
     return ranks_handle
@@ -101,8 +116,7 @@ function writeheaders_stime(times_file)
     times_handle = nothing
     if !isnothing(times_file)
         times_handle = open(times_file, "w")
-        @printf(times_handle, "%20s", "walltime (sec)")
-        @printf(times_handle, "\n")
+        println(times_handle, "walltime/s")
     end
 
     return times_handle
@@ -111,20 +125,16 @@ end
 function printoutput_data(io_handle, cb, psi::MPS; kwargs...)
     if !isnothing(io_handle)
         results = measurements(cb)
-        @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
+        data = [measurement_ts(cb)[end]]
         for opname in sort(collect(keys(results)))
-            @printf(
-                io_handle,
-                "%40.15f%40.15f",
-                real(results[opname][end]),
-                imag(results[opname][end])
-            )
+            x = results[opname][end]
+            push!(data, real(x), imag(x))
         end
 
         if get(kwargs, :store_psi0, false)
             psi0 = get(kwargs, :psi0, nothing)
-            overlap = dot(psi0, psi)
-            @printf(io_handle, "%40.15f%40.15f", real(overlap), imag(overlap))
+            overlap = dot(psi0, psi)  # FIXME What if psi0 is nothing?
+            push!(data, real(overlap), imag(overlap))
         end
 
         # Print the norm of the trace of the state, depending on whether the MPS represents
@@ -132,11 +142,12 @@ function printoutput_data(io_handle, cb, psi::MPS; kwargs...)
         isvectorized = get(kwargs, :vectorized, false)
         if isvectorized
             # TODO Use built-in trace function, do not create an MPS from scratch each time!
-            @printf(io_handle, "%40.15f", real(inner(MPS(kwargs[:sites], "vecId"), psi)))
+            push!(data, real(inner(MPS(kwargs[:sites], "vecId"), psi)))
         else
-            @printf(io_handle, "%40.15f", norm(psi))
+            push!(data, norm(psi))
         end
-        @printf(io_handle, "\n")
+
+        println(io_handle, join(data, ","))
         flush(io_handle)
     end
 
@@ -146,24 +157,20 @@ end
 function printoutput_data(io_handle, cb, state1::MPS, state2::MPS; kwargs...)
     if !isnothing(io_handle)
         results = measurements(cb)
-        @printf(io_handle, "%40.15f", measurement_ts(cb)[end])
+        data = [measurement_ts(cb)[end]]
         for opname in sort(collect(keys(results)))
-            @printf(
-                io_handle,
-                "%40.15f%40.15f",
-                real(results[opname][end]),
-                imag(results[opname][end])
-            )
+            x = results[opname][end]
+            push!(data, real(x), imag(x))
         end
 
         ol = dot(state1, state2)
-        @printf(io_handle, "%40.15f%40.15f", real(ol), imag(ol))
+        push!(data, real(ol), imag(ol))
 
         if get(kwargs, :store_psi0, false)
             states0 = get(kwargs, :psi0, nothing)
             overlap = [dot(states0[1], state1), dot(states0[2], state2)]
             for ol in overlap
-                @printf(io_handle, "%40.15f%40.15f", real(ol), imag(ol))
+                push!(data, real(ol), imag(ol))
             end
         end
 
@@ -172,13 +179,13 @@ function printoutput_data(io_handle, cb, state1::MPS, state2::MPS; kwargs...)
         isvectorized = get(kwargs, :vectorized, false)
         if isvectorized
             # TODO Use built-in trace function, do not create an MPS from scratch each time!
-            @printf(io_handle, "%40.15f", real(inner(MPS(kwargs[:sites], "vecId"), state1)))
-            @printf(io_handle, "%40.15f", real(inner(MPS(kwargs[:sites], "vecId"), state2)))
+            vecId = MPS(kwargs[:sites], "vecId")
+            push!(data, real(inner(vecId, state1)), real(inner(vecId, state2)))
         else
-            @printf(io_handle, "%40.15f", norm(state1))
-            @printf(io_handle, "%40.15f", norm(state2))
+            push!(data, norm(state1), norm(state2))
         end
-        @printf(io_handle, "\n")
+
+        println(io_handle, join(data, ","))
         flush(io_handle)
     end
 
@@ -187,14 +194,13 @@ end
 
 function printoutput_ranks(ranks_handle, cb, states::MPS...)
     if !isnothing(ranks_handle)
-        @printf(ranks_handle, "%40.15f", measurement_ts(cb)[end])
+        data = [measurement_ts(cb)[end]]
 
         for state in states
-            for bonddim in ITensors.linkdims(state)
-                @printf(ranks_handle, "%10d", bonddim)
-            end
+            push!(data, ITensors.linkdims(state)...)
         end
-        @printf(ranks_handle, "\n")
+
+        println(ranks_handle, join(data, ","))
         flush(ranks_handle)
     end
 
@@ -203,7 +209,7 @@ end
 
 function printoutput_stime(times_handle, stime::Real)
     if !isnothing(times_handle)
-        @printf(times_handle, "%20.4f\n", stime)
+        println(times_handle, stime)
         flush(times_handle)
     end
 

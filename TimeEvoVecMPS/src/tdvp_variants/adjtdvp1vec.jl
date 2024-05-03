@@ -115,10 +115,8 @@ function adjtdvp1vec!(
     # v'(t) = L v(t).
 
     io_handle = open(io_file, "w")
-    @printf(io_handle, "%20s", "time")
-    @printf(io_handle, "%20s", "exp_val_real")
-    @printf(io_handle, "%20s", "exp_val_imag")
-    @printf(io_handle, "\n")
+    columnheaders = ["time", "exp_val_real", "exp_val_imag"]
+    println(io_handle, join(columnheaders, ","))
 
     ranks_handle = writeheaders_ranks(ranks_file, length(operator))
     times_handle = writeheaders_stime(times_file)
@@ -177,17 +175,10 @@ function adjtdvp1vec!(
         # If it is so, then we go on and compute the expectation value (and update prev_t).
         if (current_time - prev_t ≈ meas_stride || current_time == 0)
             expval = inner(initialstate, operator)
-            @printf(io_handle, "%20.15f", current_time)
-            @printf(io_handle, "%20.15f", real(expval))
-            @printf(io_handle, "%20.15f", imag(expval))
-            @printf(io_handle, "\n")
+            println(io_handle, join([current_time, real(expval), imag(expval)], ","))
             flush(io_handle)
 
-            @printf(ranks_handle, "%40.15f", current_time)
-            for bonddim in linkdims(operator)
-                @printf(ranks_handle, "%10d", bonddim)
-            end
-            @printf(ranks_handle, "\n")
+            println(ranks_handle, join([current_time; linkdims(operator)], ","))
             flush(ranks_handle)
 
             printoutput_stime(times_handle, stime)
@@ -329,10 +320,8 @@ function adaptiveadjtdvp1vec!(
     # v'(t) = L v(t).
 
     io_handle = open(io_file, "w")
-    @printf(io_handle, "%20s", "time")
-    @printf(io_handle, "%20s", "exp_val_real")
-    @printf(io_handle, "%20s", "exp_val_imag")
-    @printf(io_handle, "\n")
+    columnheaders = ["time", "exp_val_real", "exp_val_imag"]
+    println(io_handle, join(columnheaders, ","))
 
     ranks_handle = writeheaders_ranks(ranks_file, length(operator))
     times_handle = writeheaders_stime(times_file)
@@ -392,17 +381,10 @@ function adaptiveadjtdvp1vec!(
         # If it is so, then we go on and compute the expectation value (and update prev_t).
         if (current_time - prev_t ≈ meas_stride || current_time == 0)
             expval = inner(initialstate, operator)
-            @printf(io_handle, "%20.15f", current_time)
-            @printf(io_handle, "%20.15f", real(expval))
-            @printf(io_handle, "%20.15f", imag(expval))
-            @printf(io_handle, "\n")
+            println(io_handle, join([current_time, real(expval), imag(expval)], ","))
             flush(io_handle)
 
-            @printf(ranks_handle, "%40.15f", current_time)
-            for bonddim in linkdims(operator)
-                @printf(ranks_handle, "%10d", bonddim)
-            end
-            @printf(ranks_handle, "\n")
+            println(ranks_handle, join([current_time; linkdims(operator)], ","))
             flush(ranks_handle)
 
             printoutput_stime(times_handle, stime)
