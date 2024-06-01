@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: markovian_closure_fermions
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Davide
+    family-names: Ferracin
+    email: davide.ferracin@unimi.it
+    affiliation: Università degli Studi di Milano
+    orcid: 'https://orcid.org/0009-0007-2980-4677'
+  - given-names: Dario
+    family-names: Tamascelli
+    email: dario.tamascelli@unimi.it
+    affiliation: Università degli Studi di Milano
+    orcid: 'https://orcid.org/0000-0001-6575-4469'
+repository-code: 'https://github.com/phaerrax/markovian_closure_fermions'
+license: GPL-3.0-or-later
