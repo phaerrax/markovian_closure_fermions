@@ -58,6 +58,8 @@ let
     filledmc = markovianclosure_parameters(filled_Ω, filled_K, conj.(α), conj.(β), w)
     closure_length = length(emptymc)
 
+    opgrade = parameters["operator_grade"]
+
     # Site ranges
     system_site = 1
     empty_chain_range = range(; start=2, step=2, length=chain_length)
@@ -105,9 +107,11 @@ let
             filled_chain_coups[2:chain_length],
             sites[filled_chain_range],
         ) +
-        markovianclosure(emptymc, sites[empty_closure_range], empty_chain_range[end]) +
+        markovianclosure(
+            emptymc, sites[empty_closure_range], empty_chain_range[end], opgrade
+        ) +
         filled_markovianclosure(
-            filledmc, sites[filled_closure_range], filled_chain_range[end]
+            filledmc, sites[filled_closure_range], filled_chain_range[end], opgrade
         ),
         sites,
     )

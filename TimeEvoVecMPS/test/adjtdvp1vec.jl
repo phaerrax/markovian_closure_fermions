@@ -6,9 +6,13 @@ let
     nsites = 10
     sites = siteinds("vS=1/2", nsites)
     freqs = fill(1, nsites)
-    coups = fill(0.5, nsites-1)
+    coups = fill(0.5, nsites - 1)
 
-    initialstates = [MPS(sites, "Dn"), MPS(sites, [isodd(n) ? "Up" : "Dn" for n in 1:nsites]), MPS(sites, [iseven(n) ? "Up" : "Dn" for n in 1:nsites])]
+    initialstates = [
+        MPS(sites, "Dn"),
+        MPS(sites, [isodd(n) ? "Up" : "Dn" for n in 1:nsites]),
+        MPS(sites, [iseven(n) ? "Up" : "Dn" for n in 1:nsites]),
+    ]
 
     # Evolution operator
     adjℓ = spin_chain_adjoint(freqs, coups, sites)
@@ -39,6 +43,7 @@ let
         io_file=tmpfile_data,
         io_ranks=tmpfile_ranks,
         io_times=tmpfile_times,
+        initialstatelabels=["dn", "odd", "even"],
     )
 
     @info "Measurements and norms"
