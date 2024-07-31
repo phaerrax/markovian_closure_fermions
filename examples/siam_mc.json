@@ -3,7 +3,7 @@
     "sys_ini": "Up",
 
     "chain_length": 8,
-    "thermofield_coefficients": "test/spectral_densities/semicircle_T4_mu0.5.thermofield",
+    "chain_coefficients": "test/spectral_densities/semicircle_T4_mu0.5.thermofield",
 
     "out_file":   "examples/siam_mc_measurements.dat",
     "state_file": "examples/siam_mc_finalstate.h5",

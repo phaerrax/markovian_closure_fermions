@@ -30,7 +30,7 @@ let
     # Input: chain stub parameters
     # ----------------------------
     thermofield_coefficients = readdlm(
-        parameters["thermofield_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     empty_chain_coups = thermofield_coefficients[:, 1]
     empty_chain_freqs = thermofield_coefficients[:, 3]

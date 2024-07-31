@@ -82,7 +82,7 @@ physical simulation of the model with a Markovian closure.
 
   The output is a file called
   `test/spectral_densities/semicircle_T4_mu0.5.thermofield`, which will be called
-  later in `examples/siam_mc.json` in the `thermofield_coefficients` entry.
+  later in `examples/siam_mc.json` in the `chain_coefficients` entry.
   It is not necessary to generate the coefficient each time, if the file already
   exists.
 2. Run the simulation script with

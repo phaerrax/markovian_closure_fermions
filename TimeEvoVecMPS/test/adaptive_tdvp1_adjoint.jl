@@ -15,7 +15,7 @@ let
     # Input: chain stub parameters
     # ----------------------------
     tedopa_coefficients = readdlm(
-        parameters["tedopa_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     coups = tedopa_coefficients[:, 1]
     freqs = tedopa_coefficients[:, 2]

@@ -3,7 +3,7 @@
     "sys_ini": "Emp",
 
     "chain_length": 10,
-    "thermofield_coefficients": "test/effective_hamiltonian/semicircle_T2.thermofield",
+    "chain_coefficients": "test/effective_hamiltonian/semicircle_T2.thermofield",
 
     "out_file":   "test/effective_hamiltonian/filled_eff_measurements.dat",
     "state_file": "test/effective_hamiltonian/filled_eff_finalstate.dat",

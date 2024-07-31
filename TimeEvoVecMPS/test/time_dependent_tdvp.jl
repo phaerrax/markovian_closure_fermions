@@ -17,7 +17,7 @@ let
     # ----------------------------
     chain_length = parameters["chain_length"]
     thermofield_coefficients = readdlm(
-        parameters["thermofield_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     coups = thermofield_coefficients[:, 1]
     freqs = thermofield_coefficients[:, 3]

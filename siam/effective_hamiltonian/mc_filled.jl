@@ -28,7 +28,7 @@ let
     # Input: chain stub parameters
     # ----------------------------
     thermofield_coefficients = readdlm(
-        parameters["thermofield_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     filled_chain_coups = thermofield_coefficients[:, 2]
     filled_chain_freqs = thermofield_coefficients[:, 4]

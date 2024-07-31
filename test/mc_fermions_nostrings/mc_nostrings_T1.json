@@ -5,7 +5,7 @@
     "interaction_type": "exchange",
 
     "chain_length": 6,
-    "tedopa_coefficients": "test/mc_fermions_nostrings/semicircle_T1.tedopa",
+    "chain_coefficients": "test/mc_fermions_nostrings/semicircle_T1.tedopa",
 
     "out_file":   "test/mc_fermions_nostrings/mc_nostrings_T1_measurements.dat",
     "ranks_file": "/dev/null",

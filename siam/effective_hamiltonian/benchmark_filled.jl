@@ -12,7 +12,7 @@ let
 
     # Input: chain parameters
     thermofield_coefficients = readdlm(
-        parameters["thermofield_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     filledcoups = thermofield_coefficients[:, 2]
     filledfreqs = thermofield_coefficients[:, 4]

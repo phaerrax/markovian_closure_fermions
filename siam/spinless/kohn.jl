@@ -19,7 +19,7 @@ let
 
     # Input: chain parameters
     thermofield_coefficients = readdlm(
-        parameters["thermofield_coefficients"], ',', Float64; skipstart=1
+        parameters["chain_coefficients"], ',', Float64; skipstart=1
     )
     rcoups = thermofield_coefficients[:, 1]
     rfreqs = thermofield_coefficients[:, 3]

@@ -3,7 +3,7 @@
     "sys_ini": "Occ",
 
     "chain_length": 40,
-    "thermofield_coefficients": "test/effective_hamiltonian/semicircle_T2.thermofield",
+    "chain_coefficients": "test/effective_hamiltonian/semicircle_T2.thermofield",
 
     "out_file":   "test/effective_hamiltonian/empty_pure_measurements.dat",
     "state_file": "test/effective_hamiltonian/empty_pure_finalstate.dat",
