@@ -10,7 +10,7 @@
       -0.5,
       1.5
     ],
-    "temperature": 0.4,
+    "temperature": 0,
     "chemical_potential": 0
   },
   "chain_length": 200,

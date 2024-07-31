@@ -45,7 +45,14 @@ In this repository you will find:
 ## How it works
 
 The parameters for each simulation script must be supplied, in a JSON file, as
-the first (and only) command-line argument.
+the first (and only) command-line argument. You can find some examples in the
+`test/spectral_densities` directory. Please note that the script that computes
+the thermofield coefficients currently works only if the chemical potential is
+zero (this does not affect the generality of our algorithms, since any spectral
+density can always be shifted so that its chemical potential is zero), so for
+now care must be taken to write the parameter files according to this
+specification. All files in `test/spectral_densities` already follow this
+convention.
 In order to run a simulation script, run *from the base folder* (i.e. the root
 of the Git repository)
 
@@ -94,7 +101,7 @@ physical simulation of the model with a Markovian closure.
 
 * Chain coefficients:
 
-    - `thermofield_coefficients`: a file containing the chain coefficients
+    - `chain_coefficients`: a file containing the chain coefficients
     - `chain_length`: an integer specifying how many sites to keep in the
       environment chains before attaching the closure
 

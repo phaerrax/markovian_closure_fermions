@@ -1,20 +1,26 @@
 {
-    "environments": [
-        {
-            "parameters": [],
-            "spectral_density": "1/(pi*200)",
-            "domain": [-100, 100],
-            "temperature": 0,
-            "chemical_potential": 0.01
-        },
-        {
-            "parameters": [],
-            "spectral_density": "1/(pi*200)",
-            "domain": [-100, 100],
-            "temperature": 0,
-            "chemical_potential": -0.01
-        }
-    ],
-    "number_of_oscillators": 200,
-    "PolyChaos_nquad": 5000
+  "environment": [
+    {
+      "spectral_density_parameters": [],
+      "spectral_density_function": "1/(pi*200)",
+      "domain": [
+        -100.1,
+        99.9
+      ],
+      "temperature": 0,
+      "chemical_potential": 0
+    },
+    {
+      "spectral_density_parameters": [],
+      "spectral_density_function": "1/(pi*200)",
+      "domain": [
+        -99.9,
+        100.1
+      ],
+      "temperature": 0,
+      "chemical_potential": 0
+    }
+  ],
+  "chain_length": 200,
+  "PolyChaos_nquad": 5000
 }
