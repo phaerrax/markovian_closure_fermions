@@ -1,9 +1,9 @@
 module TimeEvoVecMPS
 
 using ITensors
+using ITensorMPS
 using IterTools
 using LinearAlgebra
-#using MKL
 using OrderedCollections
 using Memoize
 using KrylovKit: exponentiate
@@ -12,7 +12,6 @@ using JSON
 using DelimitedFiles
 using Permutations
 
-#include("trackerprojmpo.jl")
 include("itensor.jl")
 include("bondgate.jl")
 include("bondop.jl")
