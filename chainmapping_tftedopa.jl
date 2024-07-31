@@ -8,7 +8,9 @@ let
     file = ARGS[1]
     coefficients = chainmapping_tftedopa(file)
 
-    open(replace(file, ".json" => ".tedopa"), "w") do output
+    output_filename = replace(file, ".json" => ".tedopa")
+    open(output_filename, "w") do output
+        @info "Output written on " * output_filename
         writedlm(output, ["couplings" "frequencies"], ',')
         writedlm(output, [coefficients[:couplings] coefficients[:frequencies]], ',')
     end
