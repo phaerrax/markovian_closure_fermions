@@ -30,9 +30,9 @@ pkg"instantiate"
 In this repository you will find:
 
 * some Julia scripts which perform the simulation of some physical models such
-  as the SIAM (`siam`) or a quantum dot impurity; (`qdot`), either using a
+  as the SIAM (`siam`) or a quantum dot impurity (`qdot`), either using a
   standard TEDOPA method (`pure….jl`) or the Markovian closure (`mc….jl`);
-* a `test` folder which contains the parameter files of some concrete
+* an `example` folder which contains the parameter files of some concrete
   simulations, as well as some frequently used spectral densities.
 * a `mc_standard_parameters` which contains the parameters needed for the
   implementation of the Markovian closure technique in the simulation scripts;
@@ -77,7 +77,7 @@ physical simulation of the model with a Markovian closure.
 1. Generate the thermofield coefficients from the spectral density, with
 
   ```bash
-  julia --project chainmapping_thermofield.jl test/spectral_densities/semicircle_T4_mu0.5.json
+  julia --project chainmapping_thermofield.jl examples/spectral_densities/semicircle_T4_mu0.5.json
   ```
 
   The output is a file called
@@ -96,6 +96,15 @@ physical simulation of the model with a Markovian closure.
   observables, an HDF5 file containing the final state, and so on.
   If one does not need such results, `/dev/null` or an equivalent destination
   may be given to avoid creating unnecessary output files.
+
+The `examples` directory contains other sample parameter files that can be
+used with other simulation scripts:
+
+```bash
+julia --project siam/spinless/pure.jl examples/siam_spinless_pure.json
+julia --project siam/spinful/mc.jl examples/siam_spinful_mc.json
+julia --project qdot/mc_2l.jl examples/qdot_2levels_mc.json
+```
 
 ## Common parameters and their meaning
 

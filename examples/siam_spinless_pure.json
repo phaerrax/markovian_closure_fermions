@@ -1,0 +1,32 @@
+{
+  "sys_en": -0.3926,
+  "sys_ini": "Occ",
+
+  "chain_length": 8,
+  "chain_coefficients": "examples/spectral_densities/semicircle_T4_mu0.5.thermofield",
+
+  "out_file": "examples/siam_spinless_pure_measurements.dat",
+  "ranks_file": "examples/siam_spinless_pure_ranks.dat",
+  "state_file": "examples/siam_spinless_pure_finalstate.h5",
+  "times_file": "examples/siam_spinless_pure_simtime.dat",
+
+  "tmax": 2,
+  "tstep": 0.02,
+  "ms_stride": 10,
+  "max_bond": 20,
+  "discarded_w": 1.0E-11,
+  "exp_tol": 1.0E-9,
+  "krylov_dim": 10,
+
+  "observables": {
+    "n": [
+      1,
+      2,
+      3,
+      10,
+      11,
+      16,
+      17
+    ]
+  }
+}
