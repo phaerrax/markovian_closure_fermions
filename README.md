@@ -88,7 +88,7 @@ physical simulation of the model with a Markovian closure.
 2. Run the simulation script with
 
   ```bash
-  julia --project siam/spinless/mc.jl examples/siam_mc.json
+  julia --project siam/spinless/mc.jl examples/siam_spinless_mc.json
   ```
 
   Note that the parameter file `examples/siam_mc.json` also specifies some
