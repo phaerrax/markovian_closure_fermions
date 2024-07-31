@@ -6,7 +6,7 @@ using MarkovianClosure
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
-# described in Lucas Kohn's PhD thesis (section 4.2.1).
+# described in Lucas Kohn's PhD thesis (section 4.2.1), in the Heisenberg picture.
 # An impurity is interacting with a fermionic thermal bath, which is mapped onto two
 # discrete chains by means of a thermofield+TEDOPA transformation.
 # The Markovian closure technique is then applied to _both_ chains, truncating the two

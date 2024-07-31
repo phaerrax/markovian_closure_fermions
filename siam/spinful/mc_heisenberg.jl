@@ -6,7 +6,7 @@ using MarkovianClosure
 using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the interacting SIAM model
-# described in Lucas Kohn's PhD thesis (section 4.2.1).
+# described in Lucas Kohn's PhD thesis (section 4.2.1), in the Heisenberg picture.
 # An impurity is interacting with a spin-1/2 fermionic thermal bath, which is mapped onto
 # two discrete chains by means of a thermofield+TEDOPA transformation.
 # One chain represent the modes above the chemical potential, the other one the modes below

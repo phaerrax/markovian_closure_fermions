@@ -10,11 +10,6 @@ using TimeEvoVecMPS
 # two discrete chains by means of a thermofield+TEDOPA transformation.
 # The chains are then interleaved, so that we end up with one chain only.
 # Each site represent a (↑, ↓) fermion pair (i.e. has physical dimension 4).
-#
-# This script employs a flexible numbering of the sites, so that it is only necessary
-# to change which sites are associated to the two (initially filled or empty) chains
-# through the `systempos`, `filledchain_sites`, `emptychain_sites` variable, and the rest
-# follows automatically.
 
 let
     parameters = load_pars(ARGS[1])

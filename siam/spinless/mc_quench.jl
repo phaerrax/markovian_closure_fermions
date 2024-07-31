@@ -7,13 +7,13 @@ using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
+# In this script, we "quench" the initial state (which can be loaded from a file) by
+# applying a jump operator to the system site, then we proceed with the usual evolution.
 # An impurity is interacting with a fermionic thermal bath, which is mapped onto two
 # discrete chains by means of a thermofield+TEDOPA transformation.
 # The Markovian closure technique is then applied to _both_ chains, truncating the two
 # environments and replacing part of them with sets of pseudomodes.
-# The two chains are then interleaved so as to build a single chain. This is hardcoded,
-# for now; maybe sometime I'll find a way to calculate the Jordan-Wigner operators in
-# an automatic way...
+# The two chains are then interleaved so as to build a single chain.
 
 let
     parameters = load_pars(ARGS[1])

@@ -10,11 +10,6 @@ using TimeEvoVecMPS
 # discrete chains by means of a thermofield+TEDOPA transformation.
 # The chains are then interleaved, so that we end up with one chain only (here we are
 # still dealing with the spinless case).
-#
-# This script employs a flexible numbering of the sites, so that it is only necessary
-# to change which sites are associated to the two (initially filled or empty) chains
-# through the `systempos`, `filledchain_sites`, `emptychain_sites` variable, and the rest
-# follows automatically.
 
 let
     parameters = load_pars(ARGS[1])

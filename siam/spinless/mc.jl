@@ -11,9 +11,7 @@ using TimeEvoVecMPS
 # discrete chains by means of a thermofield+TEDOPA transformation.
 # The Markovian closure technique is then applied to _both_ chains, truncating the two
 # environments and replacing part of them with sets of pseudomodes.
-# The two chains are then interleaved so as to build a single chain. This is hardcoded,
-# for now; maybe sometime I'll find a way to calculate the Jordan-Wigner operators in
-# an automatic way...
+# The two chains are then interleaved so as to build a single chain.
 
 function ITensors.state(sn::StateName"vF", st::SiteType"vFermion")
     return LindbladVectorizedTensors.vop(sn, st)

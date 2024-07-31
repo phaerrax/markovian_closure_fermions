@@ -6,15 +6,12 @@ using TimeEvoVecMPS
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).
+# In this script, we "quench" the initial state (which can be loaded from a file) by
+# applying a jump operator to the system site, then we proceed with the usual evolution.
 # An impurity is interacting with a fermionic thermal bath, which is mapped onto two
 # discrete chains by means of a thermofield+TEDOPA transformation.
 # The chains are then interleaved, so that we end up with one chain only (here we are
 # still dealing with the spinless case).
-#
-# This script employs a flexible numbering of the sites, so that it is only necessary
-# to change which sites are associated to the two (initially filled or empty) chains
-# through the `system_site`, `filledchain_sites`, `emptychain_sites` variable, and the rest
-# follows automatically.
 
 let
     parameters = load_pars(ARGS[1])
