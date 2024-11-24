@@ -1,7 +1,6 @@
 export tdvp2!, tdvpMC!
 
-using ITensors: position!
-using ITensors.ITensorMPS: set_nsite!
+using ITensorMPS: position!, set_nsite!
 
 """
     tdvp2!(ψ, H::MPO, timestep, endtime; kwargs...)

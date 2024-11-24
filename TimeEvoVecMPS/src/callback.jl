@@ -646,7 +646,7 @@ end
 
 measurement_ts(cb::SpecCallback) = cb.ts
 
-function ITensors.measurements(cb::SpecCallback)
+function measurements(cb::SpecCallback)
     return Dict(
         "entropy" => cb.entropies, "bonddim" => cb.bonddims, "truncerrs" => cb.truncerrs
     )

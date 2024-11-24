@@ -1,7 +1,7 @@
 export tdvp1vec!, adaptivetdvp1vec!
 
-using ITensors: position!, permute
-using ITensors.ITensorMPS: set_nsite!, check_hascommoninds
+using ITensors: permute
+using ITensorMPS: position!, set_nsite!, check_hascommoninds
 
 """
     tdvp1vec!(solver, ρ::MPS, L::Vector{MPO}, Δt::Number, tf::Number, sites; kwargs...)

@@ -1,5 +1,4 @@
-using ITensors: position!
-using ITensors.ITensorMPS: set_nsite!, setleftlim!, setrightlim!
+using ITensorMPS: position!, set_nsite!, setleftlim!, setrightlim!
 
 function exponentiate_solver(; kwargs...)
     # Default solver that we provide if no solver is given by the user.

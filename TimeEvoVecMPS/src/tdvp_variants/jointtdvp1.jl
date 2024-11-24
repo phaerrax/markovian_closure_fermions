@@ -1,7 +1,7 @@
 export jointtdvp1!
 
-using ITensors: position!, permute
-using ITensors.ITensorMPS: set_nsite!, check_hascommoninds
+using ITensors: permute
+using ITensorMPS: position!, set_nsite!, check_hascommoninds
 
 """
     jointtdvp1!(solver, states::Tuple{MPS, MPS}, Hs::Vector{MPO}, dt::Number, tf::Number; kwargs...)

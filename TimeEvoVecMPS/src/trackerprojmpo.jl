@@ -1,4 +1,4 @@
-using ITensors.ITensorMPS: AbstractProjMPO
+using ITensorMPS: AbstractProjMPO
 
 export TrackerProjMPO
 

@@ -1,7 +1,7 @@
 export adjtdvp1vec!, adaptiveadjtdvp1vec!
 
-using ITensors: position!, permute
-using ITensors.ITensorMPS: set_nsite!, linkdims, check_hascommoninds
+using ITensors: permute
+using ITensorMPS: position!, set_nsite!, linkdims, check_hascommoninds
 
 # Version with a single initial state
 """

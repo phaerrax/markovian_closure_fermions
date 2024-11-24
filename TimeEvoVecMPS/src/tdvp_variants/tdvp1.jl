@@ -1,7 +1,7 @@
 export tdvp1!, adaptivetdvp1!
 
-using ITensors: position!, permute
-using ITensors.ITensorMPS: set_nsite!, check_hascommoninds
+using ITensors: permute
+using ITensorMPS: position!, set_nsite!, check_hascommoninds
 
 """
     tdvp1!(solver, ψ::MPS, ⃗H::Vector{MPO}, Δt::Number, tf::Number; kwargs...)
@@ -96,7 +96,6 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
 
     store_state0 && (state0 = copy(state))
 
-    @show io_file
     io_handle = writeheaders_data(io_file, cb; kwargs...)
     ranks_handle = writeheaders_ranks(ranks_file, length(state))
     times_handle = writeheaders_stime(times_file)

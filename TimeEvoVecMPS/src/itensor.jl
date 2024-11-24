@@ -3,8 +3,7 @@
 
 export growbond!, recompute!, maxlinkdims, stretchBondDim, growMPS, growMPS!
 
-using ITensors.ITensorMPS: setleftlim!, setrightlim!, AbstractProjMPO
-using ITensors: linkdims
+using ITensorMPS: setleftlim!, setrightlim!, AbstractProjMPO, linkdims
 
 function findprimeinds(is::IndexSet, plevel::Int=-1)
     if plevel >= 0

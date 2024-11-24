@@ -197,7 +197,7 @@ function printoutput_ranks(ranks_handle, cb, states::MPS...)
         data = [measurement_ts(cb)[end]]
 
         for state in states
-            push!(data, ITensors.linkdims(state)...)
+            push!(data, ITensorMPS.linkdims(state)...)
         end
 
         println(ranks_handle, join(data, ","))

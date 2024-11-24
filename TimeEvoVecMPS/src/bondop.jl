@@ -68,14 +68,14 @@ Base.length(bo::BondOperator) = length(bo.sites)
 siteterms(bo::BondOperator, i) = bo.siteterms[i]
 bondterms(bo::BondOperator, b) = bo.bondterms[b]
 
-ITensors.add!(bo::BondOperator, op::String, i::Int) = add!(bo, 1.0, op, i)
-function ITensors.add!(bo::BondOperator, c::Number, op::String, i::Int)
+add!(bo::BondOperator, op::String, i::Int) = add!(bo, 1.0, op, i)
+function add!(bo::BondOperator, c::Number, op::String, i::Int)
     return (push!(bo.siteterms[i], SiteTerm(i, c, op)))
 end
-function ITensors.add!(bo::BondOperator, op1::String, op2::String, b::Int)
+function add!(bo::BondOperator, op1::String, op2::String, b::Int)
     return add!(bo, 1.0, op1, op2, b)
 end
-function ITensors.add!(bo::BondOperator, c::Number, op1::String, op2::String, b::Int)
+function add!(bo::BondOperator, c::Number, op1::String, op2::String, b::Int)
     return (push!(bo.bondterms[b], BondTerm(b, c, op1, op2)))
 end
 
