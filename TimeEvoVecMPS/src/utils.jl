@@ -139,10 +139,13 @@ function printoutput_data(io_handle, cb, psi::MPS; kwargs...)
 
         # Print the norm of the trace of the state, depending on whether the MPS represents
         # a pure state or a vectorized density matrix.
-        isvectorized = get(kwargs, :vectorized, false)
-        if isvectorized
-            # TODO Use built-in trace function, do not create an MPS from scratch each time!
-            push!(data, real(inner(MPS(kwargs[:sites], "vecId"), psi)))
+        if get(kwargs, :vectorized, false)
+            if get(kwargs, :superfermions, false)
+                push!(data, real(dot(identity_sf(SiteType("Fermion"), siteinds(psi)), psi)))
+            else
+                # TODO Use built-in trace function, do not create an MPS from scratch each time!
+                push!(data, real(inner(MPS(kwargs[:sites], "vecId"), psi)))
+            end
         else
             push!(data, norm(psi))
         end

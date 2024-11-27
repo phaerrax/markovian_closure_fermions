@@ -1,4 +1,5 @@
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 ITensorMPS = "0d1a4710-d33b-49a5-8f18-73bdf49b47e2"
@@ -9,6 +10,7 @@ KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
 LindbladVectorizedTensors = "6455c26f-8985-4381-925b-8a93509e9dbd"
 MarkovianClosure = "f4258524-7353-4a9f-9916-8287adc6b2b5"
 Permutations = "2ae35dd2-176d-5d53-8349-f30d82d94d4f"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TEDOPA = "b335cece-bf51-4f8f-ae23-b29b889c1946"
 TimeEvoVecMPS = "386e0f54-b56d-4c26-8648-19598745e6c2"

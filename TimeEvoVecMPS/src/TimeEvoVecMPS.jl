@@ -19,6 +19,7 @@ include("callback.jl")
 include("utils.jl")
 include("localoperator.jl")
 include("expvalue_callback.jl")
+include("superfermion_callback.jl")
 
 include("tebd.jl")
 
