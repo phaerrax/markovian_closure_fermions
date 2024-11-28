@@ -126,12 +126,33 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
 
     N = length(state)
 
+    # Measure everthing once in the initial state.
+    current_time = 0.0
+    for j in eachindex(state)
+        apply!(
+            cb,
+            state;
+            t=current_time,
+            site=j,
+            sweepend=true,
+            sweepdir="left", # (this value doesn't matter)
+            alg=TDVP1vec(),
+        )
+    end
+    if store_state0
+        printoutput_data(
+            io_handle, cb, state; psi0=state0, vectorized=true, sites=sites, kwargs...
+        )
+    else
+        printoutput_data(io_handle, cb, state; vectorized=true, sites=sites, kwargs...)
+    end
+    printoutput_ranks(ranks_handle, cb, state)
+
     # Prepare for first iteration.
     orthogonalize!(state, 1)
     set_nsite!(PH, 1)
     position!(PH, state, 1)
 
-    current_time = 0.0
     for s in 1:nsteps
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -159,9 +180,11 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
             end
         end
 
+        current_time += Δt
+
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
-        for site in 1:N
+        for site in eachindex(state)
             apply!(
                 cb,
                 state;
@@ -201,8 +224,6 @@ function tdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, sites; kwarg
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
-
-        current_time += Δt
 
         checkdone!(cb) && break
     end
@@ -292,7 +313,28 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
 
     N = length(state)
 
+    # Measure everthing once in the initial state.
     current_time = 0.0
+    for site in eachindex(state)
+        apply!(
+            cb,
+            state;
+            t=current_time,
+            site=site,
+            sweepend=true,
+            sweepdir="left", # (this value doesn't matter)
+            alg=TDVP1vec(),
+        )
+    end
+    if store_state0
+        printoutput_data(
+            io_handle, cb, state; psi0=state0, vectorized=true, sites=sites, kwargs...
+        )
+    else
+        printoutput_data(io_handle, cb, state; vectorized=true, sites=sites, kwargs...)
+    end
+    printoutput_ranks(ranks_handle, cb, state)
+
     for s in 1:nsteps
         orthogonalize!(state, 1)
         set_nsite!(PH, 1)
@@ -327,9 +369,11 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
             end
         end
 
+        current_time += Δt
+
         # Now the backwards sweep has ended, so the whole MPS of the state is up-to-date.
         # We can then calculate the expectation values of the observables within cb.
-        for site in 1:N
+        for site in eachindex(state)
             apply!(
                 cb,
                 state;
@@ -369,8 +413,6 @@ function adaptivetdvp1vec!(solver, state::MPS, PH, Δt::Number, tf::Number, site
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
-
-        current_time += Δt
 
         checkdone!(cb) && break
     end

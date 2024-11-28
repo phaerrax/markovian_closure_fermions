@@ -102,12 +102,26 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
 
     N = length(state)
 
+    # Measure everything once in the initial state.
+    current_time = 0.0
+    for j in reverse(eachindex(state))
+        apply!(
+            cb, state; t=current_time, site=j, sweepend=true, sweepdir="left", alg=TDVP1()
+        )
+    end
+
+    if store_state0
+        printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+    else
+        printoutput_data(io_handle, cb, state; kwargs...)
+    end
+    printoutput_ranks(ranks_handle, cb, state)
+
     # Prepare for first iteration.
     orthogonalize!(state, 1)
     set_nsite!(PH, 1)
     position!(PH, state, 1)
 
-    current_time = 0.0
     for s in 1:nsteps
         stime = @elapsed begin
             # In TDVP1 only one site at a time is modified, so we iterate on the sites
@@ -143,7 +157,7 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
                 apply!(
                     cb,
                     state;
-                    t=current_time,
+                    t=current_time + timestep,
                     site=site,
                     sweepend=(ha == 2),
                     sweepdir=sweepdir,
@@ -161,6 +175,8 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
             ],
         )
 
+        current_time += timestep
+
         if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
@@ -170,8 +186,6 @@ function tdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kwargs...)
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
-
-        current_time += timestep
 
         checkdone!(cb) && break
     end
@@ -257,6 +271,21 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
 
     N = length(state)
 
+    # Measure everything once in the initial state.
+    current_time = 0.0
+    for j in reverse(eachindex(state))
+        apply!(
+            cb, state; t=current_time, site=j, sweepend=true, sweepdir="left", alg=TDVP1()
+        )
+    end
+
+    if store_state0
+        printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
+    else
+        printoutput_data(io_handle, cb, state; kwargs...)
+    end
+    printoutput_ranks(ranks_handle, cb, state)
+
     # Prepare for first iteration
     orthogonalize!(state, 1)
     set_nsite!(PH, 1)
@@ -317,6 +346,8 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
             ],
         )
 
+        current_time += timestep
+
         if !isempty(measurement_ts(cb)) && current_time ≈ measurement_ts(cb)[end]
             if store_state0
                 printoutput_data(io_handle, cb, state; psi0=state0, kwargs...)
@@ -326,8 +357,6 @@ function adaptivetdvp1!(solver, state::MPS, PH, timestep::Number, tf::Number; kw
             printoutput_ranks(ranks_handle, cb, state)
             printoutput_stime(times_handle, stime)
         end
-
-        current_time += timestep
 
         checkdone!(cb) && break
     end
