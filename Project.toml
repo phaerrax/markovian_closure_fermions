@@ -14,3 +14,6 @@ QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TEDOPA = "b335cece-bf51-4f8f-ae23-b29b889c1946"
 TimeEvoVecMPS = "386e0f54-b56d-4c26-8648-19598745e6c2"
+
+[compat]
+MarkovianClosure = ">=0.1.9"

@@ -159,7 +159,6 @@ function apply!(
     end
 
     if (t - prev_t ≈ callback_dt(cb) || t == prev_t) && sweepend
-        @debug "Computing expectation values on site $site at t = $t (prev_t = $prev_t)"
         if (t != prev_t || t == 0)
             # Add the current time to the list of time instants at which we measured
             # something.

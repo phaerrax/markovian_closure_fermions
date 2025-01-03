@@ -182,3 +182,7 @@ function join(c1::ModeChain, c2::ModeChain, c1c2coupling)
         error("?")
     end
 end
+
+Base.length(c::ModeChain) = length(c.range)
+Base.iterate(c::ModeChain) = iterate(c.range)
+Base.iterate(c::ModeChain, i::Int) = iterate(c.range, i)

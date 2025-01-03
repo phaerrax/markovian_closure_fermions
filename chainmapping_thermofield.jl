@@ -24,7 +24,7 @@ let
         error(
             "The chainmapping_thermofield script can currently handle environments with " *
             "zero chemical potential only. Please edit the input file and shift all " *
-            "spectral density functions accordingly so that μ = 0 for all of them."
+            "spectral density functions accordingly so that μ = 0 for all of them.",
         )
     end
 
