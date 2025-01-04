@@ -3,7 +3,9 @@ using HDF5
 using DelimitedFiles
 using LindbladVectorizedTensors
 using MarkovianClosure
-using TimeEvoVecMPS
+using MPSTimeEvolution
+
+include("../shared_functions.jl")
 
 function ITensors.state(sn::StateName"vAup", st::SiteType"vElectron")
     return LindbladVectorizedTensors.vop(sn, st)

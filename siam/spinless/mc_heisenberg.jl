@@ -3,7 +3,9 @@ using HDF5
 using DelimitedFiles
 using LindbladVectorizedTensors
 using MarkovianClosure
-using TimeEvoVecMPS
+using MPSTimeEvolution
+
+include("../shared_functions.jl")
 
 # This script tries to emulate the simulation of the non-interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1), in the Heisenberg picture.

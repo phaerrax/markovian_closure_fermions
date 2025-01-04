@@ -3,7 +3,9 @@ using HDF5
 using DelimitedFiles
 using LindbladVectorizedTensors
 using MarkovianClosure
-using TimeEvoVecMPS
+using MPSTimeEvolution
+
+include("../shared_functions.jl")
 
 let
     parameters = load_pars(ARGS[1])

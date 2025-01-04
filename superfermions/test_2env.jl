@@ -1,11 +1,9 @@
 using ITensors,
-    ITensorMPS, TimeEvoVecMPS, ArgParse, MKL, CSV, DelimitedFiles, MarkovianClosure
+    ITensorMPS, MPSTimeEvolution, ArgParse, MKL, CSV, DelimitedFiles, MarkovianClosure
 using Statistics: mean
 using Base.Iterators: peel
 
-include("shared_functions.jl")
-
-interleave(v...) = collect(Iterators.flatten(zip(v...)))
+include("../shared_functions.jl")
 
 function simulation(;
     nsystem,

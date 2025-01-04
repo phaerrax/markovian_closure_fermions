@@ -3,8 +3,10 @@ using HDF5
 using IterTools
 using DelimitedFiles
 using LindbladVectorizedTensors
-using TimeEvoVecMPS
+using MPSTimeEvolution
 import KrylovKit: exponentiate
+
+include("../shared_functions.jl")
 
 let
     parameters = load_pars(ARGS[1])

@@ -2,7 +2,9 @@ using ITensors, ITensorMPS
 using HDF5
 using DelimitedFiles
 using LindbladVectorizedTensors
-using TimeEvoVecMPS
+using MPSTimeEvolution
+
+include("../shared_functions.jl")
 
 function dot_hamiltonian(
     ::SiteType"Electron", dot_energies, dot_coulomb_repulsion, dot_site

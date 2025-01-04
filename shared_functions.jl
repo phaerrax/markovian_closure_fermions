@@ -1,3 +1,20 @@
+using JSON
+
+interleave(v...) = collect(Iterators.flatten(zip(v...)))
+
+"""
+    load_pars(file_name::String)
+
+Load the JSON file `file_name` into a dictionary.
+"""
+function load_pars(file_name::String)
+    input = open(file_name)
+    s = read(input, String)
+    # Aggiungo anche il nome del file alla lista di parametri.
+    p = JSON.parse(s)
+    return p
+end
+
 """
     enlargelinks(v, dims; ref_state)
 

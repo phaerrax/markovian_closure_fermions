@@ -1,8 +1,10 @@
 using ITensors, ITensorMPS
 using DelimitedFiles
 using LindbladVectorizedTensors
-using TimeEvoVecMPS
+using MPSTimeEvolution
 using IterTools
+
+include("../shared_functions.jl")
 
 # This script tries to emulate the simulation of the interacting SIAM model
 # described in Lucas Kohn's PhD thesis (section 4.2.1).

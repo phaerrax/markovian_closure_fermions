@@ -3,9 +3,11 @@ using HDF5
 using DelimitedFiles
 using LindbladVectorizedTensors
 using MarkovianClosure
-using TimeEvoVecMPS
+using MPSTimeEvolution
 using IterTools
 import KrylovKit: exponentiate
+
+include("../shared_functions.jl")
 
 let
     parameters = load_pars(ARGS[1])
@@ -137,7 +139,7 @@ let
         # Le vengono forniti gli argomenti (H, time_step, psi; current_time); con H costruiamo
         # l'oggetto TimeDependentSum.
         # A sua volta, chiama time_dependent_solver con un TimeDependentSum, che è definito in
-        # TimeEvoVecMPS/src/tdvp_step.jl. Qui attacchiamo anche i kwargs specifici di exponentiate,
+        # MPSTimeEvolution/src/tdvp_step.jl. Qui attacchiamo anche i kwargs specifici di exponentiate,
         # che vengono passati alla funzione dal time_dependent_solver "più interno".
         return time_dependent_solver(
             TimeDependentSum(fs, Ls), time_step, vecρ₀; krylov_kwargs..., kwargs...

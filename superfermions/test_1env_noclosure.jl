@@ -1,6 +1,6 @@
-using ITensors, ITensorMPS, TimeEvoVecMPS, ArgParse, MKL, CSV
+using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, MKL, CSV
 
-include("shared_functions.jl")
+include("../shared_functions.jl")
 
 function simulation(;
     nsystem,
