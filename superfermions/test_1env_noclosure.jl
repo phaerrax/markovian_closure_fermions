@@ -1,4 +1,4 @@
-using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, MKL, CSV
+using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV
 
 include("../shared_functions.jl")
 

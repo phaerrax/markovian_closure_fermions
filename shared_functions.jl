@@ -1,4 +1,5 @@
 using JSON
+using Statistics: mean
 
 interleave(v...) = collect(Iterators.flatten(zip(v...)))
 
@@ -203,3 +204,36 @@ end
 Base.length(c::ModeChain) = length(c.range)
 Base.iterate(c::ModeChain) = iterate(c.range)
 Base.iterate(c::ModeChain, i::Int) = iterate(c.range, i)
+
+"""
+    markovianclosure(chain::ModeChain, nclosure, nenvironment)
+
+Replace the ModeChain `chain` with a truncated chain of `nenvironment` elements plus a
+Markovian closure made of `nclosure` pseudomodes.
+The asymptotic frequency and coupling coefficients are determined automatically from the
+average of the chain cofficients from `nenvironment+1` to the end, but they can also be
+given manually with the keyword arguments `asymptoticfrequency` and `asymptoticcoupling`.
+"""
+function markovianclosure(
+    chain::ModeChain,
+    nclosure,
+    nenvironment;
+    asymptoticfrequency=nothing,
+    asymptoticcoupling=nothing,
+)
+    if isnothing(asymptoticfrequency)
+        asymptoticfrequency = mean(chain.frequencies[(nenvironment + 1):end])
+    end
+    if isnothing(asymptoticcoupling)
+        asymptoticcoupling = mean(chain.couplings[(nenvironment + 1):end])
+    end
+
+    truncated_envchain = ModeChain(
+        first(chain.range, nenvironment),
+        first(chain.frequencies, nenvironment),
+        first(chain.couplings, nenvironment - 1),
+    )
+    mc = markovianclosure_parameters(asymptoticfrequency, asymptoticcoupling, nclosure)
+
+    return truncated_envchain, mc
+end

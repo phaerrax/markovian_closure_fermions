@@ -1,6 +1,4 @@
-using ITensors,
-    ITensorMPS, MPSTimeEvolution, ArgParse, MKL, CSV, DelimitedFiles, MarkovianClosure
-using Statistics: mean
+using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure
 using Base.Iterators: peel
 
 include("../shared_functions.jl")
@@ -155,48 +153,6 @@ function parsecommandline()
         isnothing(v) || push!(parsedargs, k => v)
     end
     return parsedargs
-end
-
-"""
-    markovianclosure(chain::ModeChain, nclosure, nenvironment)
-
-Replace the ModeChain `chain` with a truncated chain of `nenvironment` elements plus a
-Markovian closure made of `nclosure` pseudomodes.
-The asymptotic frequency and coupling coefficients are determined automatically from the
-average of the chain cofficients from `nenvironment+1` to the end, but they can also be
-given manually with the keyword arguments `asymptoticfrequency` and `asymptoticcoupling`.
-"""
-function markovianclosure(
-    chain::ModeChain,
-    nclosure,
-    nenvironment;
-    asymptoticfrequency=nothing,
-    asymptoticcoupling=nothing,
-)
-
-    # MC parameters
-    # TODO incorporate the parameter tables directly into the MarkovianClosure package.
-    α_mat = readdlm("mc_standard_parameters/alphas_$nclosure.dat")
-    β_mat = readdlm("mc_standard_parameters/betas_$nclosure.dat")
-    w_mat = readdlm("mc_standard_parameters/coupls_$nclosure.dat")
-    α = complex.(α_mat[:, 1], α_mat[:, 2])
-    β = complex.(β_mat[:, 1], β_mat[:, 2])
-    w = complex.(w_mat[:, 1], w_mat[:, 2])
-
-    if isnothing(asymptoticfrequency)
-        asymptoticfrequency = mean(chain.frequencies[(nenvironment + 1):end])
-    end
-    if isnothing(asymptoticcoupling)
-        asymptoticcoupling = mean(chain.couplings[(nenvironment + 1):end])
-    end
-
-    truncated_envchain = ModeChain(
-        first(chain.range, nenvironment),
-        first(chain.frequencies, nenvironment),
-        first(chain.couplings, nenvironment - 1),
-    )
-    mc = markovianclosure_parameters(asymptoticfrequency, asymptoticcoupling, α, β, w)
-    return truncated_envchain, mc
 end
 
 function main()
