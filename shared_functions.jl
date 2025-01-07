@@ -16,57 +16,6 @@ function load_pars(file_name::String)
     return p
 end
 
-"""
-    enlargelinks(v, dims; ref_state)
-
-Increase the bond dimensions of the MPS `v` to `dims` by adding an all-zero MPS to it,
-with a direct sum (it returns a new MPS).
-In order to obtain the all-zero MPS, a random MPS with the given bond dimensions is
-computed, so that the correct link structure is maintained; it is then multiplied by zero.
-
-If the MPS has some conserved quantum numbers, then a product state must also be supplied
-as the keyword argument `ref_state`, because the random MPS is obtained by randomising this
-initial state (which also determines the total QN of the resulting random MPS).
-This argument may take the form of one of the many available ways to build an MPS from the
-`MPS(sites, ...)` function, such as a string, an array of strings, or a function.
-
-Note that this function will _always_ increase the dimension of all links by 1 at least.
-
-# Examples
-
-```julia-repl
-julia> N = 20;
-
-julia> s = siteinds("Fermion", N; conserve_nfparity=true);
-
-julia> v = MPS(s, "Emp");
-
-julia> enlargelinks(v, 10; ref_state="Emp");
-
-julia> enlargelinks(v, 10; ref_state=n -> isodd(n) ? "Occ" : "Emp");
-
-julia> enlargelinks(v, 10; ref_state=[n ≤ N/2 ? "Occ" : "Emp" for n in 1:N]);
-```
-"""
-function enlargelinks(v, dims::Vector{<:Integer}; ref_state=nothing)
-    diff_linkdims = max.(dims .- linkdims(v), 1)
-    x = if hasqns(first(v))
-        if isnothing(ref_state)
-            error("Initial state required to use enlargelinks with QNs")
-        else
-            random_mps(siteinds(v), ref_state; linkdims=diff_linkdims)
-        end
-    else
-        random_mps(siteinds(v); linkdims=diff_linkdims)
-    end
-    orthogonalize!(x, 1)
-    return add(orthogonalize(v, 1), 0 * x; alg="directsum")
-end
-
-function enlargelinks(v, dims::Integer; kwargs...)
-    return enlargelinks(v, fill(dims, length(v) - 1); kwargs...)
-end
-
 function enlargelinks_delta(v::MPS, new_d)
     @warn "This function currently doesn't seem to work when QNs are involved."
     N = length(v)
