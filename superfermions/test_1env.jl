@@ -1,4 +1,4 @@
-using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure
+using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure, HDF5, Tables
 using Base.Iterators: peel
 
 include("../shared_functions.jl")
@@ -106,7 +106,7 @@ function simulation(;
         superfermions=true,
     )
 
-    return nothing
+    return state_t
 end
 
 function parsecommandline()
@@ -170,6 +170,9 @@ function main()
         CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
     )
 
+    measurements_file = parsedargs["name"] * "_measurements.csv"
+    bonddims_file = parsedargs["name"] * "_bonddims.csv"
+    simtime_file = parsedargs["name"] * "_simtime.csv"
     simulation(;
         nsystem=parsedargs["system_sites"],
         system_energy=parsedargs["system_energy"],
@@ -182,9 +185,48 @@ function main()
         dt=parsedargs["time_step"],
         tmax=parsedargs["max_time"],
         maxbonddim=parsedargs["bond_dimension"],
-        io_file=parsedargs["name"] * "_measurements.csv",
+        io_file=measurements_file,
+        io_ranks=bonddims_file,
+        io_times=simtime_file,
         operators=ops,
     )
+
+    # We remove the "observable" entry from the dictionary since we don't need it in the
+    # output, it's already in the headers of the simulation results.
+    # Same for "input_parameters", since its contents are what we're actually writing in
+    # the HDF5 file.
+    delete!(parsedargs, "observables")
+    delete!(parsedargs, "input_parameters")
+
+    # Rename "bond_dimension" to "max_bond_dimension" which is a bit clearer, especially
+    # because we'll have another entry named "bond_dimensions" with the bond dimensions
+    # of the MPS step by step.
+    parsedargs["max_bond_dimension"] = pop!(parsedargs, "bond_dimension")
+
+    outputfilename = pop!(parsedargs, "name") * ".h5"
+    foreach(println, parsedargs)
+    h5open(outputfilename, "w") do hf
+        for (k, v) in parsedargs
+            write(hf, k, v)
+        end
+        measurements = CSV.File(measurements_file)
+        for col in propertynames(measurements)
+            write(hf, string("simulation_results/", col), measurements[col])
+        end
+
+        # Pack the bond dimensions in a single Matrix, where the i-th columns is the link
+        # between site i and i+1.
+        bonddims = Matrix{Int}(Tables.matrix(CSV.File(bonddims_file; drop=[:time])))
+        write(hf, "bond_dimensions", bonddims)
+
+        # Read the simulation time per step in a Vector. There's only one column in the
+        # file.
+        simtime = CSV.File(simtime_file)
+        write(hf, "simulation_walltime", simtime[propertynames(simtime)[1]])
+    end
+    rm(measurements_file)
+    rm(bonddims_file)
+    rm(simtime_file)
 
     return nothing
 end
