@@ -88,25 +88,27 @@ function parsecommandline()
         "--max_time", "--maxt"
         help = "Total physical time of the evolution"
         arg_type = Float64
-        "--bond_dimension", "--bdim"
+        "--max_bond_dimension", "--bdim"
         help = "Bond dimension of the state MPS"
         arg_type = Int
-        "--name", "-o"
-        help = "Path of output file"
+        "--name", "--output", "-o"
+        help = "Basename to output files"
         arg_type = String
     end
 
     # Load the input JSON file, if present.
     parsedargs_raw = parse_args(s)
     parsedargs = if haskey(parsedargs_raw, "input_parameters")
-        load_pars(pop!(parsedargs_raw, "input_parameters"))
+        inputfile = pop!(parsedargs_raw, "input_parameters")
+        @info "Reading parameters from $inputfile and from the command line"
+        load_pars(inputfile)
     else
+        @info "Reading parameters from the command line"
         Dict()
     end
 
     # Convert keys from String to Symbol and remove the ones whose value is `nothing`.
     for (k, v) in parse_args(s)
-        #isnothing(v) || push!(parsedargs, Symbol(k) => v)
         isnothing(v) || push!(parsedargs, k => v)
     end
     return parsedargs
@@ -119,7 +121,6 @@ function main()
 
     empty_chain_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqempty"]
     empty_chain_coups = CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
-    @show first(empty_chain_coups, 5)
 
     ops = LocalOperator[]
     for (k, v) in parsedargs["observables"]
@@ -127,6 +128,15 @@ function main()
             push!(ops, LocalOperator(Dict(n => k)))
         end
     end
+
+    measurements_file = parsedargs["name"] * "_measurements.csv"
+    bonddims_file = parsedargs["name"] * "_bonddims.csv"
+    simtime_file = parsedargs["name"] * "_simtime.csv"
+
+    @info "You can follow the time evolution step by step in the following files:\n" *
+        "$measurements_file\t for the expectation values\n" *
+        "$bonddims_file\t for the bond dimensions of the evolved MPS\n" *
+        "$simtime_file\t for the wall-clock time spent computing each step"
 
     simulation(;
         nsystem=parsedargs["system_sites"],
@@ -138,9 +148,19 @@ function main()
         environment_chain_couplings=first(empty_chain_coups[2:end], chain_length - 1),
         dt=parsedargs["time_step"],
         tmax=parsedargs["max_time"],
-        maxbonddim=parsedargs["bond_dimension"],
-        io_file=parsedargs["name"] * "_measurements.csv",
+        maxbonddim=parsedargs["max_bond_dimension"],
+        io_file=measurements_file,
+        io_ranks=bonddims_file,
+        io_times=simtime_file,
         operators=ops,
+    )
+
+    pack!(
+        parsedargs["name"] * ".h5";
+        argsdict=parsedargs,
+        expvals_file=measurements_file,
+        bonddimensions_file=bonddims_file,
+        walltime_file=simtime_file,
     )
 
     return nothing

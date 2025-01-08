@@ -1,4 +1,4 @@
-using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure, HDF5, Tables
+using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure
 using Base.Iterators: peel
 
 include("../shared_functions.jl")
@@ -110,7 +110,6 @@ function simulation(;
 end
 
 function parsecommandline()
-    @info "Reading parameters from command line"
     s = ArgParseSettings()
     @add_arg_table s begin
         "--input_parameters", "-i"
@@ -131,7 +130,7 @@ function parsecommandline()
         "--max_time", "--maxt"
         help = "Total physical time of the evolution"
         arg_type = Float64
-        "--bond_dimension", "--bdim"
+        "--max_bond_dimension", "--bdim"
         help = "Bond dimension of the state MPS"
         arg_type = Int
         "--name", "--output", "-o"
@@ -142,14 +141,16 @@ function parsecommandline()
     # Load the input JSON file, if present.
     parsedargs_raw = parse_args(s)
     parsedargs = if haskey(parsedargs_raw, "input_parameters")
-        load_pars(pop!(parsedargs_raw, "input_parameters"))
+        inputfile = pop!(parsedargs_raw, "input_parameters")
+        @info "Reading parameters from $inputfile and from the command line"
+        load_pars(inputfile)
     else
+        @info "Reading parameters from the command line"
         Dict()
     end
 
     # Convert keys from String to Symbol and remove the ones whose value is `nothing`.
     for (k, v) in parse_args(s)
-        #isnothing(v) || push!(parsedargs, Symbol(k) => v)
         isnothing(v) || push!(parsedargs, k => v)
     end
     return parsedargs
@@ -173,6 +174,12 @@ function main()
     measurements_file = parsedargs["name"] * "_measurements.csv"
     bonddims_file = parsedargs["name"] * "_bonddims.csv"
     simtime_file = parsedargs["name"] * "_simtime.csv"
+
+    @info "You can follow the time evolution step by step in the following files:\n" *
+        "$measurements_file\t for the expectation values\n" *
+        "$bonddims_file\t for the bond dimensions of the evolved MPS\n" *
+        "$simtime_file\t for the wall-clock time spent computing each step"
+
     simulation(;
         nsystem=parsedargs["system_sites"],
         system_energy=parsedargs["system_energy"],
@@ -184,49 +191,20 @@ function main()
         environment_chain_couplings=collect(empty_chain_coups),
         dt=parsedargs["time_step"],
         tmax=parsedargs["max_time"],
-        maxbonddim=parsedargs["bond_dimension"],
+        maxbonddim=parsedargs["max_bond_dimension"],
         io_file=measurements_file,
         io_ranks=bonddims_file,
         io_times=simtime_file,
         operators=ops,
     )
 
-    # We remove the "observable" entry from the dictionary since we don't need it in the
-    # output, it's already in the headers of the simulation results.
-    # Same for "input_parameters", since its contents are what we're actually writing in
-    # the HDF5 file.
-    delete!(parsedargs, "observables")
-    delete!(parsedargs, "input_parameters")
-
-    # Rename "bond_dimension" to "max_bond_dimension" which is a bit clearer, especially
-    # because we'll have another entry named "bond_dimensions" with the bond dimensions
-    # of the MPS step by step.
-    parsedargs["max_bond_dimension"] = pop!(parsedargs, "bond_dimension")
-
-    outputfilename = pop!(parsedargs, "name") * ".h5"
-    foreach(println, parsedargs)
-    h5open(outputfilename, "w") do hf
-        for (k, v) in parsedargs
-            write(hf, k, v)
-        end
-        measurements = CSV.File(measurements_file)
-        for col in propertynames(measurements)
-            write(hf, string("simulation_results/", col), measurements[col])
-        end
-
-        # Pack the bond dimensions in a single Matrix, where the i-th columns is the link
-        # between site i and i+1.
-        bonddims = Matrix{Int}(Tables.matrix(CSV.File(bonddims_file; drop=[:time])))
-        write(hf, "bond_dimensions", bonddims)
-
-        # Read the simulation time per step in a Vector. There's only one column in the
-        # file.
-        simtime = CSV.File(simtime_file)
-        write(hf, "simulation_walltime", simtime[propertynames(simtime)[1]])
-    end
-    rm(measurements_file)
-    rm(bonddims_file)
-    rm(simtime_file)
+    pack!(
+        parsedargs["name"] * ".h5";
+        argsdict=parsedargs,
+        expvals_file=measurements_file,
+        bonddimensions_file=bonddims_file,
+        walltime_file=simtime_file,
+    )
 
     return nothing
 end

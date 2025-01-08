@@ -1,4 +1,4 @@
-using JSON
+using JSON, Tables, HDF5
 using Statistics: mean
 
 interleave(v...) = collect(Iterators.flatten(zip(v...)))
@@ -185,4 +185,54 @@ function markovianclosure(
     mc = markovianclosure_parameters(asymptoticfrequency, asymptoticcoupling, nclosure)
 
     return truncated_envchain, mc
+end
+
+"""
+    pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, walltime_file)
+
+Gather all simulation input and output in a single HDF5 file `outputfilename`.
+All input parameters used for the simulation, except for the name of the JSON input file
+itself (if provided) will be in the output file together with the expectation values of the
+selected observables, the bond dimensions of the evolved MPS and the wall-clock time spent
+computing each step, for each step of the time evolution.
+
+The `expvals_file`, `bonddimensions_file` and `walltime_file` files will be _deleted_ after
+their contents are transferred to the HDF5 file.
+"""
+function pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, walltime_file)
+    # We remove the "observable" entry from the dictionary since we don't need it in the
+    # output, it's already in the headers of the simulation results.
+    # Same for "input_parameters", since its contents are what we're actually writing in
+    # the HDF5 file.
+    dict = deepcopy(argsdict)
+    delete!(dict, "observables")
+    delete!(dict, "input_parameters")
+    delete!(dict, "name")
+
+    h5open(outputfilename, "w") do hf
+        for (k, v) in dict
+            write(hf, k, v)
+        end
+        measurements = CSV.File(expvals_file)
+        for col in propertynames(measurements)
+            write(hf, string("simulation_results/", col), measurements[col])
+        end
+
+        # Pack the bond dimensions in a single Matrix, where the i-th columns is the link
+        # between site i and i+1.
+        bonddims = Matrix{Int}(Tables.matrix(CSV.File(bonddimensions_file; drop=[:time])))
+        write(hf, "bond_dimensions", bonddims)
+
+        # Read the simulation time per step in a Vector. There's only one column in the
+        # file.
+        walltime = CSV.File(walltime_file)
+        write(hf, "simulation_wall_time", walltime[propertynames(walltime)[1]])
+    end
+
+    @info "Output written on $outputfilename"
+    rm(expvals_file)
+    rm(bonddimensions_file)
+    rm(walltime_file)
+
+    return nothing
 end
