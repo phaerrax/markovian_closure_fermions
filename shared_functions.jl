@@ -1,4 +1,4 @@
-using JSON, Tables, HDF5, CSV
+using JSON, Tables, HDF5, CSV, ArgParse
 using Statistics: mean
 
 interleave(v...) = collect(Iterators.flatten(zip(v...)))
@@ -263,4 +263,109 @@ function simulation_files_info(;
         str *= "\n$simtime_file\t for the wall-clock time spent computing each step"
     end
     @info str
+end
+
+"""
+    parsecommandline(args...)
+
+Set up a command-line argument parser for the program this function is included in.
+The following arguments are always included:
+
+```
+  --input_parameters, -i
+                        path to file with JSON dictionary of input parameters
+  --system_sites, --ns
+                        number of system sites
+  --system_energy, --sysen
+                        energy of the system's excited state (for single-site systems)
+  --system_initial_state
+                        initial state of the system (an ITensor StateName)
+  --environment_chain_coefficients
+                        path to file with chain coefficients of the environment(s)
+  --environment_sites, --ne
+                        number of environment sites
+  --closure_sites, --nc
+                        number of pseudomodes in the Markovian closure(s)
+  --time_step, --dt
+                        time step of the evolution
+  --max_time, --maxt
+                        total physical time of the evolution
+  --max_bond_dimension, --bdim
+                        maximum bond dimension of the state MPS
+  --output, -o
+                        path (basename) to output files
+```
+
+The JSON dictionary provided under the `input_parameters` is loaded first, and the other
+command-line arguments afterwards. This means that if a parameter is given both in the JSON
+file and through the command-line then the latter _overrides_ the former.
+
+Other arguments can be added as desired, following the same syntax as
+[`ArgParse.add_arg_table!`](@ref).
+"""
+function parsecommandline(args...)
+    s = ArgParseSettings()
+    add_arg_table!(
+        s,
+        ["--input_parameters", "-i"],
+        Dict(
+            :help => "path to file with JSON dictionary of input parameters",
+            :arg_type => String,
+        ),
+        # open "core" system features
+        ["--system_sites", "--ns"],
+        Dict(:help => "number of system sites", :arg_type => Int),
+        ["--system_energy", "--sysen"],
+        Dict(
+            :help => "energy of the system's excited state (for single-site systems)",
+            :arg_type => Float64,
+        ),
+        ["--system_initial_state"],
+        Dict(
+            :help => "initial state of the system (an ITensor StateName)",
+            :arg_type => String,
+        ),
+        ["--environment_chain_coefficients"],
+        Dict(
+            :help => "path to file with chain coefficients of the environment(s)",
+            :arg_type => String,
+        ),
+        ["--environment_sites", "--ne"],
+        Dict(:help => "number of environment sites", :arg_type => Int),
+        ["--closure_sites", "--nc"],
+        Dict(:help => "number of environment sites", :arg_type => Int),
+        ["--time_step", "--dt"],
+        Dict(:help => "time step of the evolution", :arg_type => Float64),
+        ["--max_time", "--maxt"],
+        Dict(:help => "total physical time of the evolution", :arg_type => Float64),
+        ["--max_bond_dimension", "--bdim"],
+        Dict(:help => "maximum bond dimension of the state MPS", :arg_type => Int),
+        ["--output", "-o"],
+        Dict(:help => "basename to output files", :arg_type => String),
+    )
+    add_arg_table!(s, args...) # additional user-specified CLI arguments
+
+    # Load the input JSON file, if present.
+    parsedargs_raw = parse_args(s)
+    parsedargs =
+        if !haskey(parsedargs_raw, "input_parameters") ||
+            !isnothing(parsedargs_raw["input_parameters"])
+            # ↖ Once the key is defined in `add_arg_table!`, the dictionary returned by
+            # `parse_args` will always contain it, possibly with value `nothing` if the
+            # argument is not given by the script caller. So check first that the key
+            # doesn't exist in the dictionary (it most likely always does, but it's just to
+            # be sure), and then also check whether its value is `nothing`.
+            inputfile = pop!(parsedargs_raw, "input_parameters")
+            @info "Reading parameters from $inputfile and from the command line"
+            load_pars(inputfile)
+        else
+            @info "Reading parameters from the command line"
+            Dict()
+        end
+
+    # Read arguments from the command line, overwriting existing ones.
+    for (k, v) in parse_args(s)
+        isnothing(v) || push!(parsedargs, k => v)
+    end
+    return parsedargs
 end

@@ -1,4 +1,4 @@
-using ITensors, ITensorMPS, MPSTimeEvolution, ArgParse, CSV, MarkovianClosure
+using ITensors, ITensorMPS, MPSTimeEvolution, CSV, MarkovianClosure
 using Base.Iterators: peel
 
 include("../shared_functions.jl")
@@ -208,53 +208,6 @@ function simulation(;
     return nothing
 end
 
-function parsecommandline()
-    s = ArgParseSettings()
-    @add_arg_table s begin
-        "--input_parameters", "-i"
-        help = "Path to file with JSON dictionary of input parameters"
-        arg_type = String
-        "--system_sites", "--ns"
-        help = "Number of system sites"
-        arg_type = Int
-        "--environment_sites", "--ne"
-        help = "Number of environment sites"
-        arg_type = Int
-        "--closure_sites", "--nc"
-        help = "Number of environment sites"
-        arg_type = Int
-        "--time_step", "--dt"
-        help = "Time step of the evolution"
-        arg_type = Float64
-        "--max_time", "--maxt"
-        help = "Total physical time of the evolution"
-        arg_type = Float64
-        "--max_bond_dimension", "--bdim"
-        help = "Bond dimension of the state MPS"
-        arg_type = Int
-        "--name", "--output", "-o"
-        help = "Basename to output files"
-        arg_type = String
-    end
-
-    # Load the input JSON file, if present.
-    parsedargs_raw = parse_args(s)
-    parsedargs = if haskey(parsedargs_raw, "input_parameters")
-        inputfile = pop!(parsedargs_raw, "input_parameters")
-        @info "Reading parameters from $inputfile and from the command line"
-        load_pars(inputfile)
-    else
-        @info "Reading parameters from the command line"
-        Dict()
-    end
-
-    # Convert keys from String to Symbol and remove the ones whose value is `nothing`.
-    for (k, v) in parse_args(s)
-        isnothing(v) || push!(parsedargs, k => v)
-    end
-    return parsedargs
-end
-
 function main()
     parsedargs = parsecommandline()
 
@@ -274,9 +227,9 @@ function main()
         CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
     )
 
-    measurements_file = parsedargs["name"] * "_measurements.csv"
-    bonddims_file = parsedargs["name"] * "_bonddims.csv"
-    simtime_file = parsedargs["name"] * "_simtime.csv"
+    measurements_file = parsedargs["output"] * "_measurements.csv"
+    bonddims_file = parsedargs["output"] * "_bonddims.csv"
+    simtime_file = parsedargs["output"] * "_simtime.csv"
 
     simulation(;
         nsystem=parsedargs["system_sites"],
@@ -300,7 +253,7 @@ function main()
     )
 
     pack!(
-        parsedargs["name"] * ".h5";
+        parsedargs["output"] * ".h5";
         argsdict=parsedargs,
         expvals_file=measurements_file,
         bonddimensions_file=bonddims_file,
