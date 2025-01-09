@@ -184,6 +184,10 @@ function simulation(;
         initstate, maxbonddim; ref_state=n -> starts_from_occ(n) ? "Occ" : "Emp"
     )
 
+    simulation_files_info(;
+        measurements_file=io_file, bonddims_file=io_ranks, simtime_file=io_times
+    )
+
     tdvp1vec!(
         state_t,
         L,
@@ -273,11 +277,6 @@ function main()
     measurements_file = parsedargs["name"] * "_measurements.csv"
     bonddims_file = parsedargs["name"] * "_bonddims.csv"
     simtime_file = parsedargs["name"] * "_simtime.csv"
-
-    @info "You can follow the time evolution step by step in the following files:\n" *
-        "$measurements_file\t for the expectation values\n" *
-        "$bonddims_file\t for the bond dimensions of the evolved MPS\n" *
-        "$simtime_file\t for the wall-clock time spent computing each step"
 
     simulation(;
         nsystem=parsedargs["system_sites"],

@@ -1,4 +1,4 @@
-using JSON, Tables, HDF5
+using JSON, Tables, HDF5, CSV
 using Statistics: mean
 
 interleave(v...) = collect(Iterators.flatten(zip(v...)))
@@ -235,4 +235,20 @@ function pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, wall
     rm(walltime_file)
 
     return nothing
+end
+
+function simulation_files_info(;
+    measurements_file=nothing, bonddims_file=nothing, simtime_file=nothing
+)
+    str = "You can follow the time evolution step by step in the following files:"
+    if !(isnothing(measurements_file) || measurements_file == nullfile())
+        str *= "\n$measurements_file\t for the expectation values"
+    end
+    if !(isnothing(bonddims_file) || bonddims_file == nullfile())
+        str *= "\n$bonddims_file\t for the bond dimensions of the evolved MPS"
+    end
+    if !(isnothing(simtime_file) || simtime_file == nullfile())
+        str *= "\n$simtime_file\t for the wall-clock time spent computing each step"
+    end
+    @info str
 end
