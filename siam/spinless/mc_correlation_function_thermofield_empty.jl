@@ -132,8 +132,7 @@ let
             L′,
             parameters["tstep"],
             parameters["tmax"],
-            parameters["ms_stride"] * parameters["tstep"],
-            sites;
+            parameters["ms_stride"] * parameters["tstep"];
             progress=true,
             exp_tol=parameters["exp_tol"],
             krylovdim=parameters["krylov_dim"],
@@ -152,8 +151,7 @@ let
             L′,
             parameters["tstep"],
             parameters["tmax"],
-            parameters["ms_stride"] * parameters["tstep"],
-            sites;
+            parameters["ms_stride"] * parameters["tstep"];
             progress=true,
             exp_tol=parameters["exp_tol"],
             krylovdim=parameters["krylov_dim"],

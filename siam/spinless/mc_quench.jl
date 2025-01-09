@@ -151,8 +151,7 @@ let
             vecρₜ,
             L,
             timestep,
-            tmax,
-            sites;
+            tmax;
             hermitian=false,
             normalize=false,
             callback=cb,
@@ -173,8 +172,7 @@ let
             vecρₜ,
             L,
             timestep,
-            tmax,
-            sites;
+            tmax;
             hermitian=false,
             normalize=false,
             callback=cb,

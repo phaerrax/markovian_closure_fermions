@@ -57,8 +57,7 @@ function simulation(;
         state_t,
         L,
         dt,
-        tmax,
-        sites;
+        tmax;
         hermitian=false,
         normalize=false,
         callback=cb,

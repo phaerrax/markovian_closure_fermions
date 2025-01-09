@@ -128,8 +128,7 @@ let
         adjL,
         parameters["tstep"],
         parameters["tmax"],
-        parameters["ms_stride"] * parameters["tstep"],
-        vsites;
+        parameters["ms_stride"] * parameters["tstep"];
         progress=true,
         exp_tol=parameters["exp_tol"],
         krylovdim=parameters["krylov_dim"],

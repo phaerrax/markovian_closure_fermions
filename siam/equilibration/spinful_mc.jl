@@ -166,8 +166,7 @@ let
         vecρ,
         Ls,
         timestep,
-        inv(slope),
-        sites;
+        inv(slope);
         normalize=false,
         callback=cb,
         progress=true,
