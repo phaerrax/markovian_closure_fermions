@@ -211,13 +211,6 @@ end
 function main()
     parsedargs = parsecommandline()
 
-    ops = LocalOperator[]
-    for (k, v) in parsedargs["observables"]
-        for n in v
-            push!(ops, LocalOperator(Dict(n => k)))
-        end
-    end
-
     empty_chainL_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqfilled"]
     sysenvcouplingL, empty_chainL_coups = peel(
         CSV.File(parsedargs["environment_chain_coefficients"])["coupfilled"]
@@ -249,7 +242,7 @@ function main()
         io_file=measurements_file,
         io_ranks=bonddims_file,
         io_times=simtime_file,
-        operators=ops,
+        operators=parseoperators(parsedargs["observables"]),
     )
 
     pack!(

@@ -164,7 +164,7 @@ function Base.join(c1::ModeChain, c2::ModeChain, c1c2coupling)
             [c2.couplings; c1c2coupling; c1.couplings],
         )
     else
-        error("?")
+        error("Logic error")
     end
 end
 
@@ -358,6 +358,24 @@ function parsecommandline(args...)
         Dict(:help => "total physical time of the evolution", :arg_type => Float64),
         ["--max_bond_dimension", "--bdim"],
         Dict(:help => "maximum bond dimension of the state MPS", :arg_type => Int),
+        ["--observables", "--obs"],
+        Dict(:help => "observables to be measured", :arg_type => String),
+        # ↖ There are two ways the caller can specify the observables: either as a
+        # dictionary or as a string (see the two `parseoperators` methods below).
+        # Dictionaries are the "legacy" input used in JSON files, while strings are a new
+        # way of inputting observables that suits the command-line interface well (I don't
+        # know if ArgParse even accepts dictionaries as types of command-line at all).
+        # The input routine, as far as the observables are concerned, works as follows.
+        # 1) The JSON file, if provided, is loaded, and if the `observables` entry is
+        #   present then the observable are taken from there. They can be a dictionary or
+        #   a string, it doesn't matter, the `parseoperators` will distinguish them via
+        #   the multiple dispatch functionality. Here ArgParse is not involved in loading
+        #   the observables.
+        # 2) The command-line arguments are read, and if `observables` is there, it either
+        #   overrides the already existing observables or creates new ones. This time the
+        #   corresponding argument can only be a string. This is why we can restrict the
+        #   `arg_type` of the argument as String. At this stage we're not accepting
+        #   dictionaries anymore.
         ["--output", "-o"],
         Dict(:help => "basename to output files", :arg_type => String),
     )
@@ -386,4 +404,97 @@ function parsecommandline(args...)
         isnothing(v) || push!(parsedargs, k => v)
     end
     return parsedargs
+end
+
+function _expandsequence(seq)
+    re = match(r"(?<name>\w+)\((?<sites>.+)\)", seq)
+    sites = parse.(Int, split(re["sites"], ","))
+    return [string(re["name"], "(", j, ")") for j in sites]
+end
+
+"""
+    parseoperators(s::AbstractString)
+
+Parse the string `s` as a list of `LocalOperator` objects, with the following rules:
+
+- operators are written as products of local operators of the form `name(site)` where
+    `name` is a string and `site` is an integer;
+- operators on different sites can be multiplied together by writing them one after the
+    other, i.e. `a(1)b(2)`;
+- for convenience, writing a comma-separated list of numbers in the parentheses expands to a
+    list of operators with the same name on each of the sites in the list, i.e. `a(1,2,3)`
+    is interpreted as `a(1),a(2),a(3)`.
+
+# Example
+
+```julia-repl
+julia> parseoperators("x(1)y(3),y(4),z(1,2,3)")
+5-element Vector{LocalOperator}:
+ x{1}y{3}
+ y{4}
+ z{1}
+ z{2}
+ z{3}
+```
+"""
+function parseoperators(s::AbstractString)
+    s *= ","  # add extra delimiter at the end (needed for regex below)
+    # Split each occurrence made by anything between a word character and "),",
+    # matching as few characters as possible between them.
+    opstrings = chop.([r.match for r in eachmatch(r"\w+\(.+?\),", s * ",")])
+    ops = LocalOperator[]
+    i = 1
+    while i <= length(opstrings)
+        # Replace each sequence, i.e. an item like x(1,2,4), by its expansion.
+        if contains(opstrings[i], ",")  # it is a sequence
+            # ↖ Replace `opstrings[i]` with the expanded sequence, shifting the following
+            # elements in the array to the right to make space for it. Then, restart the
+            # loop iteration from the same index, which will be the first operator of the
+            # just expanded sequence.
+            splice!(opstrings, i:i, _expandsequence(opstrings[i]))
+            continue
+        end
+        # Decide whether we have a product of operators, such as x(1)y(2), or a
+        # sequence such as x(1,2,3)
+        d = Dict()
+        foreach(
+            re -> push!(d, parse(Int, re["site"]) => re["name"]),
+            eachmatch(r"(?<name>\w+?)\((?<site>\d+?)\)", opstrings[i]),
+        )
+        push!(ops, LocalOperator(d))
+        i += 1
+    end
+
+    return ops
+end
+
+"""
+    parseoperators(d::Dict)
+
+Translate a `String => Vector{Int}` dictionary into a list of `LocalOperator` objects, where
+each `(key, value)` pair is interpreted as the operator `key` on each of the sites contained
+in `value`, separately.
+This type of input does not support products of operators on different sites.
+
+# Example
+
+```julia-repl
+julia> ops = Dict("x" => [1, 2, 3], "y" => [2]);
+
+julia> parseoperators(ops)
+4-element Vector{LocalOperator}:
+ x{1}
+ x{2}
+ x{3}
+ y{2}
+```
+"""
+function parseoperators(d::Dict)
+    ops = LocalOperator[]
+    for (k, v) in d
+        for n in v
+            push!(ops, LocalOperator(Dict(n => k)))
+        end
+    end
+    return ops
 end

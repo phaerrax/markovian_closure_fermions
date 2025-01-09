@@ -77,16 +77,8 @@ function main()
     parsedargs = parsecommandline()
 
     chain_length = parsedargs["environment_sites"]
-
     empty_chain_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqempty"]
     empty_chain_coups = CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
-
-    ops = LocalOperator[]
-    for (k, v) in parsedargs["observables"]
-        for n in v
-            push!(ops, LocalOperator(Dict(n => k)))
-        end
-    end
 
     measurements_file = parsedargs["output"] * "_measurements.csv"
     bonddims_file = parsedargs["output"] * "_bonddims.csv"
@@ -106,7 +98,7 @@ function main()
         io_file=measurements_file,
         io_ranks=bonddims_file,
         io_times=simtime_file,
-        operators=ops,
+        operators=parseoperators(parsedargs["observables"]),
     )
 
     pack!(
