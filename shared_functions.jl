@@ -130,7 +130,25 @@ function spinchain(::SiteType"Fermion", c::ModeChain)
     return ad_h
 end
 
-function join(c1::ModeChain, c2::ModeChain, c1c2coupling)
+"""
+    join(c1::ModeChain, c2::ModeChain, c1c2coupling)
+
+Return a new `ModeChain` made by joining `c1` and `c2`, with `c1c2coupling` as the coupling
+constant between the last site of `c1` and the first site of `c2`.
+The ranges of the two chains do not have to be adjacent, but they cannot overlap.
+
+# Example
+
+```julia-repl
+julia> c1 = ModeChain(1:3, fill(1,3), fill(0.5, 2));
+
+julia> c2 = ModeChain(6:9, fill(2,4), fill(4,3));
+
+julia> join(c1, c2, 0.25)
+ModeChain([1, 2, 3, 6, 7, 8, 9], [1, 1, 1, 2, 2, 2, 2], [0.5, 0.5, 0.25, 4.0, 4.0, 4.0])
+```
+"""
+function Base.join(c1::ModeChain, c2::ModeChain, c1c2coupling)
     if first(c1.range) ≤ last(c2.range) && first(c2.range) ≤ last(c1.range)
         error("The ranges of the given ModeChains overlap.")
     elseif first(c1.range) < first(c2.range)  # find out which chain is on the left
