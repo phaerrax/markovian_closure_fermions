@@ -155,6 +155,22 @@ Base.iterate(c::ModeChain) = iterate(c.range)
 Base.iterate(c::ModeChain, i::Int) = iterate(c.range, i)
 
 """
+    first(c::ModeChain, n::Integer)
+
+Get the the mode chain `c` truncated to its first `n` elements.
+"""
+Base.first(c::ModeChain, n::Integer) =
+    ModeChain(first(c.range, n), first(c.frequencies, n), first(c.couplings, n - 1))
+
+"""
+    last(c::ModeChain, n::Integer)
+
+Get the the mode chain `c` truncated to its last `n` elements.
+"""
+Base.last(c::ModeChain, n::Integer) =
+    ModeChain(last(c.range, n), last(c.frequencies, n), last(c.couplings, n - 1))
+
+"""
     markovianclosure(chain::ModeChain, nclosure, nenvironment)
 
 Replace the ModeChain `chain` with a truncated chain of `nenvironment` elements plus a
@@ -177,11 +193,7 @@ function markovianclosure(
         asymptoticcoupling = mean(chain.couplings[(nenvironment + 1):end])
     end
 
-    truncated_envchain = ModeChain(
-        first(chain.range, nenvironment),
-        first(chain.frequencies, nenvironment),
-        first(chain.couplings, nenvironment - 1),
-    )
+    truncated_envchain = first(chain, nenvironment)
     mc = markovianclosure_parameters(asymptoticfrequency, asymptoticcoupling, nclosure)
 
     return truncated_envchain, mc
