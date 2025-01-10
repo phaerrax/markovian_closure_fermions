@@ -1,8 +1,9 @@
 using ITensors, ITensorMPS, MPSTimeEvolution, CSV
+using Base.Iterators: peel
 
 include("../shared_functions.jl")
 
-function simulation(;
+function siam_spinless_superfermions_1env(;
     nsystem,
     system_energy,
     system_initial_state,
@@ -10,13 +11,7 @@ function simulation(;
     nenvironment,
     environment_chain_frequencies,
     environment_chain_couplings,
-    dt,
-    tmax,
     maxbonddim,
-    io_file=nullfile(),
-    io_ranks=nullfile(),
-    io_times=nullfile(),
-    operators,
 )
     sites = siteinds("Fermion", 2nsystem + 2nenvironment; conserve_nfparity=true)
     system = ModeChain(range(; start=1, step=2, length=nsystem), [system_energy], [])
@@ -24,13 +19,13 @@ function simulation(;
 
     environment = ModeChain(
         range(; start=2nsystem + 1, step=2, length=nenvironment),
-        environment_chain_frequencies,
-        environment_chain_couplings,
+        first(environment_chain_frequencies, nenvironment),
+        first(environment_chain_couplings, nenvironment - 1),
     )
     altenvironment = ModeChain(
         range(; start=2nsystem + 2, step=2, length=nenvironment),
-        environment_chain_frequencies,
-        environment_chain_couplings,
+        first(environment_chain_frequencies, nenvironment),
+        first(environment_chain_couplings, nenvironment - 1),
     )
 
     initstate = MPS(sites, n -> n ≤ 2nsystem ? "Occ" : "Emp")
@@ -41,63 +36,59 @@ function simulation(;
 
     L = MPO(-im * ad_h, sites)
 
-    cb = SuperfermionCallback(operators, sites, dt)
-
     # Prepare the state for TDVP with long-range interactions by artificially increasing
     # its bond dimensions.
     state_t = enlargelinks(
         initstate, maxbonddim; ref_state=n -> n ≤ 2nsystem ? "Occ" : "Emp"
     )
 
-    simulation_files_info(;
-        measurements_file=io_file, bonddims_file=io_ranks, simtime_file=io_times
-    )
-
-    tdvp1vec!(
-        state_t,
-        L,
-        dt,
-        tmax;
-        hermitian=false,
-        normalize=false,
-        callback=cb,
-        progress=true,
-        store_psi0=false,
-        io_file=io_file,
-        io_ranks=io_ranks,
-        io_times=io_times,
-        superfermions=true,
-    )
-
-    return nothing
+    return initstate, L
 end
 
 function main()
     parsedargs = parsecommandline()
 
-    chain_length = parsedargs["environment_sites"]
     empty_chain_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqempty"]
-    empty_chain_coups = CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
+    sysenvcoupling, empty_chain_coups = peel(
+        CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
+    )
 
     measurements_file = parsedargs["output"] * "_measurements.csv"
     bonddims_file = parsedargs["output"] * "_bonddims.csv"
     simtime_file = parsedargs["output"] * "_simtime.csv"
 
-    simulation(;
+    initstate, L = siam_spinless_superfermions_1env(;
         nsystem=parsedargs["system_sites"],
         system_energy=parsedargs["system_energy"],
         system_initial_state=parsedargs["system_initial_state"],
-        nenvironment=chain_length,
-        sysenvcoupling=first(empty_chain_coups),
-        environment_chain_frequencies=first(empty_chain_freqs, chain_length),
-        environment_chain_couplings=first(empty_chain_coups[2:end], chain_length - 1),
-        dt=parsedargs["time_step"],
-        tmax=parsedargs["max_time"],
+        nenvironment=parsedargs["environment_sites"],
+        sysenvcoupling=sysenvcoupling,
+        environment_chain_frequencies=empty_chain_freqs,
+        environment_chain_couplings=collect(empty_chain_coups),
         maxbonddim=parsedargs["max_bond_dimension"],
+    )
+
+    dt = parsedargs["time_step"]
+    tmax = parsedargs["max_time"]
+    operators = parseoperators(parsedargs["observables"])
+    cb = SuperfermionCallback(operators, siteinds(initstate), dt)
+
+    simulation_files_info(;
+        measurements_file=measurements_file,
+        bonddims_file=bonddims_file,
+        simtime_file=simtime_file,
+    )
+
+    tdvp1vec!(
+        initstate,
+        L,
+        dt,
+        tmax;
+        callback=cb,
         io_file=measurements_file,
         io_ranks=bonddims_file,
         io_times=simtime_file,
-        operators=parseoperators(parsedargs["observables"]),
+        superfermions=true,
     )
 
     pack!(
