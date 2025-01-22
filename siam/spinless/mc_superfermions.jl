@@ -1,7 +1,27 @@
 using ITensors, ITensorMPS, MPSTimeEvolution, CSV, MarkovianClosure
 using Base.Iterators: peel
 
-include("../shared_functions.jl")
+include("../../shared_functions.jl")
+
+function MPSTimeEvolution.enlargelinks(v, dims::Vector{<:Integer}; ref_state=nothing)
+    diff_linkdims = max.(dims .- linkdims(v), 1)
+    x = if hasqns(first(v))
+        if isnothing(ref_state)
+            error("Initial state required to use enlargelinks with QNs")
+        else
+            random_mps(siteinds(v), ref_state; linkdims=diff_linkdims)
+        end
+    else
+        random_mps(siteinds(v); linkdims=diff_linkdims)
+    end
+    orthogonalize!(x, 1)
+    v_ext = add(orthogonalize(v, 1), 0 * x; alg="directsum")
+    return v_ext
+end
+
+function MPSTimeEvolution.enlargelinks(v, dim::Integer; kwargs...)
+    return enlargelinks(v, fill(dim, length(v) - 1); kwargs...)
+end
 
 function siam_spinless_superfermions_2env_mc(;
     nsystem,
@@ -32,8 +52,16 @@ function siam_spinless_superfermions_2env_mc(;
         environmentL_chain_couplings,
     )
 
-    truncated_environmentL, mcL = markovianclosure(environmentL, nclosure, nenvironment)
-    truncated_altenvironmentL, _ = markovianclosure(altenvironmentL, nclosure, nenvironment)
+    truncated_environmentL, mcL = markovianclosure(
+        environmentL, nclosure, nenvironment; asymptoticfrequency=0, asymptoticcoupling=0.5
+    )
+    truncated_altenvironmentL, _ = markovianclosure(
+        altenvironmentL,
+        nclosure,
+        nenvironment;
+        asymptoticfrequency=0,
+        asymptoticcoupling=0.5,
+    )
 
     environmentR = ModeChain(
         range(; start=2nsystem + 3, step=4, length=length(environmentR_chain_frequencies)),
@@ -46,14 +74,24 @@ function siam_spinless_superfermions_2env_mc(;
         environmentR_chain_couplings,
     )
 
-    truncated_environmentR, mcR = markovianclosure(environmentR, nclosure, nenvironment)
-    truncated_altenvironmentR, _ = markovianclosure(altenvironmentR, nclosure, nenvironment)
+    truncated_environmentR, mcR = markovianclosure(
+        environmentR, nclosure, nenvironment; asymptoticfrequency=0, asymptoticcoupling=0.5
+    )
+    truncated_altenvironmentR, _ = markovianclosure(
+        altenvironmentR,
+        nclosure,
+        nenvironment;
+        asymptoticfrequency=0,
+        asymptoticcoupling=0.5,
+    )
 
-    environments_last_site = max(
-        truncated_environmentL.range[end],
-        truncated_altenvironmentL.range[end],
-        truncated_environmentR.range[end],
-        truncated_altenvironmentR.range[end],
+    environments_last_site = maximum(
+        [
+            truncated_environmentL.range
+            truncated_altenvironmentL.range
+            truncated_environmentR.range
+            truncated_altenvironmentR.range
+        ],
     )
 
     closureL = ModeChain(
@@ -79,15 +117,19 @@ function siam_spinless_superfermions_2env_mc(;
         innercoups(mcR),
     )
 
-    function starts_from_occ(n)
-        return (
-            in(n, system) ||
-            in(n, altsystem) ||
-            in(n, truncated_environmentL) ||
-            in(n, truncated_altenvironmentL) ||
-            in(n, closureL) ||
-            in(n, altclosureL)
+    function initstate_labels(n)
+        return if (n in system || n in altsystem)
+            system_initial_state
+        elseif (
+            n in truncated_environmentL ||
+            n in truncated_altenvironmentL ||
+            n in closureL ||
+            n in altclosureL
         )
+            "Occ"
+        else
+            "Emp"
+        end
     end
 
     site(tags) = addtags(siteind("Fermion"; conserve_nfparity=true), tags)
@@ -95,16 +137,16 @@ function siam_spinless_superfermions_2env_mc(;
         site("System")
         site("System(alt)")
         interleave(
-            [site("EnvL,n=$n") for n in 1:length(truncated_environmentL)],
-            [site("EnvL(alt),n=$n") for n in 1:length(truncated_altenvironmentL)],
-            [site("EnvR,n=$n") for n in 1:length(truncated_environmentR)],
-            [site("EnvR(alt),n=$n") for n in 1:length(truncated_altenvironmentR)],
+            [site("EnvL,n=$n") for n in 1:nenvironment],
+            [site("EnvL(alt),n=$n") for n in 1:nenvironment],
+            [site("EnvR,n=$n") for n in 1:nenvironment],
+            [site("EnvR(alt),n=$n") for n in 1:nenvironment],
         )
         interleave(
-            [site("ClosureL,n=$n") for n in 1:length(closureL)],
-            [site("ClosureL(alt),n=$n") for n in 1:length(altclosureL)],
-            [site("ClosureR,n=$n") for n in 1:length(closureR)],
-            [site("ClosureR(alt),n=$n") for n in 1:length(altclosureR)],
+            [site("ClosureL,n=$n") for n in 1:nclosure],
+            [site("ClosureL(alt),n=$n") for n in 1:nclosure],
+            [site("ClosureR,n=$n") for n in 1:nclosure],
+            [site("ClosureR(alt),n=$n") for n in 1:nclosure],
         )
     ]
 
@@ -114,36 +156,48 @@ function siam_spinless_superfermions_2env_mc(;
     @assert findall(idx -> hastags(idx, "ClosureR"), sites) == closureR.range
 
     st = SiteType("Fermion")
-    initstate = MPS(sites, n -> starts_from_occ(n) ? "Occ" : "Emp")
+    initstate = MPS(sites, initstate_labels)
+
+    ad_h = OpSum()
+    DL = OpSum()
+    DR = OpSum()
 
     # -- Leftover unitary part -------------------------------------------------------------
-    ad_h =
-        spinchain(st, join(system, truncated_environmentL, sysenvcouplingL)) -
-        spinchain(st, join(altsystem, truncated_altenvironmentL, sysenvcouplingR)) +
-        spinchain(st, join(system, truncated_environmentR, sysenvcouplingR)) -
-        spinchain(st, join(altsystem, truncated_altenvironmentR, sysenvcouplingR))
+    ad_h +=
+        spinchain(
+            st,
+            join(
+                reverse(truncated_environmentL),
+                join(system, truncated_environmentR, sysenvcouplingR),
+                sysenvcouplingL,
+            ),
+        ) - spinchain(
+            st,
+            join(
+                reverse(truncated_altenvironmentL),
+                join(altsystem, truncated_altenvironmentR, sysenvcouplingR),
+                sysenvcouplingL,
+            ),
+        )
     # --------------------------------------------------------------------------------------
 
     # -- Initially filled MC ---------------------------------------------------------------
     # NN interactions
     ad_h += spinchain(st, closureL) - spinchain(st, altclosureL)
-    # Interaction with last environment site
-    for (z, site) in zip(conj.(outercoups(mcL)), closureL.range)
-        #                ────    manual empty → filled transformation
-        ad_h += z, "cdag", site, "c", last(truncated_environmentL.range)
-        ad_h += conj(z), "cdag", last(truncated_environmentL.range), "c", site
+    # Interaction with last environment n
+    for (z, n) in zip(outercoups(mcL), closureL.range)
+        ad_h += z, "cdag", n, "c", last(truncated_environmentL.range)
+        ad_h += conj(z), "cdag", last(truncated_environmentL.range), "c", n
     end
-    for (z, site) in zip(conj.(outercoups(mcL)), altclosureL.range)
-        #                ────    manual empty → filled transformation
-        ad_h -= z, "cdag", site, "c", last(truncated_altenvironmentL.range)
-        ad_h -= conj(z), "cdag", last(truncated_altenvironmentL.range), "c", site
+    for (z, n) in zip(outercoups(mcL), altclosureL.range)
+        ad_h -= conj(z), "cdag", n, "c", last(truncated_altenvironmentL.range)
+        ad_h -= z, "cdag", last(truncated_altenvironmentL.range), "c", n
     end
     # Dissipation operator
-    DL = OpSum()
-    for (g, site, altsite) in zip(damps(mcL), closureL.range, altclosureL.range)
-        DL += g, "cdag", site, "cdag", altsite
-        DL += -0.5g, "c", site, "cdag", site
-        DL += -0.5g, "c", altsite, "cdag", altsite
+    for (g, n, altn) in zip(damps(mcL), closureL.range, altclosureL.range)
+        DL += g, "cdag", n, "cdag", altn
+        DL += -0.5g, "c", n, "cdag", n
+        DL += -0.5g, "c", altn, "cdag", altn
     end
     # --------------------------------------------------------------------------------------
 
@@ -151,20 +205,19 @@ function siam_spinless_superfermions_2env_mc(;
     # NN interactions
     ad_h += spinchain(st, closureR) - spinchain(st, altclosureR)
     # Interaction with last environment site
-    for (z, site) in zip(outercoups(mcR), closureR.range)
-        ad_h += z, "cdag", site, "c", last(truncated_environmentR.range)
-        ad_h += conj(z), "cdag", last(truncated_environmentR.range), "c", site
+    for (z, n) in zip(outercoups(mcR), closureR.range)
+        ad_h += z, "cdag", n, "c", last(truncated_environmentR.range)
+        ad_h += conj(z), "cdag", last(truncated_environmentR.range), "c", n
     end
-    for (z, site) in zip(outercoups(mcR), altclosureR.range)
-        ad_h -= z, "cdag", site, "c", last(truncated_altenvironmentR.range)
-        ad_h -= conj(z), "cdag", last(truncated_altenvironmentR.range), "c", site
+    for (z, n) in zip(outercoups(mcR), altclosureR.range)
+        ad_h -= conj(z), "cdag", n, "c", last(truncated_altenvironmentR.range)
+        ad_h -= z, "cdag", last(truncated_altenvironmentR.range), "c", n
     end
     # Dissipation operator
-    DR = OpSum()
-    for (g, site, altsite) in zip(damps(mcR), closureR.range, altclosureR.range)
-        DR += -g, "c", site, "c", altsite
-        DR += -0.5g, "cdag", site, "c", site
-        DR += -0.5g, "cdag", altsite, "c", altsite
+    for (g, n, altn) in zip(damps(mcR), closureR.range, altclosureR.range)
+        DR += -g, "c", n, "c", altn
+        DR += -0.5g, "cdag", n, "c", n
+        DR += -0.5g, "cdag", altn, "c", altn
     end
     # --------------------------------------------------------------------------------------
 
@@ -172,9 +225,7 @@ function siam_spinless_superfermions_2env_mc(;
 
     # Prepare the state for TDVP with long-range interactions by artificially increasing
     # its bond dimensions.
-    initstate = enlargelinks(
-        initstate, maxbonddim; ref_state=n -> starts_from_occ(n) ? "Occ" : "Emp"
-    )
+    initstate = enlargelinks(initstate, maxbonddim; ref_state=initstate_labels)
 
     return initstate, L
 end
