@@ -130,6 +130,26 @@ function spinchain(::SiteType"Fermion", c::ModeChain)
     return ad_h
 end
 
+function spinchain(::SiteType"vFermion", c::ModeChain)
+    ℓ = OpSum()
+    for (n, f) in zip(c.range, c.frequencies)
+        ℓ += f * gkslcommutator("N", n)
+    end
+    for (n1, n2, g) in zip(c.range[1:(end - 1)], c.range[2:end], c.couplings)
+        # Reorder `n1` and `n2`, otherwise `jwstring` doesn't put in the string factors
+        # if `n1 > n2`. The exchange interaction operator is symmetric in `n1` and `n2`
+        # so this reordering doesn't affect the result.
+        n1, n2 = minmax(n1, n2)
+        jws = jwstring(; start=n1, stop=n2)
+        ℓ +=
+            g * (
+                gkslcommutator("A†", n1, jws..., "A", n2) +
+                gkslcommutator("A", n1, jws..., "A†", n2)
+            )
+    end
+    return ℓ
+end
+
 """
     join(c1::ModeChain, c2::ModeChain, c1c2coupling)
 
