@@ -151,6 +151,24 @@ function spinchain(::SiteType"vFermion", c::ModeChain)
 end
 
 """
+    reverse(c::ModeChain)
+
+Invert the direction of the mode chain `c`, by reversing its range, its frequencies array
+and its coupling constants array.
+
+# Example
+
+```julia-repl
+julia> c = ModeChain([1, 2, 3, 4, 5], ['a', 'b', 'c', 'd', 'e'], ['w', 'x', 'y', 'z']);
+
+julia> reverse(c)
+ModeChain([5, 4, 3, 2, 1], ['e', 'd', 'c', 'b', 'a'], ['z', 'y', 'x', 'w'])
+```
+"""
+Base.reverse(c::ModeChain) =
+    ModeChain(reverse(c.range), reverse(c.frequencies), reverse(c.couplings))
+
+"""
     join(c1::ModeChain, c2::ModeChain, c1c2coupling)
 
 Return a new `ModeChain` made by joining `c1` and `c2`, with `c1c2coupling` as the coupling
