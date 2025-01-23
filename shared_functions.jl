@@ -255,7 +255,7 @@ function markovianclosure(
 end
 
 """
-    pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, walltime_file)
+    pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, walltime_file, finalstate=nothing)
 
 Gather all simulation input and output in a single HDF5 file `outputfilename`.
 All input parameters used for the simulation, except for the name of the JSON input file
@@ -263,10 +263,20 @@ itself (if provided) will be in the output file together with the expectation va
 selected observables, the bond dimensions of the evolved MPS and the wall-clock time spent
 computing each step, for each step of the time evolution.
 
+Optionally store also the final state of the evolution by passing it to the function
+under the `finalstate` keyword argument.
+
 The `expvals_file`, `bonddimensions_file` and `walltime_file` files will be _deleted_ after
 their contents are transferred to the HDF5 file.
 """
-function pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, walltime_file)
+function pack!(
+    outputfilename;
+    argsdict,
+    expvals_file,
+    bonddimensions_file,
+    walltime_file,
+    finalstate=nothing,
+)
     # We remove the "observable" entry from the dictionary since we don't need it in the
     # output, it's already in the headers of the simulation results.
     # Same for "input_parameters", since its contents are what we're actually writing in
@@ -294,6 +304,10 @@ function pack!(outputfilename; argsdict, expvals_file, bonddimensions_file, wall
         # file.
         walltime = CSV.File(walltime_file)
         write(hf, "simulation_wall_time", walltime[propertynames(walltime)[1]])
+
+        if !isnothing(finalstate)
+            write(hf, "final_state", finalstate)
+        end
     end
 
     @info "Output written on $outputfilename"
@@ -478,7 +492,7 @@ function parseoperators(s::AbstractString)
     s *= ","  # add extra delimiter at the end (needed for regex below)
     # Split each occurrence made by anything between a word character and "),",
     # matching as few characters as possible between them.
-    opstrings = chop.([r.match for r in eachmatch(r"\w+\(.+?\),", s * ",")])
+    opstrings = Base.chop.([r.match for r in eachmatch(r"\w+\(.+?\),", s * ",")])
     ops = LocalOperator[]
     i = 1
     while i <= length(opstrings)
