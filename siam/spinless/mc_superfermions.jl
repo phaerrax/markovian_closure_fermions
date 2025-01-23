@@ -52,15 +52,9 @@ function siam_spinless_superfermions_2env_mc(;
         environmentL_chain_couplings,
     )
 
-    truncated_environmentL, mcL = markovianclosure(
-        environmentL, nclosure, nenvironment; asymptoticfrequency=0, asymptoticcoupling=0.5
-    )
+    truncated_environmentL, mcL = markovianclosure(environmentL, nclosure, nenvironment)
     truncated_altenvironmentL, _ = markovianclosure(
-        altenvironmentL,
-        nclosure,
-        nenvironment;
-        asymptoticfrequency=0,
-        asymptoticcoupling=0.5,
+        altenvironmentL, nclosure, nenvironment;
     )
 
     environmentR = ModeChain(
@@ -74,15 +68,9 @@ function siam_spinless_superfermions_2env_mc(;
         environmentR_chain_couplings,
     )
 
-    truncated_environmentR, mcR = markovianclosure(
-        environmentR, nclosure, nenvironment; asymptoticfrequency=0, asymptoticcoupling=0.5
-    )
+    truncated_environmentR, mcR = markovianclosure(environmentR, nclosure, nenvironment)
     truncated_altenvironmentR, _ = markovianclosure(
-        altenvironmentR,
-        nclosure,
-        nenvironment;
-        asymptoticfrequency=0,
-        asymptoticcoupling=0.5,
+        altenvironmentR, nclosure, nenvironment;
     )
 
     environments_last_site = maximum(
@@ -117,14 +105,14 @@ function siam_spinless_superfermions_2env_mc(;
         innercoups(mcR),
     )
 
-    function initstate_labels(n)
-        return if (n in system || n in altsystem)
+    function init(n)
+        return if in(n, system) || in(n, altsystem)
             system_initial_state
         elseif (
-            n in truncated_environmentL ||
-            n in truncated_altenvironmentL ||
-            n in closureL ||
-            n in altclosureL
+            in(n, truncated_environmentL) ||
+            in(n, truncated_altenvironmentL) ||
+            in(n, closureL) ||
+            in(n, altclosureL)
         )
             "Occ"
         else
@@ -156,7 +144,7 @@ function siam_spinless_superfermions_2env_mc(;
     @assert findall(idx -> hastags(idx, "ClosureR"), sites) == closureR.range
 
     st = SiteType("Fermion")
-    initstate = MPS(sites, initstate_labels)
+    initstate = MPS(sites, init)
 
     ad_h = OpSum()
     DL = OpSum()
@@ -225,7 +213,7 @@ function siam_spinless_superfermions_2env_mc(;
 
     # Prepare the state for TDVP with long-range interactions by artificially increasing
     # its bond dimensions.
-    initstate = enlargelinks(initstate, maxbonddim; ref_state=initstate_labels)
+    initstate = enlargelinks(initstate, maxbonddim; ref_state=init)
 
     return initstate, L
 end
@@ -242,6 +230,7 @@ function main()
         CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
     )
 
+    set_bond_dimension = parsedargs["max_bond_dimension"]
     measurements_file = parsedargs["output"] * "_measurements.csv"
     bonddims_file = parsedargs["output"] * "_bonddims.csv"
     simtime_file = parsedargs["output"] * "_simtime.csv"
@@ -258,8 +247,21 @@ function main()
         sysenvcouplingR=sysenvcouplingR,
         environmentR_chain_frequencies=empty_chainR_freqs,
         environmentR_chain_couplings=collect(empty_chainR_coups),
-        maxbonddim=parsedargs["max_bond_dimension"],
+        maxbonddim=set_bond_dimension,
     )
+
+    if haskey(parsedargs, "initial_state_file")
+        initstate_file = parsedargs["initial_state_file"]
+        # Discard prepared state and load from file
+        initstate = h5open(initstate_file, "r") do file
+            return read(file, parsedargs["initial_state_label"], MPS)
+        end
+        # Increase bond dimension if needed
+        if maxlinkdim(initstate) < set_bond_dimension
+            # We trust that the state has even fermion parity
+            @error "Increasing bond dimension of a state input from file not implemented."
+        end
+    end
 
     dt = parsedargs["time_step"]
     tmax = parsedargs["max_time"]

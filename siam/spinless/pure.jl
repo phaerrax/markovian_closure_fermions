@@ -1,148 +1,155 @@
-using ITensors, ITensorMPS
-using HDF5
-using DelimitedFiles
-using LindbladVectorizedTensors
-using MPSTimeEvolution
+using ITensors, ITensorMPS, LindbladVectorizedTensors, MarkovianClosure, MPSTimeEvolution
+using HDF5, CSV
+using Base.Iterators: peel
 
-include("../shared_functions.jl")
+include("../../shared_functions.jl")
 
-# This script tries to emulate the simulation of the non-interacting SIAM model
-# described in Lucas Kohn's PhD thesis (section 4.2.1).
-# An impurity is interacting with a fermionic thermal bath, which is mapped onto two
-# discrete chains by means of a thermofield+TEDOPA transformation.
-# The chains are then interleaved, so that we end up with one chain only (here we are
-# still dealing with the spinless case).
-
-let
-    parameters = load_pars(ARGS[1])
-
-    # Input: system parameters
-    system_length = 1
-    eps = parameters["sys_en"]
-
-    # Input: chain parameters
-    thermofield_coefficients = readdlm(
-        parameters["chain_coefficients"], ',', Float64; skipstart=1
+function siam_spinless_tedopa(;
+    nsystem,
+    system_energy,
+    system_initial_state,
+    sysenvcouplingL,
+    sysenvcouplingR,
+    nenvironment,
+    environmentL_chain_frequencies,
+    environmentL_chain_couplings,
+    environmentR_chain_frequencies,
+    environmentR_chain_couplings,
+    maxbonddim,
+)
+    system = ModeChain(1:nsystem, [system_energy], [])
+    environmentL = ModeChain(
+        range(; start=nsystem + 1, step=2, length=length(environmentL_chain_frequencies)),
+        environmentL_chain_frequencies,
+        environmentL_chain_couplings,
     )
-    emptycoups = thermofield_coefficients[:, 1]
-    emptyfreqs = thermofield_coefficients[:, 3]
-    filledcoups = thermofield_coefficients[:, 2]
-    filledfreqs = thermofield_coefficients[:, 4]
+    environmentR = ModeChain(
+        range(; start=nsystem + 2, step=2, length=length(environmentR_chain_frequencies)),
+        environmentR_chain_frequencies,
+        environmentR_chain_couplings,
+    )
+    environmentL = first(environmentL, nenvironment)
+    environmentR = first(environmentR, nenvironment)
 
-    chain_length = parameters["chain_length"]
-    total_size = 2 * chain_length + 1
-    systempos = 1
-    filledchain_sites = 3:2:total_size
-    emptychain_sites = 2:2:total_size
-
-    initstate_file = get(parameters, "initial_state_file", nothing)
-    if isnothing(initstate_file)
-        sites = siteinds("Fermion", total_size)
-        initialsites = Dict(
-            [
-                systempos => parameters["sys_ini"]
-                [st => "Occ" for st in filledchain_sites]
-                [st => "Emp" for st in emptychain_sites]
-            ],
-        )
-        ψ = MPS(sites, [initialsites[i] for i in 1:total_size])
-        start_from_file = false
-    else
-        ψ = h5open(initstate_file, "r") do file
-            return read(file, parameters["initial_state_label"], MPS)
+    function init(n)
+        return if in(n, system)
+            system_initial_state
+        elseif in(n, environmentL)
+            "Occ"
+        else
+            "Emp"
         end
-        sites = siteinds(ψ)
-        start_from_file = true
-        # We need to extract the site indices from ψ or else, if we define them from
-        # scratch, they will have different IDs and they won't contract correctly.
     end
-
-    h = OpSum()
-    h += eps, "n", systempos
-
-    h +=
-        emptycoups[1] * exchange_interaction(sites[systempos], sites[emptychain_sites[1]]) +
-        filledcoups[1] * exchange_interaction(sites[systempos], sites[filledchain_sites[1]])
-
-    h +=
-        spin_chain(
-            emptyfreqs[1:chain_length], emptycoups[2:chain_length], sites[emptychain_sites]
-        ) + spin_chain(
-            filledfreqs[1:chain_length],
-            filledcoups[2:chain_length],
-            sites[filledchain_sites],
+    st = SiteType("Fermion")
+    site(tags) = addtags(siteind("Fermion"), tags)
+    sites = [
+        site("System")
+        interleave(
+            [site("EnvL") for n in 1:nenvironment], [site("EnvR") for n in 1:nenvironment]
         )
+    ]
+    for n in eachindex(sites)
+        sites[n] = addtags(sites[n], "n=$n")
+    end
+    initstate = MPS(sites, init)
 
+    @assert findall(idx -> hastags(idx, "System"), sites) == system.range
+    @assert findall(idx -> hastags(idx, "EnvL"), sites) == environmentL.range
+
+    h = spinchain(
+        SiteType("Fermion"),
+        join(
+            reverse(environmentR),
+            join(system, environmentL, sysenvcouplingL),
+            sysenvcouplingR,
+        ),
+    )
     H = MPO(h, sites)
 
-    timestep = parameters["tstep"]
-    tmax = parameters["tmax"]
+    initstate = enlargelinks(initstate, maxbonddim; ref_state=init)
 
-    d = LocalOperator[]
-    for (k, v) in parameters["observables"]
-        for n in v
-            push!(d, LocalOperator(Dict(n => k)))
-        end
-    end
-
-    operators = [
-        LocalOperator(Dict(1 => "Adag", 2 => "A"))
-        LocalOperator(Dict(1 => "A", 2 => "Adag"))
-        LocalOperator(Dict(1 => "Adag", 2 => "F", 3 => "A"))
-        LocalOperator(Dict(1 => "A", 2 => "F", 3 => "Adag"))
-        d...
-    ]
-    cb = ExpValueCallback(operators, sites, parameters["ms_stride"] * timestep)
-
-    if get(parameters, "convergence_factor_bondadapt", 0) == 0
-        @info "Using standard algorithm."
-        if !start_from_file
-            growMPS!(ψ, parameters["max_bond"])
-        end
-        tdvp1!(
-            ψ,
-            H,
-            timestep,
-            tmax;
-            hermitian=true,
-            normalize=false,
-            callback=cb,
-            progress=true,
-            exp_tol=parameters["exp_tol"],
-            krylovdim=parameters["krylov_dim"],
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-        )
-    else
-        @info "Using adaptive algorithm."
-        if !start_from_file
-            growMPS!(ψ, 2)
-        end
-        adaptivetdvp1!(
-            ψ,
-            H,
-            timestep,
-            tmax;
-            hermitian=true,
-            normalize=false,
-            callback=cb,
-            progress=true,
-            exp_tol=parameters["exp_tol"],
-            krylovdim=parameters["krylov_dim"],
-            store_psi0=false,
-            io_file=parameters["out_file"],
-            io_ranks=parameters["ranks_file"],
-            io_times=parameters["times_file"],
-            convergence_factor_bonddims=parameters["convergence_factor_bondadapt"],
-            max_bond=parameters["max_bond"],
-        )
-    end
-
-    if parameters["state_file"] != "/dev/null"
-        h5open(parameters["state_file"], "w") do f
-            write(f, "final_state", ψ)
-        end
-    end
+    return initstate, H
 end
+
+function main()
+    parsedargs = parsecommandline(
+        ["--save_final_state"],
+        Dict(:help => "store final state in the output file", :action => :store_true),
+    )
+
+    empty_chainL_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqfilled"]
+    sysenvcouplingL, empty_chainL_coups = peel(
+        CSV.File(parsedargs["environment_chain_coefficients"])["coupfilled"]
+    )
+    empty_chainR_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqempty"]
+    sysenvcouplingR, empty_chainR_coups = peel(
+        CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
+    )
+
+    set_bond_dimension = parsedargs["max_bond_dimension"]
+    measurements_file = parsedargs["output"] * "_measurements.csv"
+    bonddims_file = parsedargs["output"] * "_bonddims.csv"
+    simtime_file = parsedargs["output"] * "_simtime.csv"
+
+    initstate, H = siam_spinless_tedopa(;
+        nsystem=parsedargs["system_sites"],
+        system_energy=parsedargs["system_energy"],
+        system_initial_state=parsedargs["system_initial_state"],
+        nenvironment=parsedargs["environment_sites"],
+        sysenvcouplingL=sysenvcouplingL,
+        environmentL_chain_frequencies=empty_chainL_freqs,
+        environmentL_chain_couplings=collect(empty_chainL_coups),
+        sysenvcouplingR=sysenvcouplingR,
+        environmentR_chain_frequencies=empty_chainR_freqs,
+        environmentR_chain_couplings=collect(empty_chainR_coups),
+        maxbonddim=set_bond_dimension,
+    )
+
+    if haskey(parsedargs, "initial_state_file")
+        initstate_file = parsedargs["initial_state_file"]
+        # Discard prepared state and load from file
+        initstate = h5open(initstate_file, "r") do file
+            return read(file, parsedargs["initial_state_label"], MPS)
+        end
+        # Increase bond dimension if needed
+        if maxlinkdim(initstate) < set_bond_dimension
+            initstate = enlargelinks(initstate, set_bond_dimension)
+        end
+    end
+
+    dt = parsedargs["time_step"]
+    tmax = parsedargs["max_time"]
+    operators = parseoperators(parsedargs["observables"])
+    cb = ExpValueCallback(operators, siteinds(initstate), dt)
+
+    simulation_files_info(;
+        measurements_file=measurements_file,
+        bonddims_file=bonddims_file,
+        simtime_file=simtime_file,
+    )
+
+    tdvp1!(
+        initstate,
+        H,
+        dt,
+        tmax;
+        callback=cb,
+        hermitian=true,
+        io_file=measurements_file,
+        io_ranks=bonddims_file,
+        io_times=simtime_file,
+    )
+
+    pack!(
+        parsedargs["output"] * ".h5";
+        argsdict=parsedargs,
+        expvals_file=measurements_file,
+        bonddimensions_file=bonddims_file,
+        walltime_file=simtime_file,
+        finalstate=parsedargs["save_final_state"] ? initstate : nothing,
+    )
+
+    return nothing
+end
+
+main()
