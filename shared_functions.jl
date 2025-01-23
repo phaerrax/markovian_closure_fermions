@@ -173,36 +173,35 @@ Base.reverse(c::ModeChain) =
 
 Return a new `ModeChain` made by joining `c1` and `c2`, with `c1c2coupling` as the coupling
 constant between the last site of `c1` and the first site of `c2`.
-The ranges of the two chains do not have to be adjacent, but they cannot overlap.
+The ranges of the two chains do not have to be adjacent, or ordered in some way, but they
+cannot overlap.
 
 # Example
 
 ```julia-repl
-julia> c1 = ModeChain(1:3, fill(1,3), fill(0.5, 2));
+julia> r1 = 2:2:10; r2 = 3:2:10;
 
-julia> c2 = ModeChain(6:9, fill(2,4), fill(4,3));
+julia> c1 = ModeChain(r1, fill("f1", length(r1)), fill("g1", length(r1) - 1));
 
-julia> join(c1, c2, 0.25)
-ModeChain([1, 2, 3, 6, 7, 8, 9], [1, 1, 1, 2, 2, 2, 2], [0.5, 0.5, 0.25, 4.0, 4.0, 4.0])
+julia> c2 = ModeChain(r2, fill("f2", length(r2)), fill("g2", length(r2) - 1));
+
+julia> join(c1, c2, "r")
+ModeChain(
+    [2, 4, 6, 8, 10, 3, 5, 7, 9],
+    ["f1", "f1", "f1", "f1", "f1", "f2", "f2", "f2", "f2"],
+    ["g1", "g1", "g1", "g1", "r", "g2", "g2", "g2"],
+)
 ```
 """
 function Base.join(c1::ModeChain, c2::ModeChain, c1c2coupling)
-    if first(c1.range) ≤ last(c2.range) && first(c2.range) ≤ last(c1.range)
-        error("The ranges of the given ModeChains overlap.")
-    elseif first(c1.range) < first(c2.range)  # find out which chain is on the left
+    if isempty(intersect(c1.range, c2.range))
         return ModeChain(
             [c1.range; c2.range],
             [c1.frequencies; c2.frequencies],
             [c1.couplings; c1c2coupling; c2.couplings],
         )
-    elseif first(c2.range) < first(c1.range)
-        return ModeChain(
-            [c2.range; c1.range],
-            [c2.frequencies; c1.frequencies],
-            [c2.couplings; c1c2coupling; c1.couplings],
-        )
     else
-        error("Logic error")
+        ArgumentError("Ranges overlap")
     end
 end
 
