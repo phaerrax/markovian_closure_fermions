@@ -1,75 +1,8 @@
-using ITensors, ITensorMPS, LindbladVectorizedTensors, MarkovianClosure, MPSTimeEvolution
-using HDF5, CSV
+using OpenSystemsChainMapping
+using ITensorMPS: maxlinkdim, siteinds
+using MPSTimeEvolution: ExpValueCallback, tdvp1!
 using Base.Iterators: peel
-
-include("../../shared_functions.jl")
-
-function siam_spinless_tedopa(;
-    nsystem,
-    system_energy,
-    system_initial_state,
-    sysenvcouplingL,
-    sysenvcouplingR,
-    nenvironment,
-    environmentL_chain_frequencies,
-    environmentL_chain_couplings,
-    environmentR_chain_frequencies,
-    environmentR_chain_couplings,
-    maxbonddim,
-)
-    system = ModeChain(1:nsystem, [system_energy], [])
-    environmentL = ModeChain(
-        range(; start=nsystem + 1, step=2, length=length(environmentL_chain_frequencies)),
-        environmentL_chain_frequencies,
-        environmentL_chain_couplings,
-    )
-    environmentR = ModeChain(
-        range(; start=nsystem + 2, step=2, length=length(environmentR_chain_frequencies)),
-        environmentR_chain_frequencies,
-        environmentR_chain_couplings,
-    )
-    environmentL = first(environmentL, nenvironment)
-    environmentR = first(environmentR, nenvironment)
-
-    function init(n)
-        return if in(n, system)
-            system_initial_state
-        elseif in(n, environmentL)
-            "Occ"
-        else
-            "Emp"
-        end
-    end
-    st = SiteType("Fermion")
-    site(tags) = addtags(siteind("Fermion"), tags)
-    sites = [
-        site("System")
-        interleave(
-            [site("EnvL") for n in 1:nenvironment], [site("EnvR") for n in 1:nenvironment]
-        )
-    ]
-    for n in eachindex(sites)
-        sites[n] = addtags(sites[n], "n=$n")
-    end
-    initstate = MPS(sites, init)
-
-    @assert findall(idx -> hastags(idx, "System"), sites) == system.range
-    @assert findall(idx -> hastags(idx, "EnvL"), sites) == environmentL.range
-
-    h = spinchain(
-        SiteType("Fermion"),
-        join(
-            reverse(environmentR),
-            join(system, environmentL, sysenvcouplingL),
-            sysenvcouplingR,
-        ),
-    )
-    H = MPO(h, sites)
-
-    initstate = enlargelinks(initstate, maxbonddim; ref_state=init)
-
-    return initstate, H
-end
+using HDF5, CSV
 
 function main()
     parsedargs = parsecommandline(
@@ -91,7 +24,7 @@ function main()
     bonddims_file = parsedargs["output"] * "_bonddims.csv"
     simtime_file = parsedargs["output"] * "_simtime.csv"
 
-    initstate, H = siam_spinless_tedopa(;
+    initstate, H = siam_spinless_pure_state(;
         nsystem=parsedargs["system_sites"],
         system_energy=parsedargs["system_energy"],
         system_initial_state=parsedargs["system_initial_state"],

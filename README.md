@@ -6,43 +6,53 @@ systems, employing the Markovian closure technique as explained in the article.
 
 ## Installation
 
-First of all, clone this repository on your computer.
-The `Project.toml` file lists all the packages you need.
-Some of them are personal packages which are not listed in Julia's general
-registry, but in [this
-one](https://github.com/phaerrax/TensorNetworkSimulations).
-Add the registry by running, in a Julia interactive session,
+1) Clone the repository on your computer.
+2) This project depends on some packages that aren't found in Julia's general
+    registry, but in [this one](https://github.com/phaerrax/TensorNetworkSimulations),
+    so you need to add it first in order to download those packages
+    automatically (you can skip this step if you already added the registry
+    previously: you need to do it just once per Julia installation). Open a
+    Julia interactive session and enter the Pkg REPL by hitting `]` (see the
+    [Getting Started with Environments](https://pkgdocs.julialang.org/v1/getting-started/#Getting-Started-with-Environments)
+    guide) and then run `registry add https://github.com/phaerrax/TensorNetworkSimulations.git`:
 
-```julia-repl
-using Pkg
-pkg"registry add https://github.com/phaerrax/TensorNetworkSimulations.git"
-```
+    ```julia-repl
+    (@v1.11) pkg> registry add https://github.com/phaerrax/TensorNetworkSimulations.git
+         Cloning registry from "https://github.com/phaerrax/TensorNetworkSimulations.git"
+           Added registry `TensorNetworkSimulations` to `~/.julia/registries/TensorNetworkSimulations`
+    ```
 
-Now you can download all the required packages:
+    (If this is the first time using Julia then run `registry add General` too
+    otherwise the `General` registry won't be automatically added.)
 
-```julia-repl
-using Pkg
-pkg"instantiate"
-```
+3) Activate the Julia project in this folder with `activate .`
+
+    ```julia-repl
+    (@v1.11) pkg> activate .
+      Activating project at `~/markovian_closure_fermions`
+    ```
+
+4) Add the `OpenSystemsChainMapping` package and download all the
+    dependencies by running `dev ./OpenSystemsChainMapping` and then
+    `instantiate`. 
 
 ## Description of the repository
 
-In this repository you will find:
+The repository contains a package, called `OpenSystemsChainMapping`, which
+defines some "core" functions that allow simulating some open quantum systems
+in contact with one or two environments.
+
+You will find:
 
 * some Julia scripts which perform the simulation of some physical models such
   as the SIAM (`siam`) or a quantum dot impurity (`qdot`), either using a
   standard TEDOPA method (`pure….jl`) or the Markovian closure (`mc….jl`);
 * an `example` folder which contains the parameter files of some concrete
   simulations, as well as some frequently used spectral densities.
-* a `mc_standard_parameters` which contains the parameters needed for the
-  implementation of the Markovian closure technique in the simulation scripts;
 * some Julia scripts that calculate the chain coefficients, in several ways,
   starting from the data of a spectral density (`chainmapping_….jl`);
-* a folder `TimeEvoVecMPS`, a self-contained Julia package (imported by every
-  script) which defines functions for the various flavours of the TDVP algorithm
-  and some other utilities for the simulations.
 
-## How it works
+## How it works (WIP)
 
 The parameters for each simulation script must be supplied, in a JSON file, as
 the first (and only) command-line argument. You can find some examples in the
@@ -160,15 +170,6 @@ system (a fermion, maybe) we need:
 
     - `sys_en`: energy of the open system
     - `sys_ini`: initial state of the open system
-
-## Documentation
-
-The `TimeEvoVecMPS` package, included in this repo, has its own documentation
-(still a work in progress), which is not yet hosted and must be generated
-manually: from the `docs` directory, run `julia --project make.jl` and wait for
-the command to end.
-You will then be able to access the documentation from `docs/builds/index.html`,
-by opening it from any Web browser.
 
 ## References
 
