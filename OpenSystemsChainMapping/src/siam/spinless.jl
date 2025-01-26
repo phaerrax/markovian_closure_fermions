@@ -260,10 +260,6 @@ function siam_spinless_superfermions_mc(;
     return initstate, L
 end
 
-function ITensors.state(sn::StateName"vF", st::SiteType"vFermion")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-
 function siam_spinless_vectorised_mc(;
     nsystem,
     system_energy,

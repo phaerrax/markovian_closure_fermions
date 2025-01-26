@@ -7,49 +7,6 @@ using MPSTimeEvolution
 
 include("../shared_functions.jl")
 
-function ITensors.state(sn::StateName"vAup", st::SiteType"vElectron")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-function ITensors.state(sn::StateName"vAdagup", st::SiteType"vElectron")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-function ITensors.state(sn::StateName"vAdn", st::SiteType"vElectron")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-function ITensors.state(sn::StateName"vAdagdn", st::SiteType"vElectron")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-
-function ITensors.state(::StateName"vAupF", ::SiteType"vElectron")
-    return LindbladVectorizedTensors.vec(
-        ITensors.op(OpName("Aup"), SiteType("Electron")) *
-        ITensors.op(OpName("F"), SiteType("Electron")),
-        gellmannbasis(4),
-    )
-end
-function ITensors.state(::StateName"vAdagupF", ::SiteType"vElectron")
-    return LindbladVectorizedTensors.vec(
-        ITensors.op(OpName("Adagup"), SiteType("Electron")) *
-        ITensors.op(OpName("F"), SiteType("Electron")),
-        gellmannbasis(4),
-    )
-end
-
-function ITensors.state(sn::StateName"vF", st::SiteType"vElectron")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-function ITensors.state(sn::StateName"vF", st::SiteType"vFermion")
-    return LindbladVectorizedTensors.vop(sn, st)
-end
-
-function ITensors.state(::StateName"vA", st::SiteType"vElectron")
-    return ITensors.state(StateName("vAupF"), st) + ITensors.state(StateName("vAdn"), st)
-end
-function ITensors.state(::StateName"vAdag", st::SiteType"vElectron")
-    return ITensors.state(StateName("vAdagupF"), st) +
-           ITensors.state(StateName("vAdagdn"), st)
-end
-
 function dot_hamiltonian(
     ::SiteType"vElectron", dot_energies, dot_coulomb_repulsion, dot_site
 )
