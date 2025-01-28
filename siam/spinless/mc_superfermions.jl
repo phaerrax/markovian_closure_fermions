@@ -44,7 +44,6 @@ function main()
         end
         # Increase bond dimension if needed
         if maxlinkdim(initstate) < set_bond_dimension
-            # We trust that the state has even fermion parity
             @error "Increasing bond dimension of a state input from file not implemented."
         end
     end

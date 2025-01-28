@@ -46,7 +46,7 @@ function main()
         end
         # Increase bond dimension if needed
         if maxlinkdim(initstate) < set_bond_dimension
-            initstate = enlargelinks(initstate, set_bond_dimension)
+            @error "Increasing bond dimension of a state input from file not implemented."
         end
     end
 

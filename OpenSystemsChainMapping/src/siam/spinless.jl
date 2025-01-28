@@ -10,6 +10,7 @@ function siam_spinless_pure_state(;
     environmentR_chain_frequencies,
     environmentR_chain_couplings,
     maxbonddim,
+    kwargs...,
 )
     system = ModeChain(1:nsystem, [system_energy], [])
     environmentL = ModeChain(
@@ -25,7 +26,7 @@ function siam_spinless_pure_state(;
     environmentL = first(environmentL, nenvironment)
     environmentR = first(environmentR, nenvironment)
 
-    function init(n)
+    function initlabels(n)
         return if in(n, system)
             system_initial_state
         elseif in(n, environmentL)
@@ -35,7 +36,16 @@ function siam_spinless_pure_state(;
         end
     end
     st = SiteType("Fermion")
-    site(tags) = addtags(siteind("Fermion"), tags)
+    function site(tags)
+        return addtags(
+            siteind(
+                "Fermion";
+                conserve_nfparity=get(kwargs, :conserve_nfparity, true),
+                conserve_nf=get(kwargs, :conserve_nf, true),
+            ),
+            tags,
+        )
+    end
     sites = [
         site("System")
         interleave(
@@ -45,7 +55,7 @@ function siam_spinless_pure_state(;
     for n in eachindex(sites)
         sites[n] = addtags(sites[n], "n=$n")
     end
-    initstate = MPS(sites, init)
+    initstate = MPS(sites, initlabels)
 
     @assert findall(idx -> hastags(idx, "System"), sites) == system.range
     @assert findall(idx -> hastags(idx, "EnvL"), sites) == environmentL.range
@@ -60,7 +70,7 @@ function siam_spinless_pure_state(;
     )
     H = MPO(h, sites)
 
-    initstate = enlargelinks(initstate, maxbonddim; ref_state=init)
+    initstate = enlargelinks(initstate, maxbonddim; ref_state=initlabels)
 
     return initstate, H
 end
@@ -78,6 +88,7 @@ function siam_spinless_superfermions_mc(;
     environmentR_chain_couplings,
     nclosure,
     maxbonddim,
+    kwargs...,
 )
     system = ModeChain(range(; start=1, step=2, length=nsystem), [system_energy], [])
     altsystem = ModeChain(range(; start=2, step=2, length=nsystem), [system_energy], [])
@@ -147,7 +158,7 @@ function siam_spinless_superfermions_mc(;
         innercoups(mcR),
     )
 
-    function init(n)
+    function initlabels(n)
         return if in(n, system) || in(n, altsystem)
             system_initial_state
         elseif (
@@ -162,7 +173,12 @@ function siam_spinless_superfermions_mc(;
         end
     end
 
-    site(tags) = addtags(siteind("Fermion"; conserve_nfparity=true), tags)
+    function site(tags)
+        return addtags(
+            siteind("Fermion"; conserve_nfparity=get(kwargs, :conserve_nfparity, true)),
+            tags,
+        )
+    end
     sites = [
         site("System")
         site("System(alt)")
@@ -186,7 +202,7 @@ function siam_spinless_superfermions_mc(;
     @assert findall(idx -> hastags(idx, "ClosureR"), sites) == closureR.range
 
     st = SiteType("Fermion")
-    initstate = MPS(sites, init)
+    initstate = MPS(sites, initlabels)
 
     ad_h = OpSum()
     DL = OpSum()
@@ -255,7 +271,7 @@ function siam_spinless_superfermions_mc(;
 
     # Prepare the state for TDVP with long-range interactions by artificially increasing
     # its bond dimensions.
-    initstate = enlargelinks(initstate, maxbonddim; ref_state=init)
+    initstate = enlargelinks(initstate, maxbonddim; ref_state=initlabels)
 
     return initstate, L
 end
