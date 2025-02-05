@@ -134,13 +134,51 @@ function pack!(
             write(hf, k, v)
         end
         measurements = CSV.File(expvals_file)
-        for col in propertynames(measurements)
+        expvals_colnames = string.(propertynames(measurements))
+        # We start by writing the time and---if it's there---the norm.
+        write(hf, "simulation_results/time", collect(measurements[:time]))
+        if "Norm" in expvals_colnames
+            write(hf, "simulation_results/Norm", collect(measurements[:Norm]))
+        end
+        # Now we assume that all expectation values have been printed with real and
+        # imaginary parts in columns named "X_re" and "X_im" (as MPSTimeEvolution does).
+        # We consolidate both columns in a single vector of complex numbers.
+        keys_r = replace.(filter(contains("_re"), expvals_colnames), "_re" => "")
+        keys_i = replace.(filter(contains("_im"), expvals_colnames), "_im" => "")
+        opnames = intersect(keys_r, keys_i)
+
+        # Check if there are some operators for which the evolution script didn't print
+        # either the real or the imaginary part, and warn the user. this should not happen
+        # with MPSTimeEvolution... but just in case...
+        unmatched_r = setdiff(keys_r, opnames)
+        if !isempty(unmatched_r)
+            @warn "no imaginary part for operator " * join(unmatched_r, ", ", " and ")
+            for k in unmatched_r
+                col = collect(measurements[string(k, "_re")]),
+                write(hf, string("simulation_results/", k, "_re"), col)
+            end
+        end
+        unmatched_i = setdiff(keys_i, opnames)
+        if !isempty(unmatched_i)
+            @warn "no real part for operator " * join(unmatched_r, ", ", " and ")
+            for k in unmatched_i
+                col = collect(measurements[string(k, "_im")]),
+                write(hf, string("simulation_results/", k, "_im"), col)
+            end
+        end
+
+        for k in opnames
             # If Julia is run with multithreading active and the CSV file is large
             # (> 5_000 cells), `CSV.read` will use multiple threads to read the file, and
             # the columns will be read as `SentinelArrays.ChainedVector{T, Vector{T}}`
             # instead of `Vector{T}`. We use `collect` to transform the former into the
             # latter, in case this happens, since `HDF5.write` accepts only simple vectors.
-            write(hf, string("simulation_results/", col), collect(measurements[col]))
+            col =
+                complex.(
+                    collect(measurements[string(k, "_re")]),
+                    collect(measurements[string(k, "_im")]),
+                )
+            write(hf, "simulation_results/$k", col)
         end
 
         # Pack the bond dimensions in a single Matrix, where the i-th columns is the link
