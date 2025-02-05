@@ -135,18 +135,25 @@ function pack!(
         end
         measurements = CSV.File(expvals_file)
         for col in propertynames(measurements)
-            write(hf, string("simulation_results/", col), measurements[col])
+            # If Julia is run with multithreading active and the CSV file is large
+            # (> 5_000 cells), `CSV.read` will use multiple threads to read the file, and
+            # the columns will be read as `SentinelArrays.ChainedVector{T, Vector{T}}`
+            # instead of `Vector{T}`. We use `collect` to transform the former into the
+            # latter, in case this happens, since `HDF5.write` accepts only simple vectors.
+            write(hf, string("simulation_results/", col), collect(measurements[col]))
         end
 
         # Pack the bond dimensions in a single Matrix, where the i-th columns is the link
         # between site i and i+1.
+        # (`Tables.matrix` already converts `SentinelArrays.ChainedVector{T, Vector{T}}`s
+        # into normal matrices.)
         bonddims = Matrix{Int}(Tables.matrix(CSV.File(bonddimensions_file; drop=[:time])))
         write(hf, "bond_dimensions", bonddims)
 
         # Read the simulation time per step in a Vector. There's only one column in the
         # file.
         walltime = CSV.File(walltime_file)
-        write(hf, "simulation_wall_time", walltime[propertynames(walltime)[1]])
+        write(hf, "simulation_wall_time", collect(walltime[propertynames(walltime)[1]]))
 
         if !isnothing(finalstate)
             write(hf, "final_state", finalstate)
