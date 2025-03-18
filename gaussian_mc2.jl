@@ -102,7 +102,9 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
         end
 
         A0 = zeros(ComplexF64, 2M, M)
-        A0[1:M, :] .= Diagonal([ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)])
+        A0[1:M, :] .= diagm(
+            0 => [ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)]
+        )
         A0[(M + 1):end, :] .= I - transpose(A0[1:M, :])
 
         ode = ODEProblem(lindblad_linear!, A0, (0.0, tf))
@@ -127,7 +129,7 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
         end
 
         A0 = zeros(ComplexF64, M, M)
-        A0 .= Diagonal([ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)])
+        A0 .= diagm(0 => [ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)])
         ode = ODEProblem(lindblad_affine!, A0, (0.0, tf))
         return ode
     elseif eqmode == :splitcomplex
@@ -173,7 +175,9 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
         end
 
         A0 = zeros(M, 2M)
-        A0[:, 1:M] .= Diagonal([ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)])
+        A0[:, 1:M] .= diagm(
+            0 => [ones(NC + NE); (sysinit == "Occ" ? 1 : 0); zeros(NC + NE)]
+        )
         ode = ODEProblem(lindblad_splitcomplex!, A0, (0.0, tf))
         return ode
     end
@@ -213,7 +217,9 @@ function tedopa_ode(tf, ε, sysinit, μ, T, NE; kwargs...)
         return nothing
     end
 
-    A0 = Diagonal([ones(ComplexF64, NE); (sysinit == "Occ" ? 1 : 0); zeros(ComplexF64, NE)])
+    A0 = diagm(
+        0 => [ones(ComplexF64, NE); (sysinit == "Occ" ? 1 : 0); zeros(ComplexF64, NE)]
+    )
 
     ode = ODEProblem(lindblad!, A0, (0.0, tf))
     return ode
@@ -339,7 +345,7 @@ function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kw
 end
 
 function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
-    cₜ = Array{ComplexF64}(undef, length(ts), size(initialmatrix)...)
+    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
     cₜ[1, :, :] .= initialmatrix
 
     # If L is the generator matrix and c₀ the initial correlation matrix,
@@ -363,6 +369,7 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
 end
 
 function evolve_sf_correlation_matrix_step(ts::UnitRange, generator, initialmatrix)
+    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
     # If L is the generator matrix and c₀ the initial correlation matrix,
     #   cₜ = transpose(exp(tL')) c₀ transpose(exp(-tL')) =
     #      = exp(t transpose(L')) c₀ exp(-t transpose(L')) =
@@ -383,7 +390,7 @@ end
 function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
     # More generic version of `evolve_sf_correlation_matrix_step` for non-uniform
     # time step.
-    cₜ = Array{ComplexF64}(undef, length(ts), size(initialmatrix)...)
+    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
     cₜ[1, :, :] .= initialmatrix
 
     for j in eachindex(ts)[2:end]
