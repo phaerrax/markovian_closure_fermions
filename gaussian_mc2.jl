@@ -61,8 +61,8 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
         0
         λ.R
     ]
-    # Tridiagonal([1,1],[2,2,2],[3,3]) == diagm(-1 => [1,1], 0 => [2,2,2], 1 => [3,3])
-    H = Tridiagonal(-conj(g), f, g)
+    # Tridiagonal([1,1], [2,2,2], [3,3]) == diagm(-1 => [1,1], 0 => [2,2,2], 1 => [3,3])
+    H = Tridiagonal(conj(g), f, g)
 
     K = OffsetArray(
         zeros(ComplexF64, size(H)), ((-(NC + NE)):(NC + NE), (-(NC + NE)):(NC + NE))
@@ -206,7 +206,7 @@ function tedopa_ode(tf, ε, sysinit, μ, T, NE; kwargs...)
         η.R
         κ.R
     ]
-    H = Tridiagonal(-conj(g), f, g)
+    H = Tridiagonal(conj(g), f, g)
 
     function lindblad!(dA, A, p, t)
         dA .= im .* (H * A .- A * H')
@@ -259,9 +259,7 @@ function plot_solution(sol_mc, sol_tedopa, n, m=n; NC=6)
     return p
 end
 
-function mcsf_setting(
-    ε, sysinit, μ, T, NE, NC, scale=1; generated_chain_length=200, kwargs...
-)
+function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwargs...)
     cfs = tedopa_chain_coefficients(μ, T, NE; generated_chain_length, kwargs...)
 
     envL = ModeChain(
@@ -302,7 +300,7 @@ function mcsf_setting(
         0
         λ.R
     ]
-    H = Tridiagonal(-conj(g), f, g) #!
+    H = Tridiagonal(conj(g), f, g)
 
     K = OffsetArray(
         zeros(ComplexF64, size(H)), ((-(NC + NE)):(NC + NE), (-(NC + NE)):(NC + NE))
@@ -351,7 +349,7 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
     # Call V the matrix that diagonalises conj(L) as VDV^-1: then
     #   cₜ = V exp(tD) V^-1 c₀ V exp(-tD) V^-1.
 
-    eigenvalues, eigenvectors = eigen(generator)
+    eigenvalues, eigenvectors = eigen(conj(generator))
     D = Diagonal(eigenvalues)
     V = eigenvectors
     invV = inv(V)
@@ -362,4 +360,59 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
         cₜ[j, :, :] .= V * exp(t * D) * invVc₀V * exp(-t * D) * invV
     end
     return cₜ
+end
+
+function evolve_sf_correlation_matrix_step(ts::UnitRange, generator, initialmatrix)
+    # If L is the generator matrix and c₀ the initial correlation matrix,
+    #   cₜ = transpose(exp(tL')) c₀ transpose(exp(-tL')) =
+    #      = exp(t transpose(L')) c₀ exp(-t transpose(L')) =
+    #      = exp(t conj(L)) c₀ exp(-t conj(L)) =
+    #      = exp(t/N conj(L))^N c₀ exp(-t/N conj(L))^N
+
+    dt = step(ts)
+    exp_dtL = exp(dt * conj(generator))
+    inv_exp_dtL = exp(-dt * conj(generator))
+
+    cₜ[1, :, :] .= initialmatrix
+    for j in 2:length(ts)
+        cₜ[j, :, :] .= exp_dtL * cₜ[j - 1, :, :] * inv_exp_dtL
+    end
+    return cₜ
+end
+
+function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
+    # More generic version of `evolve_sf_correlation_matrix_step` for non-uniform
+    # time step.
+    cₜ = Array{ComplexF64}(undef, length(ts), size(initialmatrix)...)
+    cₜ[1, :, :] .= initialmatrix
+
+    for j in eachindex(ts)[2:end]
+        dt = ts[j] - ts[j - 1]
+        cₜ[j, :, :] .=
+            exp(dt * conj(generator)) * cₜ[j - 1, :, :] * exp(-dt * conj(generator))
+    end
+    return cₜ
+end
+
+function evolve_sf_correlation_matrix_ode(tf, generator, initialmatrix)
+    # If L is the generator matrix and c₀ the initial correlation matrix,
+    #   cₜ = transpose(exp(tL')) c₀ transpose(exp(-tL')) =
+    #      = exp(t transpose(L')) c₀ exp(-t transpose(L')) =
+    #      = exp(t conj(L)) c₀ exp(-t conj(L)) =
+    #      = exp(t/N conj(L))^N c₀ exp(-t/N conj(L))^N
+    recL, imcL = reim(conj(generator))
+    M = size(generator, 1)
+    function lindblad_sf!(∂ₜcₜ, cₜ, p, t)
+        ∂ₜcₜ[1:M, 1:M] .=
+            recL * cₜ[1:M, 1:M] .- imcL * cₜ[1:M, (M + 1):end] .- cₜ[1:M, 1:M] * recL .+
+            cₜ[1:M, (M + 1):end] * imcL
+        ∂ₜcₜ[1:M, (M + 1):end] .=
+            recL * cₜ[1:M, (M + 1):end] .+ imcL * cₜ[1:M, 1:M] .- cₜ[1:M, 1:M] * imcL .-
+            cₜ[1:M, (M + 1):end] * recL
+        return nothing
+    end
+    c₀ = zeros(M, 2M)
+    c₀[1:M, 1:M] .= initialmatrix
+    prob = ODEProblem(lindblad_sf!, c₀, (0, tf))
+    return prob
 end
