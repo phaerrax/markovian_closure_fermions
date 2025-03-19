@@ -383,9 +383,21 @@ function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initial
     #      = exp(t conj(L)) c₀ exp(-t conj(L)) =
     #      = exp(t/N conj(L))^N c₀ exp(-t/N conj(L))^N
 
+    # The `exp` function doesn't work on `BigFloat` matrices, but `eigen` does, and we can
+    # exponentiate single `BigFloat`s, so we compute the exponential by first diagonalising
+    # the generator.
+    eigenvalues, V = eigen(conj(generator))
+    # d, v = eigen(X)   ==>   v * Diagonal(d) * inv(v) ≈ X
+    D = Diagonal(eigenvalues)
+    invV = if ishermitian(im * generator)
+        V'
+    else
+        inv(V)
+    end
+
     dt = step(ts)
-    exp_dtL = exp(dt * conj(generator))
-    inv_exp_dtL = exp(-dt * conj(generator))
+    exp_dtL = V * exp(dt * D) * invV
+    inv_exp_dtL = V * exp(-dt * D) * invV
 
     cₜ[1, :, :] .= initialmatrix
     for j in 2:length(ts)
