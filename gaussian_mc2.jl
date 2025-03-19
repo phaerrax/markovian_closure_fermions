@@ -406,6 +406,48 @@ function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initial
     return cₜ
 end
 
+function evolve_sf_correlation_matrix_step(
+    ts::AbstractRange, generator, initialmatrix, idxs...
+)
+    # Like `evolve_sf_correlation_matrix_step`, but don't save the whole matrix at each
+    # time step, just some of its elements. Useful when memory is an issue.
+
+    # The `exp` function doesn't work on `BigFloat` matrices, but `eigen` does, and we can
+    # exponentiate single `BigFloat`s, so we compute the exponential by first diagonalising
+    # the generator.
+    eigenvalues, V = eigen(conj(generator))
+    # d, v = eigen(X)   ==>   v * Diagonal(d) * inv(v) ≈ X
+    D = Diagonal(eigenvalues)
+    invV = if ishermitian(im * generator)
+        V'
+    else
+        inv(V)
+    end
+
+    dt = step(ts)
+    exp_dtL = V * exp(dt * D) * invV
+    inv_exp_dtL = V * exp(-dt * D) * invV
+
+    values = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
+        undef, length(ts), length(idxs)
+    )
+    # values[i,j] will be the matrix element cₜ[j] at time ts[i], i.e. `values[2.3, (4,5)]`.
+
+    cₜ = initialmatrix
+    for (i, idx) in enumerate(idxs)
+        values[1, i] = getindex(cₜ, idx...)
+    end
+
+    for j in 2:length(ts)
+        cₜ = exp_dtL * cₜ * inv_exp_dtL  # evolve matrix at t+dt
+        for (i, idx) in enumerate(idxs)
+            values[j, i] = getindex(cₜ, idx...)
+        end
+    end
+
+    return values
+end
+
 function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
     # More generic version of `evolve_sf_correlation_matrix_step` for non-uniform
     # time step.
