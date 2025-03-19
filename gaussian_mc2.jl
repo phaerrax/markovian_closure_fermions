@@ -357,10 +357,13 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
     # Call V the matrix that diagonalises conj(L) as VDV^-1: then
     #   cₜ = V exp(tD) V^-1 c₀ V exp(-tD) V^-1.
 
-    eigenvalues, eigenvectors = eigen(conj(generator))
+    eigenvalues, V = eigen(conj(generator))
     D = Diagonal(eigenvalues)
-    V = eigenvectors
-    invV = inv(V)
+    invV = if ishermitian(im * generator)
+        V'
+    else
+        inv(V)
+    end
 
     invVc₀V = invV * initialmatrix * V
     for j in eachindex(ts)[2:end]
