@@ -345,7 +345,9 @@ function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kw
 end
 
 function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
-    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
+    cₜ = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
+        undef, length(ts), size(initialmatrix)...
+    )
     cₜ[1, :, :] .= initialmatrix
 
     # If L is the generator matrix and c₀ the initial correlation matrix,
@@ -369,7 +371,9 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
 end
 
 function evolve_sf_correlation_matrix_step(ts::UnitRange, generator, initialmatrix)
-    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
+    cₜ = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
+        undef, length(ts), size(initialmatrix)...
+    )
     # If L is the generator matrix and c₀ the initial correlation matrix,
     #   cₜ = transpose(exp(tL')) c₀ transpose(exp(-tL')) =
     #      = exp(t transpose(L')) c₀ exp(-t transpose(L')) =
@@ -390,7 +394,9 @@ end
 function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
     # More generic version of `evolve_sf_correlation_matrix_step` for non-uniform
     # time step.
-    cₜ = Array{eltype(initialmatrix)}(undef, length(ts), size(initialmatrix)...)
+    cₜ = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
+        undef, length(ts), size(initialmatrix)...
+    )
     cₜ[1, :, :] .= initialmatrix
 
     for j in eachindex(ts)[2:end]
