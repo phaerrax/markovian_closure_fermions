@@ -373,7 +373,7 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
     return cₜ
 end
 
-function evolve_sf_correlation_matrix_step(ts::UnitRange, generator, initialmatrix)
+function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initialmatrix)
     cₜ = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
         undef, length(ts), size(initialmatrix)...
     )
