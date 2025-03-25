@@ -1,5 +1,10 @@
 using LinearAlgebra,
-    TEDOPA, MarkovianClosure, OpenSystemsChainMapping, DifferentialEquations, OffsetArrays
+    TEDOPA,
+    MarkovianClosure,
+    OpenSystemsChainMapping,
+    DifferentialEquations,
+    OffsetArrays,
+    ProgressMeter
 
 function tedopa_chain_coefficients(μ, T, NE; kwargs...)
     d = Dict{AbstractString,Any}(
@@ -68,10 +73,10 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
         zeros(ComplexF64, size(H)), ((-(NC + NE)):(NC + NE), (-(NC + NE)):(NC + NE))
     )
     for k in 1:NC
-        K[-NE - k, -NE] = ζ.L[k]
-        K[-NE, -NE - k] = conj(ζ.L[k])
-        K[NE + k, NE] = ζ.R[k]
-        K[NE, NE + k] = conj(ζ.R[k])
+        K[-NE, -NE - k] = ζ.L[k]
+        K[-NE - k, -NE] = conj(ζ.L[k])
+        K[NE + k, NE] = conj(ζ.R[k])
+        K[NE, NE + k] = ζ.R[k]
     end
     H += OffsetArrays.no_offset_view(K)
     # remove offsets, otherwise matrix multiplication doesn't work.
@@ -366,7 +371,7 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
     end
 
     invVc₀V = invV * initialmatrix * V
-    for j in eachindex(ts)[2:end]
+    @showprogress for j in eachindex(ts)[2:end]
         t = ts[j]
         cₜ[j, :, :] .= V * exp(t * D) * invVc₀V * exp(-t * D) * invV
     end
@@ -400,14 +405,14 @@ function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initial
     inv_exp_dtL = V * exp(-dt * D) * invV
 
     cₜ[1, :, :] .= initialmatrix
-    for j in 2:length(ts)
+    @showprogress for j in 2:length(ts)
         cₜ[j, :, :] .= exp_dtL * cₜ[j - 1, :, :] * inv_exp_dtL
     end
     return cₜ
 end
 
 function evolve_sf_correlation_matrix_step(
-    ts::AbstractRange, generator, initialmatrix, idxs...
+    ts::AbstractRange, generator, initialmatrix, inds...
 )
     # Like `evolve_sf_correlation_matrix_step`, but don't save the whole matrix at each
     # time step, just some of its elements. Useful when memory is an issue.
@@ -428,21 +433,19 @@ function evolve_sf_correlation_matrix_step(
     exp_dtL = V * exp(dt * D) * invV
     inv_exp_dtL = V * exp(-dt * D) * invV
 
-    values = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
-        undef, length(ts), length(idxs)
-    )
-    # values[i,j] will be the matrix element cₜ[j] at time ts[i], i.e. `values[2.3, (4,5)]`.
+    values = [
+        Matrix{promote_type(eltype(generator), eltype(initialmatrix))}(
+            undef, size(initialmatrix[inds...])
+        ) for _ in ts
+    ]
+    # values[i] will be the requested portion of cₜ at time ts[i].
 
     cₜ = initialmatrix
-    for (i, idx) in enumerate(idxs)
-        values[1, i] = getindex(cₜ, idx...)
-    end
+    values[1] .= getindex(cₜ, inds...)
 
-    for j in 2:length(ts)
+    @showprogress for t in 2:length(ts)
         cₜ = exp_dtL * cₜ * inv_exp_dtL  # evolve matrix at t+dt
-        for (i, idx) in enumerate(idxs)
-            values[j, i] = getindex(cₜ, idx...)
-        end
+        values[t] .= getindex(cₜ, inds...)
     end
 
     return values
@@ -456,7 +459,7 @@ function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
     )
     cₜ[1, :, :] .= initialmatrix
 
-    for j in eachindex(ts)[2:end]
+    @showprogress for j in eachindex(ts)[2:end]
         dt = ts[j] - ts[j - 1]
         cₜ[j, :, :] .=
             exp(dt * conj(generator)) * cₜ[j - 1, :, :] * exp(-dt * conj(generator))

@@ -15,6 +15,7 @@ MarkovianClosure = "f4258524-7353-4a9f-9916-8287adc6b2b5"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 OpenSystemsChainMapping = "71ca44bc-8a7c-4538-81e7-1606c6cad596"
 Permutations = "2ae35dd2-176d-5d53-8349-f30d82d94d4f"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 TEDOPA = "b335cece-bf51-4f8f-ae23-b29b889c1946"
 
 [compat]
