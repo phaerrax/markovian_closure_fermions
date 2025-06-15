@@ -1,6 +1,6 @@
 using OpenSystemsChainMapping
 using ITensorMPS: maxlinkdim, siteinds
-using MPSTimeEvolution: ExpValueCallback, tdvp1!
+using MPSTimeEvolution: ExpValueCallback, tdvp1!, adaptivetdvp1!
 using Base.Iterators: peel
 using HDF5, CSV
 
@@ -8,6 +8,8 @@ function main()
     parsedargs = parsecommandline(
         ["--save_final_state"],
         Dict(:help => "store final state in the output file", :action => :store_true),
+        ["--adaptive_tdvp_convergence_factor"],
+        Dict(:help => "convergence factor for adaptive TDVP1", :arg_type => Float64),
     )
 
     cfs = if haskey(parsedargs, "environment_chain_coefficients")
@@ -43,7 +45,13 @@ function main()
         sysenvcouplingR=sysenvcouplingR,
         environmentR_chain_frequencies=empty_chainR_freqs,
         environmentR_chain_couplings=collect(empty_chainR_coups),
-        maxbonddim=set_bond_dimension,
+        maxbonddim=if haskey(parsedargs, "adaptive_tdvp_convergence_factor")
+            2
+        else
+            set_bond_dimension
+        end,
+        conserve_nf=(!haskey(parsedargs, "adaptive_tdvp_convergence_factor")),
+        conserve_nfparity=(!haskey(parsedargs, "adaptive_tdvp_convergence_factor")),
     )
 
     if haskey(parsedargs, "initial_state_file")
@@ -63,23 +71,24 @@ function main()
     operators = parseoperators(parsedargs["observables"])
     cb = ExpValueCallback(operators, siteinds(initstate), dt)
 
-    simulation_files_info(;
-        measurements_file=measurements_file,
-        bonddims_file=bonddims_file,
-        simtime_file=simtime_file,
-    )
-
-    tdvp1!(
-        initstate,
-        H,
-        dt,
-        tmax;
+    tdvp1_kwargs = (
         callback=cb,
         hermitian=true,
         io_file=measurements_file,
         io_ranks=bonddims_file,
         io_times=simtime_file,
     )
+
+    if haskey(parsedargs, "adaptive_tdvp_convergence_factor")
+        f = parsedargs["adaptive_tdvp_convergence_factor"]
+        @info "Running adaptive TDVP1 algorithm with tolerance $f"
+        adaptivetdvp1!(
+            initstate, H, dt, tmax; convergence_factor_bonddims=f, tdvp1_kwargs...
+        )
+    else
+        @info "Running standard TDVP1 algorithm"
+        tdvp1!(initstate, H, dt, tmax; tdvp1_kwargs...)
+    end
 
     pack!(
         parsedargs["output"] * ".h5";
