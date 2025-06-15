@@ -7,14 +7,22 @@ using HDF5, CSV
 function main()
     parsedargs = parsecommandline()
 
-    empty_chainL_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqfilled"]
-    sysenvcouplingL, empty_chainL_coups = peel(
-        CSV.File(parsedargs["environment_chain_coefficients"])["coupfilled"]
-    )
-    empty_chainR_freqs = CSV.File(parsedargs["environment_chain_coefficients"])["freqempty"]
-    sysenvcouplingR, empty_chainR_coups = peel(
-        CSV.File(parsedargs["environment_chain_coefficients"])["coupempty"]
-    )
+    cfs = if haskey(parsedargs, "environment_chain_coefficients")
+        cf_file = CSV.File(parsedargs["environment_chain_coefficients"])
+        Dict(
+            :empty =>
+                (frequencies=cf_file["freqempty"], couplings=cf_file["coupempty"]),
+            :filled =>
+                (frequencies=cf_file["freqfilled"], couplings=cf_file["coupfilled"]),
+        )
+    else
+        tedopa_chain_coefficients(; parsedargs...)
+    end
+
+    empty_chainL_freqs = cfs[:filled].frequencies
+    sysenvcouplingL, empty_chainL_coups = peel(cfs[:filled].couplings)
+    empty_chainR_freqs = cfs[:empty].frequencies
+    sysenvcouplingR, empty_chainR_coups = peel(cfs[:empty].couplings)
 
     set_bond_dimension = parsedargs["max_bond_dimension"]
     measurements_file = parsedargs["output"] * "_measurements.csv"
