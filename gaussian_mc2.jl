@@ -538,6 +538,19 @@ function evolve_sf_correlation_matrix_step(
     return values
 end
 
+function steadystate_sf_correlation_matrix(generator)
+    eigenvalues, V = eigen(generator)
+    # d, v = eigen(X)   ==>   v * Diagonal(d) * inv(v) ≈ X
+    D = Diagonal(real.(eigenvalues) .> 0)
+    invV = if ishermitian(im * generator)
+        V'
+    else
+        inv(V)
+    end
+
+    return transpose(invV) * D * transpose(V)
+end
+
 function evolve_sf_correlation_matrix_step(ts, generator, initialmatrix)
     # More generic version of `evolve_sf_correlation_matrix_step` for non-uniform
     # time step.
