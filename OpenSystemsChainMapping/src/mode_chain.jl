@@ -22,6 +22,18 @@ function spinchain(::SiteType"Fermion", c::ModeChain)
     return ad_h
 end
 
+function spinchain_inv(::SiteType"Fermion", c::ModeChain)
+    ad_h = OpSum()
+    for (n, f) in zip(c.range, c.frequencies)
+        ad_h += f, "c * cdag", n
+    end
+    for (n1, n2, g) in zip(c.range[1:(end - 1)], c.range[2:end], c.couplings)
+        ad_h += g, "c", n1, "cdag", n2
+        ad_h += g, "c", n2, "cdag", n1
+    end
+    return ad_h
+end
+
 function spinchain(::SiteType"vFermion", c::ModeChain)
     ℓ = OpSum()
     for (n, f) in zip(c.range, c.frequencies)

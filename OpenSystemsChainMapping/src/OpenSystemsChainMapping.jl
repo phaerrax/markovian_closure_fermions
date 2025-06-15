@@ -14,7 +14,10 @@ include("mode_chain.jl")
 export load_pars, parsecommandline, parseoperators
 include("input_parsing.jl")
 
-export siam_spinless_pure_state, siam_spinless_superfermions_mc, siam_spinless_vectorised_mc
+export siam_spinless_pure_state,
+    siam_spinless_superfermions_mc,
+    siam_spinless_vectorised_mc,
+    siam_spinless_superfermions_mc_sum
 include("siam/spinless.jl")
 
 end

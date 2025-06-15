@@ -18,4 +18,5 @@ TEDOPA = "b335cece-bf51-4f8f-ae23-b29b889c1946"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]
+MPSTimeEvolution = ">=0.6.0"
 MarkovianClosure = ">=0.1.9"
