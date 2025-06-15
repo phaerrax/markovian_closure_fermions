@@ -57,8 +57,9 @@ julia> reverse(c)
 ModeChain([5, 4, 3, 2, 1], ['e', 'd', 'c', 'b', 'a'], ['z', 'y', 'x', 'w'])
 ```
 """
-Base.reverse(c::ModeChain) =
+function Base.reverse(c::ModeChain)
     ModeChain(reverse(c.range), reverse(c.frequencies), reverse(c.couplings))
+end
 
 """
     join(c1::ModeChain, c2::ModeChain, c1c2coupling)
@@ -106,16 +107,18 @@ Base.iterate(c::ModeChain, i::Int) = iterate(c.range, i)
 
 Get the the mode chain `c` truncated to its first `n` elements.
 """
-Base.first(c::ModeChain, n::Integer) =
+function Base.first(c::ModeChain, n::Integer)
     ModeChain(first(c.range, n), first(c.frequencies, n), first(c.couplings, n - 1))
+end
 
 """
     last(c::ModeChain, n::Integer)
 
 Get the the mode chain `c` truncated to its last `n` elements.
 """
-Base.last(c::ModeChain, n::Integer) =
+function Base.last(c::ModeChain, n::Integer)
     ModeChain(last(c.range, n), last(c.frequencies, n), last(c.couplings, n - 1))
+end
 
 """
     markovianclosure(chain::ModeChain, nclosure, nenvironment)

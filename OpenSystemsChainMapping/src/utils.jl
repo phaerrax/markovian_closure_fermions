@@ -173,11 +173,10 @@ function pack!(
             # the columns will be read as `SentinelArrays.ChainedVector{T, Vector{T}}`
             # instead of `Vector{T}`. We use `collect` to transform the former into the
             # latter, in case this happens, since `HDF5.write` accepts only simple vectors.
-            col =
-                complex.(
-                    collect(measurements[string(k, "_re")]),
-                    collect(measurements[string(k, "_im")]),
-                )
+            col = complex.(
+                collect(measurements[string(k, "_re")]),
+                collect(measurements[string(k, "_im")]),
+            )
             write(hf, "simulation_results/$k", col)
         end
 
@@ -220,4 +219,33 @@ function simulation_files_info(;
         str *= "\n$simtime_file\t for the wall-clock time spent computing each step"
     end
     @info str
+end
+
+function parsedomain(str)
+    # Read domains from either strings like "[a, b]" or actual Julia vectors.
+    if str isa AbstractString
+        # Remove brackets and convert to list of Float64s
+        parse.(Float64, split(chop(str; head=1), ","))
+    elseif str isa AbstractVector
+        # Convert to Float64 anyway for type consistency
+        convert.(Float64, str)
+    end
+end
+
+function tedopa_chain_coefficients(; kwargs...)
+    @info "Computing chain coefficients for " * kwargs["sdf"]
+    NE = kwargs["environment_sites"]
+    d = Dict{AbstractString,Any}(
+        "chain_length" => round(Int, 1.5 * NE),
+        "PolyChaos_nquad" => get(kwargs, "nquad", 2 * NE),
+        "environment" => Dict(
+            "spectral_density_function" => kwargs["sdf"],
+            "domain" => parsedomain(kwargs["domain"]),
+            "chemical_potential" => get(kwargs, "chemical_potential", 0),
+            "spectral_density_parameters" => get(kwargs, "sdf_parameters", []),
+            "temperature" => get(kwargs, "temperature", 0),
+        ),
+    )
+
+    return chainmapping_thermofield(d)
 end

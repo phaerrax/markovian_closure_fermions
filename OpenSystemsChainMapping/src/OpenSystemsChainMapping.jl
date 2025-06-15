@@ -3,8 +3,9 @@ module OpenSystemsChainMapping
 using JSON, Tables, HDF5, CSV, ArgParse
 using ITensors, ITensorMPS, LindbladVectorizedTensors, MarkovianClosure, MPSTimeEvolution
 using Statistics: mean
+using TEDOPA: chainmapping_thermofield
 
-export enlargelinks_delta, pack!, simulation_files_info
+export enlargelinks_delta, pack!, simulation_files_info, tedopa_chain_coefficients
 include("utils.jl")
 
 export ModeChain, spinchain
