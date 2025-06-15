@@ -50,7 +50,7 @@ function mc_ode(tf, ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwar
     κ = (L=trunc_envL.couplings, R=trunc_envR.couplings)
 
     ν = (L=freqs(mcL), R=freqs(mcR))
-    λ = (L=-innercoups(mcL), R=innercoups(mcR))
+    λ = (L=(-innercoups(mcL)), R=innercoups(mcR))
     ζ = (L=outercoups(mcL), R=outercoups(mcR))
     γ = (L=damps(mcL), R=damps(mcR))
 
@@ -270,7 +270,48 @@ function plot_solution(sol_mc, sol_tedopa, n, m=n; NC=6)
     return p
 end
 
-function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwargs...)
+function tedopa_setup(
+    ε, sysinit, μ, T, NE; generated_chain_length=round(Int, NE * 1.2), kwargs...
+)
+    cfs = tedopa_chain_coefficients(μ, T, NE; generated_chain_length, kwargs...)
+
+    envL = first(
+        ModeChain(
+            1:length(cfs[:filled].frequencies),
+            cfs[:filled].frequencies,
+            cfs[:filled].couplings[2:end],
+        ),
+        NE,
+    )
+    envR = first(
+        ModeChain(
+            1:length(cfs[:empty].frequencies),
+            cfs[:empty].frequencies,
+            cfs[:empty].couplings[2:end],
+        ),
+        NE,
+    )
+
+    ω = (L=envL.frequencies, R=envR.frequencies)
+    η = (L=cfs[:filled].couplings[1], R=cfs[:empty].couplings[1])
+    κ = (L=envL.couplings, R=envR.couplings)
+
+    f = [reverse(ω.L); ε; ω.R]
+    g = [
+        conj(reverse(κ.L))
+        conj(η.L)
+        η.R
+        κ.R
+    ]
+    H = Tridiagonal(conj(g), f, g)
+
+    X = -im .* H
+    c₀ = Diagonal([ones(NE); (sysinit == "Occ" ? 1 : 0); zeros(NE)])
+
+    return X, c₀
+end
+
+function mcsf_setup(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kwargs...)
     cfs = tedopa_chain_coefficients(μ, T, NE; generated_chain_length, kwargs...)
 
     envL = ModeChain(
@@ -296,7 +337,7 @@ function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kw
     κ = (L=trunc_envL.couplings, R=trunc_envR.couplings)
 
     ν = (L=freqs(mcL), R=freqs(mcR))
-    λ = (L=-innercoups(mcL), R=innercoups(mcR))
+    λ = (L=(-innercoups(mcL)), R=innercoups(mcR))
     ζ = (L=outercoups(mcL), R=outercoups(mcR))
     γ = (L=damps(mcL), R=damps(mcR))
 
@@ -339,6 +380,52 @@ function mcsf_setting(ε, sysinit, μ, T, NE, NC; generated_chain_length=200, kw
     c₀[(M + 1):end, (M + 1):end] .= I - c₀[1:M, 1:M]
     c₀[1:M, (M + 1):end] .= c₀[1:M, 1:M]
     c₀[(M + 1):end, 1:M] .= I - c₀[1:M, 1:M]
+
+    return X, c₀
+    #=
+    Apparently this X is always diagonalisable. Remember that
+
+    evals, evecs = eigen(X)
+    evecs * Diagonal(evals) * inv(evecs) ≈ X
+    =#
+end
+
+function tedopasf_setup(ε, sysinit, μ, T, NE; kwargs...)
+    cfs = tedopa_chain_coefficients(μ, T, round(Int, NE*3/2); kwargs...)
+
+    envL = first(
+        ModeChain(
+            1:length(cfs[:filled].frequencies),
+            cfs[:filled].frequencies,
+            cfs[:filled].couplings[2:end],
+        ),
+        NE,
+    )
+    envR = first(
+        ModeChain(
+            1:length(cfs[:empty].frequencies),
+            cfs[:empty].frequencies,
+            cfs[:empty].couplings[2:end],
+        ),
+        NE,
+    )
+
+    ω = (L=envL.frequencies, R=envR.frequencies)
+    η = (L=cfs[:filled].couplings[1], R=cfs[:empty].couplings[1])
+    κ = (L=envL.couplings, R=envR.couplings)
+
+    f = [reverse(ω.L); ε; ω.R]
+    g = [
+        conj(reverse(κ.L))
+        conj(η.L)
+        η.R
+        κ.R
+    ]
+    H = Tridiagonal(conj(g), f, g)
+
+    X = -im .* H
+
+    c₀ = Diagonal([ones(NE); (sysinit == "Occ" ? 1 : 0); zeros(NE)])
 
     return X, c₀
     #=
