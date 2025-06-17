@@ -40,12 +40,7 @@ function siam_spinless_pure_state(;
     st = SiteType("Fermion")
     function site(tags)
         return addtags(
-            siteind(
-                "Fermion";
-                conserve_nfparity=get(kwargs, :conserve_nfparity, true),
-                conserve_nf=get(kwargs, :conserve_nf, true),
-            ),
-            tags,
+            siteind("Fermion"; conserve_nf=get(kwargs, :conserve_nf, true)), tags
         )
     end
     sites = [
@@ -186,9 +181,9 @@ function siam_spinless_superfermions_mc(;
             sys_init
         elseif (
             in(n, truncated_environmentL) ||
-            in(n, truncated_altenvironmentR) ||
+            in(n, truncated_altenvironmentL) ||
             in(n, closureL) ||
-            in(n, altclosureR)
+            in(n, altclosureL)
         )
             "Occ"
         else
@@ -258,7 +253,7 @@ function siam_spinless_superfermions_mc(;
 
     # -- Initially filled MC ---------------------------------------------------------------
     # NN interactions
-    ad_h += spinchain(st, closureL) - spinchain(st, altclosureL)
+    ad_h += spinchain(st, closureL) - spinchain_inv(st, altclosureL)
     # Interaction with last environment n
     for (z, n) in zip(outercoups(mcL), closureL.range)
         ad_h += z, "cdag", n, "c", last(truncated_environmentL.range)
