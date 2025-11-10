@@ -538,6 +538,7 @@ function siam_spinless_vectorised_mc(;
     environmentR_chain_couplings,
     nclosure,
     maxbonddim,
+    kwargs...,
 )
     system = ModeChain(range(; start=1, step=1, length=nsystem), [system_energy], [])
 
