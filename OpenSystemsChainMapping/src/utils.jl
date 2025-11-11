@@ -125,13 +125,13 @@ function pack!(
     # Same for "input_parameters", since its contents are what we're actually writing in
     # the HDF5 file.
     dict = deepcopy(argsdict)
-    delete!(dict, "observables")
-    delete!(dict, "input_parameters")
-    delete!(dict, "name")
+    delete!(dict, :observables)
+    delete!(dict, :input_parameters)
+    delete!(dict, :name)
 
     h5open(outputfilename, "w") do hf
         for (k, v) in dict
-            write(hf, k, v)
+            write(hf, string(k), v)
         end
         measurements = CSV.File(expvals_file)
         expvals_colnames = string.(propertynames(measurements))
@@ -225,7 +225,7 @@ function parsedomain(str)
     # Read domains from either strings like "[a, b]" or actual Julia vectors.
     if str isa AbstractString
         # Remove brackets and convert to list of Float64s
-        parse.(Float64, split(chop(str; head=1), ","))
+        parse.(Float64, split(Base.chop(str; head=1), ","))
     elseif str isa AbstractVector
         # Convert to Float64 anyway for type consistency
         convert.(Float64, str)
@@ -233,17 +233,17 @@ function parsedomain(str)
 end
 
 function tedopa_chain_coefficients(; kwargs...)
-    @info "Computing chain coefficients for " * kwargs["sdf"]
-    NE = kwargs["environment_sites"]
+    @info "Computing chain coefficients for " * kwargs[:sdf]
+    NE = kwargs[:environment_sites]
     d = Dict{AbstractString,Any}(
-        "chain_length" => round(Int, 1.5 * NE),
-        "PolyChaos_nquad" => get(kwargs, "nquad", 2 * NE),
+        "chain_length" => floor(Int, 1.5 * NE),
+        "PolyChaos_nquad" => get(kwargs, :nquad, 2 * NE),
         "environment" => Dict(
-            "spectral_density_function" => kwargs["sdf"],
-            "domain" => parsedomain(kwargs["domain"]),
-            "chemical_potential" => get(kwargs, "chemical_potential", 0),
-            "spectral_density_parameters" => get(kwargs, "sdf_parameters", []),
-            "temperature" => get(kwargs, "temperature", 0),
+            "spectral_density_function" => kwargs[:sdf],
+            "domain" => parsedomain(kwargs[:domain]),
+            "chemical_potential" => get(kwargs, :chemical_potential, 0),
+            "spectral_density_parameters" => get(kwargs, :sdf_parameters, []),
+            "temperature" => get(kwargs, :temperature, 0),
         ),
     )
 

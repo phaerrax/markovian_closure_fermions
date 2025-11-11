@@ -12,8 +12,8 @@ function main()
         Dict(:help => "convergence factor for adaptive TDVP1", :arg_type => Float64),
     )
 
-    cfs = if haskey(parsedargs, "environment_chain_coefficients")
-        cf_file = CSV.File(parsedargs["environment_chain_coefficients"])
+    cfs = if haskey(parsedargs, :environment_chain_coefficients)
+        cf_file = CSV.File(parsedargs[:environment_chain_coefficients])
         Dict(
             :empty =>
                 (frequencies=cf_file["freqempty"], couplings=cf_file["coupempty"]),
@@ -29,36 +29,36 @@ function main()
     empty_chainR_freqs = cfs[:empty].frequencies
     sysenvcouplingR, empty_chainR_coups = peel(cfs[:empty].couplings)
 
-    set_bond_dimension = parsedargs["max_bond_dimension"]
-    measurements_file = parsedargs["output"] * "_measurements.csv"
-    bonddims_file = parsedargs["output"] * "_bonddims.csv"
-    simtime_file = parsedargs["output"] * "_simtime.csv"
+    set_bond_dimension = parsedargs[:max_bond_dimension]
+    measurements_file = parsedargs[:output] * "_measurements.csv"
+    bonddims_file = parsedargs[:output] * "_bonddims.csv"
+    simtime_file = parsedargs[:output] * "_simtime.csv"
 
     initstate, H = siam_spinless_pure_state(;
-        nsystem=parsedargs["system_sites"],
-        system_energy=parsedargs["system_energy"],
-        system_initial_state=parsedargs["system_initial_state"],
-        nenvironment=parsedargs["environment_sites"],
+        nsystem=parsedargs[:system_sites],
+        system_energy=parsedargs[:system_energy],
+        system_initial_state=parsedargs[:system_initial_state],
+        nenvironment=parsedargs[:environment_sites],
         sysenvcouplingL=sysenvcouplingL,
         environmentL_chain_frequencies=empty_chainL_freqs,
         environmentL_chain_couplings=collect(empty_chainL_coups),
         sysenvcouplingR=sysenvcouplingR,
         environmentR_chain_frequencies=empty_chainR_freqs,
         environmentR_chain_couplings=collect(empty_chainR_coups),
-        maxbonddim=if haskey(parsedargs, "adaptive_tdvp_convergence_factor")
+        maxbonddim=if haskey(parsedargs, :adaptive_tdvp_convergence_factor)
             2
         else
             set_bond_dimension
         end,
-        conserve_nf=(!haskey(parsedargs, "adaptive_tdvp_convergence_factor")),
-        conserve_nfparity=(!haskey(parsedargs, "adaptive_tdvp_convergence_factor")),
+        conserve_nf=(!haskey(parsedargs, :adaptive_tdvp_convergence_factor)),
+        conserve_nfparity=(!haskey(parsedargs, :adaptive_tdvp_convergence_factor)),
     )
 
-    if haskey(parsedargs, "initial_state_file")
-        initstate_file = parsedargs["initial_state_file"]
+    if haskey(parsedargs, :initial_state_file)
+        initstate_file = parsedargs[:initial_state_file]
         # Discard prepared state and load from file
         initstate = h5open(initstate_file, "r") do file
-            return read(file, parsedargs["initial_state_label"], MPS)
+            return read(file, parsedargs[:initial_state_label], MPS)
         end
         # Increase bond dimension if needed
         if maxlinkdim(initstate) < set_bond_dimension
@@ -66,9 +66,9 @@ function main()
         end
     end
 
-    dt = parsedargs["time_step"]
-    tmax = parsedargs["max_time"]
-    operators = parseoperators(parsedargs["observables"])
+    dt = parsedargs[:time_step]
+    tmax = parsedargs[:max_time]
+    operators = parseoperators(parsedargs[:observables])
     cb = ExpValueCallback(operators, siteinds(initstate), dt)
 
     tdvp1_kwargs = (
@@ -79,8 +79,8 @@ function main()
         io_times=simtime_file,
     )
 
-    if haskey(parsedargs, "adaptive_tdvp_convergence_factor")
-        f = parsedargs["adaptive_tdvp_convergence_factor"]
+    if haskey(parsedargs, :adaptive_tdvp_convergence_factor)
+        f = parsedargs[:adaptive_tdvp_convergence_factor]
         @info "Running adaptive TDVP1 algorithm with tolerance $f"
         adaptivetdvp1!(
             initstate, H, dt, tmax; convergence_factor_bonddims=f, tdvp1_kwargs...
@@ -91,12 +91,12 @@ function main()
     end
 
     pack!(
-        parsedargs["output"] * ".h5";
+        parsedargs[:output] * ".h5";
         argsdict=parsedargs,
         expvals_file=measurements_file,
         bonddimensions_file=bonddims_file,
         walltime_file=simtime_file,
-        finalstate=parsedargs["save_final_state"] ? initstate : nothing,
+        finalstate=parsedargs[:save_final_state] ? initstate : nothing,
     )
 
     return nothing
