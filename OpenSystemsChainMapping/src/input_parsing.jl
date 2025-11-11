@@ -42,6 +42,20 @@ The following arguments are always included:
                         path (basename) to output files
 ```
 
+In case of a single environment, the relative information can be supplied
+directly through the command line by using the following arguments:
+
+```
+  --sdf
+			spectral density function (a valid Julia function)
+  --domain
+			domain of the spectral density function
+  --temperature
+			temperature
+  --chemical_potential
+			chemical potential
+```
+
 The JSON dictionary provided under the `input_parameters` is loaded first, and the other
 command-line arguments afterwards. This means that if a parameter is given both in the JSON
 file and through the command-line then the latter _overrides_ the former.
@@ -106,20 +120,29 @@ function parsecommandline(args...)
         #   dictionaries anymore.
         ["--output", "-o"],
         Dict(:help => "basename to output files", :arg_type => String),
+        # Arguments describing an external environment:
+        ["--sdf"],
+        Dict(:help => "spectral density function", :arg_type => String),
+        ["--domain"],
+        Dict(:help => "domain of the spectral density function", :arg_type => String),
+        ["--chemical_potential"],
+        Dict(:help => "chemical potential", :arg_type => Float64),
+        ["--temperature"],
+        Dict(:help => "temperature", :arg_type => Float64),
     )
     add_arg_table!(s, args...) # additional user-specified CLI arguments
 
     # Load the input JSON file, if present.
-    parsedargs_raw = parse_args(s)
+    parsedargs_raw = parse_args(s; as_symbols=true)
     parsedargs =
-        if !haskey(parsedargs_raw, "input_parameters") ||
-            !isnothing(parsedargs_raw["input_parameters"])
+        if !haskey(parsedargs_raw, :input_parameters) ||
+            !isnothing(parsedargs_raw[:input_parameters])
             # ↖ Once the key is defined in `add_arg_table!`, the dictionary returned by
             # `parse_args` will always contain it, possibly with value `nothing` if the
             # argument is not given by the script caller. So check first that the key
             # doesn't exist in the dictionary (it most likely always does, but it's just to
             # be sure), and then also check whether its value is `nothing`.
-            inputfile = pop!(parsedargs_raw, "input_parameters")
+            inputfile = pop!(parsedargs_raw, :input_parameters)
             @info "Reading parameters from $inputfile and from the command line"
             load_pars(inputfile)
         else
@@ -129,7 +152,7 @@ function parsecommandline(args...)
 
     # Read arguments from the command line, overwriting existing ones.
     for (k, v) in parse_args(s)
-        isnothing(v) || push!(parsedargs, k => v)
+        isnothing(v) || push!(parsedargs, Symbol(k) => v)
     end
     return parsedargs
 end
