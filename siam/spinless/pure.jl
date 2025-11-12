@@ -10,6 +10,8 @@ function main()
         Dict(:help => "store final state in the output file", :action => :store_true),
         ["--adaptive_tdvp_convergence_factor"],
         Dict(:help => "convergence factor for adaptive TDVP1", :arg_type => Float64),
+        ["--no_qn"],
+        Dict(:help => "disable quantum number conservation", :action => :store_true),
     )
 
     cfs = if haskey(parsedargs, :environment_chain_coefficients)
@@ -50,8 +52,12 @@ function main()
         else
             set_bond_dimension
         end,
-        conserve_nf=(!haskey(parsedargs, :adaptive_tdvp_convergence_factor)),
-        conserve_nfparity=(!haskey(parsedargs, :adaptive_tdvp_convergence_factor)),
+        conserve_nf=(
+            !parsedargs[:no_qn] && !haskey(parsedargs, :adaptive_tdvp_convergence_factor)
+        ),
+        conserve_nfparity=(
+            !parsedargs[:no_qn] && !haskey(parsedargs, :adaptive_tdvp_convergence_factor)
+        ),
     )
 
     if haskey(parsedargs, :initial_state_file)
