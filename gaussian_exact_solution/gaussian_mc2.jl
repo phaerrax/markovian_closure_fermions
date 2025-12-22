@@ -465,7 +465,9 @@ function evolve_sf_correlation_matrix(ts, generator, initialmatrix)
     return cₜ
 end
 
-function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initialmatrix)
+function evolve_sf_correlation_matrix_step(
+    ts::AbstractRange, generator, initialmatrix; correctcourse=true
+)
     cₜ = Array{promote_type(eltype(generator), eltype(initialmatrix))}(
         undef, length(ts), size(initialmatrix)...
     )
@@ -488,13 +490,31 @@ function evolve_sf_correlation_matrix_step(ts::AbstractRange, generator, initial
     end
 
     dt = step(ts)
-    exp_dtL = V * exp(dt * D) * invV
-    inv_exp_dtL = V * exp(-dt * D) * invV
+    #exp_dtL = V * exp(dt * D) * invV
+    #inv_exp_dtL = V * exp(-dt * D) * invV
+    exp_dtKt = transpose(invV) * exp(dt * D) * transpose(V)
+    exp_minusdtK = transpose(invV) * exp(-dt * D) * transpose(V)
+
+    @assert size(initialmatrix, 1) == size(initialmatrix, 2) &&
+        iseven(size(initialmatrix, 1))
+    M = div(size(initialmatrix, 1), 2)
 
     cₜ[1, :, :] .= initialmatrix
     @showprogress for j in 2:length(ts)
-        cₜ[j, :, :] .= exp_dtL * cₜ[j - 1, :, :] * inv_exp_dtL
+        if correctcourse  # impose known structure of matrix
+            #tmp = exp_dtL * cₜ[j - 1, :, :] * inv_exp_dtL
+            tmp = exp_minusdtK * cₜ[j - 1, :, :] * exp_dtKt
+            R = Hermitian(tmp[1:M, 1:M])
+            cₜ[j, :, :] .= [
+                R I-R
+                R I-R
+            ]
+        else
+            #cₜ[j, :, :] .= exp_dtL * cₜ[j - 1, :, :] * inv_exp_dtL
+            cₜ[j, :, :] .= exp_minusdtK * cₜ[j - 1, :, :] * exp_dtKt
+        end
     end
+
     return cₜ
 end
 
